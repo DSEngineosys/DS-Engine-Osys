@@ -43,6 +43,14 @@ DS Engineosys is a full-stack data science platform for business employee and pr
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
+## Local Run Setup
+
+The "Start application" workflow runs both services:
+- API server on port 8080 (`PORT=8080 pnpm --filter @workspace/api-server run dev`)
+- Vite frontend on port 5000 (`PORT=5000 BASE_PATH=/ pnpm --filter @workspace/ds-engineosys run dev`)
+
+Vite dev server proxies `/api` → `http://localhost:8080` (configured in `artifacts/ds-engineosys/vite.config.ts`).
+
 ## Color Scheme
 White, light blue, and light pink — professional, data-science aesthetic
 
