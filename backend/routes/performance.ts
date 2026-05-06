@@ -53,6 +53,7 @@ router.post("/performance", async (req, res) => {
   const rec = await Performance.create({
     ...parsed.data,
     employeeId: new mongoose.Types.ObjectId(parsed.data.employeeId),
+    notes: parsed.data.notes ?? undefined,
   });
 
   // Update employee performance score

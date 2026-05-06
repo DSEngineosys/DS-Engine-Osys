@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { FlipchartLayout } from "@/components/flipchart-layout";
 import { useGetProducts, useGetEmployees, useGetDashboardSummary } from "@workspace/api-client-react";
@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export default function Hub() {
   const [activePhase, setActivePhase] = useState<"employee" | "product">("employee");
   const [settings, setSettings] = useState<any>({});
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { data: products, isLoading: loadingProducts } = useGetProducts();
   const { data: employees, isLoading: loadingEmployees } = useGetEmployees();
   const { data: summary } = useGetDashboardSummary();
@@ -22,14 +23,15 @@ export default function Hub() {
     api.getSettings().then(setSettings);
   }, []);
 
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.load();
+    }
+  }, [settings.promotionalVideo]);
+
   const offers = products?.filter(p => p.offerPercentage && p.offerPercentage > 0) || [];
   const dsEngineers = employees?.filter(e => e.designation.toLowerCase().includes("engineer")) || [];
 
-  // Dummy ads
-  const ads = [
-    { id: 1, title: "A1 Lip Gloss", video: "https://assets.mixkit.co/videos/preview/mixkit-putting-on-lipstick-in-front-of-a-mirror-40228-large.mp4" },
-    { id: 2, title: "A1 Foundation", video: "https://assets.mixkit.co/videos/preview/mixkit-close-up-of-a-woman-applying-makeup-40224-large.mp4" },
-  ];
 
   return (
     <FlipchartLayout activePhase={activePhase} onPhaseChange={setActivePhase}>
@@ -37,8 +39,8 @@ export default function Hub() {
         <EmployeePhase 
           settings={settings} 
           offers={offers} 
-          ads={ads} 
           dsEngineers={dsEngineers} 
+          videoRef={videoRef}
         />
       ) : (
         <ProductPhase 
@@ -164,7 +166,7 @@ function EngineerCarousel({ engineers }: { engineers: any[] }) {
   );
 }
 
-function EmployeePhase({ settings, offers, ads, dsEngineers }: any) {
+function EmployeePhase({ settings, offers, dsEngineers, videoRef }: any) {
   return (
     <div className="space-y-8 pb-12">
       {/* Product Offers Slider */}
@@ -188,25 +190,34 @@ function EmployeePhase({ settings, offers, ads, dsEngineers }: any) {
 
       {/* Advertisements Section */}
       <section className="space-y-4">
-        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Special Highlights</h2>
-        <div className="space-y-4">
-          {ads.map((ad: any) => (
-            <div key={ad.id} className="rounded-3xl overflow-hidden shadow-xl bg-black aspect-video relative group">
-              <video 
-                src={ad.video} 
-                autoPlay 
-                muted 
-                loop 
-                playsInline 
-                className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-6 flex flex-col justify-end">
-                <h3 className="text-white text-xl font-bold">{ad.title}</h3>
-                <p className="text-white/70 text-sm">Experience the A1 quality</p>
-              </div>
+        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Featured Spotlight</h2>
+        {settings.promotionalVideo ? (
+          <div className="rounded-[2.5rem] overflow-hidden shadow-2xl bg-black aspect-video relative group border-4 border-white">
+            <video 
+              ref={videoRef}
+              key={settings.promotionalVideo}
+              src={settings.promotionalVideo} 
+              autoPlay 
+              muted 
+              loop 
+              playsInline 
+              crossOrigin="anonymous"
+              preload="auto"
+              onError={(e) => console.error("Video Playback Error:", e)}
+              className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent p-6 flex flex-col justify-end">
+              <h3 className="text-white text-2xl font-black italic tracking-tight" style={{ fontFamily: "'EB Garamond', serif" }}>
+                {settings.companyName || "DS Engineosys"}
+              </h3>
+              <p className="text-white/80 text-xs font-bold uppercase tracking-widest">Premium Collection</p>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="rounded-[2.5rem] bg-slate-100 aspect-video flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-200">
+             <p className="text-slate-400 font-bold italic">No promotional video set by Admin</p>
+          </div>
+        )}
       </section>
 
       {/* DS-Engineers Details Slider */}

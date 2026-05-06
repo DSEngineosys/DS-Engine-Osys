@@ -14,7 +14,7 @@ export interface AdminProfile {
 }
 
 export interface RegistrationRequest {
-  id: number;
+  id: string;
   name: string;
   email: string;
   mobile: string | null;
@@ -120,14 +120,19 @@ export const api = {
   registrationRequests() {
     return request<RegistrationRequest[]>("/api/admin/registration-requests");
   },
-  allowRequest(id: number) {
+  allowRequest(id: string) {
     return request<{ message: string }>(`/api/admin/registration-requests/${id}/allow`, {
       method: "POST",
     });
   },
-  denyRequest(id: number) {
+  denyRequest(id: string) {
     return request<{ message: string }>(`/api/admin/registration-requests/${id}/deny`, {
       method: "POST",
+    });
+  },
+  deleteRegistrationRequest(id: string) {
+    return request<any>(`/api/admin/registration-requests/${id}`, {
+      method: "DELETE",
     });
   },
   adminDashboard() {

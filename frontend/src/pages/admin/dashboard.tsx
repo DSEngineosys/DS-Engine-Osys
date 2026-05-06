@@ -8,6 +8,7 @@ import {
   XCircle,
   Clock,
   TrendingUp,
+  Trash2,
   Package,
   CheckSquare,
   ChevronLeft,
@@ -35,7 +36,7 @@ import {
 } from "@/lib/api-extra";
 import { useAdmin } from "@/lib/admin";
 
-const SLIDES = ["DS Engineer Details", "Company Improvement Progress", "Branding & Layout", "Communication Hub"] as const;
+const SLIDES = ["DS Engineer Details", "Company Improvement Progress", "Branding & Security", "Communication Hub"] as const;
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
@@ -44,7 +45,7 @@ export default function AdminDashboard() {
   const [requests, setRequests] = useState<RegistrationRequest[] | null>(null);
   const [stats, setStats] = useState<AdminDashboardData | null>(null);
   const [slide, setSlide] = useState(0);
-  const [busyId, setBusyId] = useState<number | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !admin) {
@@ -71,7 +72,7 @@ export default function AdminDashboard() {
   }, [admin]);
 
 
-  async function handleAllow(id: number) {
+  async function handleAllow(id: string) {
     setBusyId(id);
     try {
       await api.allowRequest(id);
@@ -88,7 +89,7 @@ export default function AdminDashboard() {
     }
   }
 
-  async function handleDeny(id: number) {
+  async function handleDeny(id: string) {
     setBusyId(id);
     try {
       await api.denyRequest(id);
@@ -100,6 +101,20 @@ export default function AdminDashboard() {
         title: "Failed",
         description: err instanceof Error ? err.message : "Try again.",
       });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Are you sure you want to PERMANENTLY delete this request?")) return;
+    setBusyId(id);
+    try {
+      await api.deleteRegistrationRequest(id);
+      toast({ title: "Request deleted permanently" });
+      await refreshData();
+    } catch (err) {
+      toast({ variant: "destructive", title: "Delete failed" });
     } finally {
       setBusyId(null);
     }
@@ -301,6 +316,15 @@ export default function AdminDashboard() {
                               >
                                 <XCircle className="w-4 h-4 mr-1" /> Deny
                               </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDelete(r.id)}
+                                disabled={busyId === r.id}
+                                className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </div>
                         ))}
@@ -484,6 +508,7 @@ function BrandingSettings() {
     }
   }
 
+
   if (loading) return (
     <div className="flex items-center justify-center py-20 text-muted-foreground">
       <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading platform settings…
@@ -508,7 +533,69 @@ function BrandingSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid gap-4 max-w-md">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-slate-500 uppercase">Contact Settings</h3>
+              <div className="space-y-2">
+                <Label htmlFor="adminEmail">Admin Notification Email</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    id="adminEmail"
+                    value={settings.adminEmail || ""}
+                    onChange={(e) => setSettings(s => ({ ...s, adminEmail: e.target.value }))}
+                    placeholder="admin@gmail.com"
+                  />
+                  <Button onClick={() => handleSave("adminEmail", settings.adminEmail)} disabled={saving}><Save className="h-4 w-4" /></Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="adminContact">Admin Contact No.</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    id="adminContact"
+                    value={settings.adminContact || ""}
+                    onChange={(e) => setSettings(s => ({ ...s, adminContact: e.target.value }))}
+                    placeholder="+91 9876543210"
+                  />
+                  <Button onClick={() => handleSave("adminContact", settings.adminContact)} disabled={saving}><Save className="h-4 w-4" /></Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-slate-500 uppercase">SMTP Configuration (Gmail)</h3>
+              <div className="space-y-2">
+                <Label htmlFor="smtpUser">Gmail SMTP User</Label>
+                <Input 
+                  id="smtpUser"
+                  value={settings.smtpUser || ""}
+                  onChange={(e) => setSettings(s => ({ ...s, smtpUser: e.target.value }))}
+                  placeholder="your-app@gmail.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="smtpPass">Gmail App Password</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    id="smtpPass"
+                    type="password"
+                    value={settings.smtpPass || ""}
+                    onChange={(e) => setSettings(s => ({ ...s, smtpPass: e.target.value }))}
+                    placeholder="xxxx xxxx xxxx xxxx"
+                  />
+                  <Button onClick={() => {
+                    handleSave("smtpUser", settings.smtpUser);
+                    handleSave("smtpPass", settings.smtpPass);
+                  }} disabled={saving}><Save className="h-4 w-4" /></Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">Required for sending registration alerts and approval emails.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t pt-6 grid gap-4 max-w-md">
+            <h3 className="text-sm font-bold text-slate-500 uppercase">Branding</h3>
             <div className="space-y-2">
               <Label htmlFor="companyName">Company Name</Label>
               <div className="flex gap-2">
@@ -547,6 +634,77 @@ function BrandingSettings() {
                 </Button>
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="promotionalVideo">Promotional Video</Label>
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-2">
+                  <Input 
+                    id="promotionalVideo"
+                    value={settings.promotionalVideo || ""}
+                    onChange={(e) => setSettings(s => ({ ...s, promotionalVideo: e.target.value }))}
+                    placeholder="Video URL or Uploaded Data"
+                    className="text-[10px] font-mono"
+                  />
+                  <Button 
+                    onClick={() => handleSave("promotionalVideo", settings.promotionalVideo)}
+                    disabled={saving}
+                    variant="outline"
+                  >
+                     <Save className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <input
+                    type="file"
+                    accept="video/*"
+                    id="video-upload"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      
+                      // Check size (20MB limit for Base64 storage)
+                      if (file.size > 20 * 1024 * 1024) {
+                         toast({ variant: "destructive", title: "Video too large", description: "Please pick a video under 20MB." });
+                         return;
+                      }
+
+                      setSaving(true);
+                      const reader = new FileReader();
+                      reader.onload = async () => {
+                        const base64 = reader.result as string;
+                        try {
+                          await api.updateSetting("promotionalVideo", base64);
+                          setSettings(s => ({ ...s, promotionalVideo: base64 }));
+                          toast({ title: "Video Uploaded Successfully" });
+                        } catch (err) {
+                          toast({ variant: "destructive", title: "Upload failed" });
+                        } finally {
+                          setSaving(false);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  <Button 
+                    asChild 
+                    variant="secondary" 
+                    className="w-full gap-2 border-2 border-dashed border-primary/20 h-16 rounded-2xl hover:bg-primary/5"
+                  >
+                    <label htmlFor="video-upload" className="cursor-pointer">
+                      {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Settings className="w-5 h-5 text-primary" />}
+                      <div className="text-left">
+                         <p className="text-sm font-bold">Upload Video File</p>
+                         <p className="text-[10px] text-muted-foreground font-medium">MP4, WebM (Max 20MB)</p>
+                      </div>
+                    </label>
+                  </Button>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Uploaded videos will play automatically on the DS Hub home page. <strong>Note:</strong> If using a URL, ensure it is a direct link to an MP4/WebM file.</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -573,7 +731,7 @@ function StatTile({
 }: {
   label: string;
   value: string | number;
-  Icon: typeof Users;
+  Icon: any;
   color: string;
   bg: string;
 }) {

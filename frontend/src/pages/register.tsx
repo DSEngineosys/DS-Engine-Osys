@@ -14,6 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PublicLayout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
 import { api, RegistrationStatus } from "@/lib/api-extra";
@@ -29,6 +36,7 @@ export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
+  const [countryCode, setCountryCode] = useState("+91");
   const [isDsEngineer, setIsDsEngineer] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [password, setPassword] = useState("");
@@ -92,7 +100,8 @@ export default function Register() {
     }
     setSubmitting(true);
     try {
-      await api.registerRequest({ name, email, mobile, isDsEngineer });
+      const fullMobile = `${countryCode} ${mobile}`;
+      await api.registerRequest({ name, email, mobile: fullMobile, isDsEngineer });
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ email, name }));
       setStage("waiting");
       setStatusName(name);
@@ -215,15 +224,31 @@ export default function Register() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="mobile">Mobile No.</Label>
-                    <Input
-                      id="mobile"
-                      data-testid="input-register-mobile"
-                      type="tel"
-                      value={mobile}
-                      onChange={(e) => setMobile(e.target.value)}
-                      placeholder="+1 555 123 4567"
-                      required
-                    />
+                    <div className="flex gap-2">
+                      <div className="w-24">
+                        <Select value={countryCode} onValueChange={setCountryCode}>
+                          <SelectTrigger className="rounded-xl border-slate-200">
+                            <SelectValue placeholder="Code" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="+91">🇮🇳 +91</SelectItem>
+                            <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                            <SelectItem value="+44">🇬🇧 +44</SelectItem>
+                            <SelectItem value="+971">🇦🇪 +971</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Input
+                        id="mobile"
+                        className="flex-1"
+                        data-testid="input-register-mobile"
+                        type="tel"
+                        value={mobile}
+                        onChange={(e) => setMobile(e.target.value)}
+                        placeholder="9876543210"
+                        required
+                      />
+                    </div>
                   </div>
 
                   <label className="flex items-start gap-3 rounded-lg border bg-blue-50/40 p-3 cursor-pointer">

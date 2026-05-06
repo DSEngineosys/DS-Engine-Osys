@@ -1,5 +1,7 @@
 import { Router } from "express";
 import User from "../models/user.model";
+import Setting from "../models/setting.model";
+import { sendEmail } from "../lib/email";
 import { z } from "zod";
 
 const router = Router();
@@ -88,6 +90,20 @@ router.post("/auth/register-request", async (req, res) => {
     role: "ds_engineer",
     status: "pending",
   });
+
+  // HIGH SECURITY: Send email to admin
+  try {
+    const adminEmailSetting = await Setting.findOne({ key: "adminEmail" });
+    if (adminEmailSetting?.value) {
+      await sendEmail(
+        adminEmailSetting.value,
+        "New DS-Engineer Registration Request",
+        `A new registration request has been received from ${name} (${email}). Please review it in the Admin Dashboard.`
+      );
+    }
+  } catch (err) {
+    console.error("Non-critical: Failed to notify admin via email", err);
+  }
 
   res.status(201).json({
     message: "Registration request sent to Admin. Please wait for approval.",

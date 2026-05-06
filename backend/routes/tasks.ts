@@ -66,7 +66,8 @@ router.post("/tasks", async (req, res) => {
   const taskData = {
     ...parsed.data,
     employeeId: new mongoose.Types.ObjectId(parsed.data.employeeId),
-    dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : null,
+    dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : undefined,
+    description: parsed.data.description ?? undefined,
   };
 
   const task = await Task.create(taskData);
