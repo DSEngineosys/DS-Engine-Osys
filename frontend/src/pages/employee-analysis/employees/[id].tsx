@@ -10,7 +10,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 export default function EmployeeDetail() {
   const [, params] = useRoute("/employee-analysis/employees/:id");
-  const id = parseInt(params?.id || "0", 10);
+  const id = params?.id || "";
 
   const { data: employee, isLoading: isLoadingEmp } = useGetEmployee(id);
 

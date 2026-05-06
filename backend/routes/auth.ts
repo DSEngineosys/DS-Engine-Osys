@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import User from "../models/user.model";
 import { z } from "zod";
 
 const router = Router();
@@ -26,9 +25,9 @@ const avatarSchema = z.object({
   avatarUrl: z.string().min(1).max(2_500_000),
 });
 
-function formatUser(user: typeof usersTable.$inferSelect) {
+function formatUser(user: any) {
   return {
-    id: user.id,
+    id: user._id,
     name: user.name,
     email: user.email,
     mobile: user.mobile,
@@ -56,14 +55,10 @@ router.post("/auth/register-request", async (req, res) => {
     return;
   }
 
-  const existing = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.email, email))
-    .limit(1);
+  const existing = await User.findOne({ email });
 
-  if (existing.length > 0) {
-    const user = existing[0]!;
+  if (existing) {
+    const user = existing;
     if (user.status === "denied") {
       res.status(400).json({
         error: "Already denied",
@@ -85,17 +80,14 @@ router.post("/auth/register-request", async (req, res) => {
     return;
   }
 
-  const [user] = await db
-    .insert(usersTable)
-    .values({
-      name,
-      email,
-      mobile,
-      password: "",
-      role: "ds_engineer",
-      status: "pending",
-    })
-    .returning();
+  const user = await User.create({
+    name,
+    email,
+    mobile,
+    password: "",
+    role: "ds_engineer",
+    status: "pending",
+  });
 
   res.status(201).json({
     message: "Registration request sent to Admin. Please wait for approval.",
@@ -110,11 +102,7 @@ router.get("/auth/registration-status", async (req, res) => {
     res.status(400).json({ error: "Missing email", message: "email query is required" });
     return;
   }
-  const [user] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.email, email))
-    .limit(1);
+  const user = await User.findOne({ email });
   if (!user) {
     res.status(404).json({ error: "Not found", message: "No registration found" });
     return;
@@ -135,11 +123,7 @@ router.post("/auth/set-password", async (req, res) => {
     return;
   }
   const { email, password } = parsed.data;
-  const [user] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.email, email))
-    .limit(1);
+  const user = await User.findOne({ email });
   if (!user) {
     res.status(404).json({ error: "Not found", message: "No registration found" });
     return;
@@ -151,13 +135,12 @@ router.post("/auth/set-password", async (req, res) => {
     });
     return;
   }
-  const [updated] = await db
-    .update(usersTable)
-    .set({ password })
-    .where(eq(usersTable.id, user.id))
-    .returning();
-  (req.session as unknown as Record<string, unknown>).userId = updated!.id;
-  res.json({ user: formatUser(updated!), message: "Password set successfully" });
+  user.password = password;
+  await user.save();
+  const updated = user;
+
+  (req.session as unknown as Record<string, unknown>).userId = updated._id;
+  res.json({ user: formatUser(updated), message: "Password set successfully" });
 });
 
 router.post("/auth/login", async (req, res) => {
@@ -167,11 +150,7 @@ router.post("/auth/login", async (req, res) => {
     return;
   }
   const { email, password } = parsed.data;
-  const [user] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.email, email))
-    .limit(1);
+  const user = await User.findOne({ email });
   if (!user || !user.password || user.password !== password) {
     res.status(401).json({ error: "Unauthorized", message: "Invalid email or password" });
     return;
@@ -190,7 +169,7 @@ router.post("/auth/login", async (req, res) => {
     });
     return;
   }
-  (req.session as unknown as Record<string, unknown>).userId = user.id;
+  (req.session as unknown as Record<string, unknown>).userId = user._id;
   res.json({ user: formatUser(user), message: "Login successful" });
 });
 
@@ -206,11 +185,7 @@ router.get("/auth/me", async (req, res) => {
     res.status(401).json({ error: "Unauthorized", message: "Not logged in" });
     return;
   }
-  const [user] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.id, session.userId as number))
-    .limit(1);
+  const user = await User.findById(session.userId);
   if (!user) {
     res.status(401).json({ error: "Unauthorized", message: "User not found" });
     return;
@@ -229,11 +204,11 @@ router.post("/auth/avatar", async (req, res) => {
     res.status(400).json({ error: "Invalid input", message: parsed.error.message });
     return;
   }
-  const [updated] = await db
-    .update(usersTable)
-    .set({ avatarUrl: parsed.data.avatarUrl })
-    .where(eq(usersTable.id, session.userId as number))
-    .returning();
+  const updated = await User.findByIdAndUpdate(
+    session.userId,
+    { avatarUrl: parsed.data.avatarUrl },
+    { new: true }
+  );
   res.json({ user: formatUser(updated!), message: "Profile photo updated" });
 });
 

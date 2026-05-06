@@ -8,7 +8,7 @@ import { Package, BrainCircuit, TrendingDown, TrendingUp, AlertTriangle, Zap } f
 
 export default function ProductDetail() {
   const [, params] = useRoute("/product-analysis/products/:id");
-  const id = parseInt(params?.id || "0", 10);
+  const id = params?.id || "";
 
   const { data: product, isLoading: isLoadingProd } = useGetProduct(id);
 

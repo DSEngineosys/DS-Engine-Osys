@@ -1,6 +1,9 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { db, usersTable, employeesTable, productsTable, tasksTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import User from "../models/user.model";
+import Employee from "../models/employee.model";
+import Product from "../models/product.model";
+import Task from "../models/task.model";
+import mongoose from "mongoose";
 import { z } from "zod";
 
 const router = Router();
@@ -70,80 +73,51 @@ router.get("/admin/me", (req, res) => {
 });
 
 router.get("/admin/registration-requests", requireAdmin, async (_req, res) => {
-  const rows = await db
-    .select({
-      id: usersTable.id,
-      name: usersTable.name,
-      email: usersTable.email,
-      mobile: usersTable.mobile,
-      status: usersTable.status,
-      createdAt: usersTable.createdAt,
-    })
-    .from(usersTable)
-    .where(eq(usersTable.role, "ds_engineer"))
-    .orderBy(sql`${usersTable.createdAt} DESC`);
-  res.json(rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() })));
+  const rows = await User.find({ role: "ds_engineer" }).sort({ createdAt: -1 });
+  res.json(rows.map((r: any) => ({
+    id: r._id,
+    name: r.name,
+    email: r.email,
+    mobile: r.mobile,
+    status: r.status,
+    createdAt: r.createdAt.toISOString()
+  })));
 });
 
 router.post("/admin/registration-requests/:id/allow", requireAdmin, async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) {
-    res.status(400).json({ error: "Invalid id" });
-    return;
-  }
-  const [updated] = await db
-    .update(usersTable)
-    .set({ status: "approved" })
-    .where(eq(usersTable.id, id))
-    .returning();
+  const id = req.params.id;
+  if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  
+  const updated = await User.findByIdAndUpdate(id, { status: "approved" }, { new: true });
   if (!updated) {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json({ message: "DS Engineer approved", id: updated.id, status: updated.status });
+  res.json({ message: "DS Engineer approved", id: updated._id, status: updated.status });
 });
 
 router.post("/admin/registration-requests/:id/deny", requireAdmin, async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) {
-    res.status(400).json({ error: "Invalid id" });
-    return;
-  }
-  const [updated] = await db
-    .update(usersTable)
-    .set({ status: "denied" })
-    .where(eq(usersTable.id, id))
-    .returning();
+  const id = req.params.id;
+  if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  
+  const updated = await User.findByIdAndUpdate(id, { status: "denied" }, { new: true });
   if (!updated) {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json({ message: "DS Engineer denied", id: updated.id, status: updated.status });
+  res.json({ message: "DS Engineer denied", id: updated._id, status: updated.status });
 });
 
 router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
-  const [{ totalEngineers, approved, pending, denied }] = await db
-    .select({
-      totalEngineers: sql<number>`count(*)::int`,
-      approved: sql<number>`count(*) filter (where status='approved')::int`,
-      pending: sql<number>`count(*) filter (where status='pending')::int`,
-      denied: sql<number>`count(*) filter (where status='denied')::int`,
-    })
-    .from(usersTable)
-    .where(eq(usersTable.role, "ds_engineer"));
+  const totalEngineers = await User.countDocuments({ role: "ds_engineer" });
+  const approved = await User.countDocuments({ role: "ds_engineer", status: "approved" });
+  const pending = await User.countDocuments({ role: "ds_engineer", status: "pending" });
+  const denied = await User.countDocuments({ role: "ds_engineer", status: "denied" });
 
-  const [{ employeeCount }] = await db
-    .select({ employeeCount: sql<number>`count(*)::int` })
-    .from(employeesTable);
-  const [{ productCount }] = await db
-    .select({ productCount: sql<number>`count(*)::int` })
-    .from(productsTable);
-  const [{ taskCount, taskDone }] = await db
-    .select({
-      taskCount: sql<number>`count(*)::int`,
-      taskDone: sql<number>`count(*) filter (where status='completed')::int`,
-    })
-    .from(tasksTable);
+  const employeeCount = await Employee.countDocuments();
+  const productCount = await Product.countDocuments();
+  const taskCount = await Task.countDocuments();
+  const taskDone = await Task.countDocuments({ status: "completed" });
 
   res.json({
     engineers: { total: totalEngineers, approved, pending, denied },
@@ -152,8 +126,7 @@ router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
       products: productCount,
       tasksTotal: taskCount,
       tasksCompleted: taskDone,
-      progressPercent:
-        taskCount > 0 ? Math.round((Number(taskDone) / Number(taskCount)) * 100) : 0,
+      progressPercent: taskCount > 0 ? Math.round((taskDone / taskCount) * 100) : 0,
     },
   });
 });

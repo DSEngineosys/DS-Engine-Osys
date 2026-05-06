@@ -1,12 +1,13 @@
 import { Router } from "express";
-import { db, performanceTable, employeesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import Performance from "../models/performance.model";
+import Employee from "../models/employee.model";
+import mongoose from "mongoose";
 import { z } from "zod";
 
 const router = Router();
 
 const createPerfSchema = z.object({
-  employeeId: z.number().int(),
+  employeeId: z.string(),
   period: z.string().min(1),
   score: z.number(),
   tasksCompleted: z.number().int(),
@@ -15,10 +16,10 @@ const createPerfSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
-async function enrichRecord(rec: typeof performanceTable.$inferSelect) {
-  const [emp] = await db.select().from(employeesTable).where(eq(employeesTable.id, rec.employeeId)).limit(1);
+async function enrichRecord(rec: any) {
+  const emp = await Employee.findById(rec.employeeId);
   return {
-    id: rec.id,
+    id: rec._id,
     employeeId: rec.employeeId,
     employeeName: emp?.name ?? "Unknown",
     period: rec.period,
@@ -32,10 +33,12 @@ async function enrichRecord(rec: typeof performanceTable.$inferSelect) {
 }
 
 router.get("/performance", async (req, res) => {
-  const employeeId = req.query.employeeId ? parseInt(req.query.employeeId as string) : undefined;
-  const records = employeeId
-    ? await db.select().from(performanceTable).where(eq(performanceTable.employeeId, employeeId))
-    : await db.select().from(performanceTable);
+  const employeeId = req.query.employeeId as string | undefined;
+  const query = (employeeId && mongoose.Types.ObjectId.isValid(employeeId)) 
+    ? { employeeId: new mongoose.Types.ObjectId(employeeId) } 
+    : {};
+  
+  const records = await Performance.find(query);
   const result = await Promise.all(records.map(enrichRecord));
   res.json(result);
 });
@@ -46,20 +49,16 @@ router.post("/performance", async (req, res) => {
     res.status(400).json({ error: "Invalid input", message: parsed.error.message });
     return;
   }
-  const [rec] = await db.insert(performanceTable).values({
-    employeeId: parsed.data.employeeId,
-    period: parsed.data.period,
-    score: String(parsed.data.score),
-    tasksCompleted: parsed.data.tasksCompleted,
-    tasksFailed: parsed.data.tasksFailed,
-    efficiency: String(parsed.data.efficiency),
-    notes: parsed.data.notes ?? null,
-  }).returning();
+  
+  const rec = await Performance.create({
+    ...parsed.data,
+    employeeId: new mongoose.Types.ObjectId(parsed.data.employeeId),
+  });
 
   // Update employee performance score
-  await db.update(employeesTable)
-    .set({ performanceScore: String(parsed.data.score) })
-    .where(eq(employeesTable.id, parsed.data.employeeId));
+  await Employee.findByIdAndUpdate(parsed.data.employeeId, { 
+    performanceScore: parsed.data.score 
+  });
 
   res.status(201).json(await enrichRecord(rec));
 });

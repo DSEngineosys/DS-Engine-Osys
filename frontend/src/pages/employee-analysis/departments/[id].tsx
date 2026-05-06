@@ -10,7 +10,7 @@ import { Link } from "wouter";
 
 export default function DepartmentDetail() {
   const [, params] = useRoute("/employee-analysis/departments/:id");
-  const id = parseInt(params?.id || "0", 10);
+  const id = params?.id || "";
 
   const { data: department, isLoading: isLoadingDept } = useGetDepartment(id);
 
