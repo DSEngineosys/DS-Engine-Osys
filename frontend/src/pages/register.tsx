@@ -113,11 +113,19 @@ export default function Register() {
 
   async function handleSetPassword(e: React.FormEvent) {
     e.preventDefault();
-    if (password.length < 6) {
+    const isStrong = 
+      password.length >= 8 && 
+      password.length <= 15 && 
+      /[0-9]/.test(password) && 
+      /[A-Z]/.test(password) && 
+      /[a-z]/.test(password) && 
+      /[@#$%]/.test(password);
+
+    if (!isStrong) {
       toast({
         variant: "destructive",
         title: "Weak password",
-        description: "Password must be at least 6 characters.",
+        description: "Password must satisfy all requirements (8-15 chars, number, uppercase, lowercase, and special character).",
       });
       return;
     }
@@ -329,10 +337,31 @@ export default function Register() {
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="At least 6 characters"
+                      placeholder="Enter strong password"
                       required
                     />
                   </div>
+                  
+                  {/* Password Conditions */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Requirements</p>
+                    <div className="grid grid-cols-1 gap-2">
+                      {[
+                        { label: "8-15 Characters", valid: password.length >= 8 && password.length <= 15 },
+                        { label: "At least one Number (0-9)", valid: /[0-9]/.test(password) },
+                        { label: "Uppercase & Lowercase Letter", valid: /[A-Z]/.test(password) && /[a-z]/.test(password) },
+                        { label: "One Special Character (@, #, $, %)", valid: /[@#$%]/.test(password) },
+                      ].map((cond, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${cond.valid ? "bg-green-500 border-green-500" : "bg-white border-slate-300"}`}>
+                            {cond.valid && <CheckCircle2 className="w-3 h-3 text-white" />}
+                          </div>
+                          <span className={`text-xs font-medium ${cond.valid ? "text-green-600" : "text-slate-500"}`}>{cond.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="confirm-password">Confirm Password</Label>
                     <Input
@@ -347,7 +376,7 @@ export default function Register() {
                   </div>
                   <Button
                     type="submit"
-                    className="w-full h-12 text-base"
+                    className="w-full h-12 text-base bg-gradient-to-r from-primary to-pink-500 hover:opacity-90"
                     disabled={submitting}
                     data-testid="button-generate-password"
                   >

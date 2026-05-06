@@ -212,6 +212,29 @@ router.post("/auth/avatar", async (req, res) => {
   res.json({ user: formatUser(updated!), message: "Profile photo updated" });
 });
 
+router.put("/auth/profile", async (req, res) => {
+  const session = req.session as unknown as Record<string, unknown>;
+  if (!session.userId) {
+    res.status(401).json({ error: "Unauthorized", message: "Not logged in" });
+    return;
+  }
+  const schema = z.object({
+    name: z.string().min(1),
+    mobile: z.string().min(6).nullable(),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", message: parsed.error.message });
+    return;
+  }
+  const updated = await User.findByIdAndUpdate(
+    session.userId,
+    { name: parsed.data.name, mobile: parsed.data.mobile },
+    { new: true }
+  );
+  res.json({ user: formatUser(updated!), message: "Profile updated successfully" });
+});
+
 // Legacy register endpoint kept for backward compatibility — now treated as a request.
 router.post("/auth/register", async (req, res) => {
   const schema = z.object({

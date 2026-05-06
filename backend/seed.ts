@@ -7,6 +7,7 @@ import Employee from "./models/employee.model";
 import Product from "./models/product.model";
 import Task from "./models/task.model";
 import Performance from "./models/performance.model";
+import Setting from "./models/setting.model";
 
 import { fileURLToPath } from 'url';
 
@@ -36,170 +37,180 @@ async function seed() {
       Product.deleteMany({}),
       Task.deleteMany({}),
       Performance.deleteMany({}),
+      Setting.deleteMany({}),
     ]);
     console.log("Cleared existing data.");
 
+    // 0. Create Settings
+    await Setting.create([
+      { key: "companyName", value: "Cosmetic's A1" },
+      { key: "mainProductCategory", value: "Premium Cosmetics" }
+    ]);
+    console.log("Created settings.");
+
     // 1. Create Admin & Engineers
-    const admin = await User.create({
-      name: "System Admin",
+    await User.create({
+      name: "Admin User",
       email: "admin@admin.com",
       password: "admin",
       role: "admin",
       status: "approved",
     });
 
-    const engineer = await User.create({
-      name: "John Engineer",
-      email: "john@ds.com",
-      password: "password123",
-      role: "ds_engineer",
-      status: "approved",
-    });
-
     console.log("Created users.");
 
-    // 2. Create Departments
-    const itDept = await Department.create({
-      name: "Information Technology",
-      description: "Handles all software and hardware infrastructure",
+    // 2. Create Departments (Matching the new UI flow)
+    const prodDept = await Department.create({
+      name: "Production Department",
+      description: "Manufacturing and quality control of A1 products",
+    });
+
+    const marketDept = await Department.create({
+      name: "Marketing Department",
+      description: "Sales, advertising and brand management",
     });
 
     const hrDept = await Department.create({
-      name: "Human Resources",
-      description: "People operations and recruitment",
-    });
-
-    const salesDept = await Department.create({
-      name: "Sales & Marketing",
-      description: "Driving growth and customer acquisition",
+      name: "HR Department",
+      description: "Talent acquisition and employee wellness",
     });
 
     console.log("Created departments.");
 
-    // 3. Create Employees
-    const emp1 = await Employee.create({
-      name: "Alice Smith",
-      email: "alice@company.com",
-      employeeId: "EMP001",
-      departmentId: itDept._id,
-      designation: "Senior Developer",
-      joiningDate: new Date("2023-01-15"),
-      status: "active",
-      performanceScore: 92,
-      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alice",
-    });
+    // 3. Create Employees (including DS Engineers for carousel)
+    const engineers = [
+      { name: "Zaid Khan", designation: "Lead DS Engineer" },
+      { name: "Sarah Miller", designation: "Senior DS Engineer" },
+      { name: "Alex Chen", designation: "Junior DS Engineer" },
+    ];
 
-    const emp2 = await Employee.create({
-      name: "Bob Johnson",
-      email: "bob@company.com",
-      employeeId: "EMP002",
-      departmentId: salesDept._id,
-      designation: "Sales Lead",
-      joiningDate: new Date("2023-03-10"),
+    const engineerDocs = [];
+    for (const eng of engineers) {
+       const doc = await Employee.create({
+        name: eng.name,
+        email: `${eng.name.toLowerCase().replace(' ', '.')}@ds-osys.com`,
+        employeeId: `ENG${Math.floor(Math.random() * 1000)}`,
+        departmentId: prodDept._id,
+        designation: eng.designation,
+        joiningDate: new Date(),
+        status: "active",
+        performanceScore: 90 + Math.floor(Math.random() * 10),
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${eng.name}`,
+      });
+      engineerDocs.push(doc);
+    }
+
+    const marketingEmp = await Employee.create({
+      name: "Jessica Alba",
+      email: "jessica@ds-osys.com",
+      employeeId: "MKT001",
+      departmentId: marketDept._id,
+      designation: "Marketing Specialist",
+      joiningDate: new Date(),
       status: "active",
-      performanceScore: 85,
-      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Bob",
+      performanceScore: 88,
+      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jessica",
     });
 
     console.log("Created employees.");
 
-    // 4. Create Products
+    // 4. Create Products (A1 themed with offers)
     await Product.create([
       {
-        name: "Enterprise Cloud Suite",
-        category: "Software",
-        sku: "ECS-001",
-        price: 1200,
-        cost: 400,
-        stock: 50,
-        soldUnits: 120,
-        revenue: 144000,
+        name: "A1 Matte Lip Gloss",
+        category: "Cosmetics",
+        sku: "LG-A1-001",
+        price: 25,
+        cost: 5,
+        stock: 500,
+        soldUnits: 1200,
+        revenue: 30000,
+        offerPercentage: 20,
         marketStatus: "high_demand",
       },
       {
-        name: "AI Analytics Pro",
-        category: "Software",
-        sku: "AAP-002",
-        price: 800,
-        cost: 200,
+        name: "A1 Liquid Foundation",
+        category: "Cosmetics",
+        sku: "FD-A1-002",
+        price: 45,
+        cost: 12,
+        stock: 200,
+        soldUnits: 850,
+        revenue: 38250,
+        offerPercentage: 15,
+        marketStatus: "high_demand",
+      },
+      {
+        name: "A1 Night Serum",
+        category: "Skincare",
+        sku: "SR-A1-003",
+        price: 85,
+        cost: 20,
         stock: 100,
-        soldUnits: 45,
-        revenue: 36000,
+        soldUnits: 300,
+        revenue: 25500,
+        offerPercentage: 10,
         marketStatus: "moderate",
       },
       {
-        name: "Legacy Server Rack",
-        category: "Hardware",
-        sku: "LSR-003",
-        price: 5000,
-        cost: 4500,
-        stock: 5,
-        soldUnits: 2,
-        revenue: 10000,
-        marketStatus: "low_demand",
+        name: "A1 Eyeliner Pro",
+        category: "Cosmetics",
+        sku: "EL-A1-004",
+        price: 18,
+        cost: 4,
+        stock: 600,
+        soldUnits: 2000,
+        revenue: 36000,
+        offerPercentage: 0,
+        marketStatus: "high_demand",
       }
     ]);
 
     console.log("Created products.");
 
-    // 5. Create Tasks
+    // 5. Create some Tasks for performance charts
     await Task.create([
       {
-        title: "Migrate Server to AWS",
-        description: "Move all legacy on-premise data to cloud",
-        employeeId: emp1._id,
+        title: "Product Launch: A1 Blush",
+        description: "Coordinate with production for new line",
+        employeeId: marketingEmp._id,
         status: "in_progress",
         priority: "high",
         dueDate: new Date("2026-06-01"),
       },
       {
-        title: "Update Q3 Sales Strategy",
-        description: "Draft new approach for international markets",
-        employeeId: emp2._id,
-        status: "pending",
-        priority: "medium",
-        dueDate: new Date("2026-05-20"),
-      },
-      {
-        title: "Fix Login Bug",
-        description: "Resolve intermittent 500 errors on auth route",
-        employeeId: emp1._id,
+        title: "Optimize Batch #402",
+        description: "Increase production efficiency by 5%",
+        employeeId: engineerDocs[0]._id,
         status: "completed",
-        priority: "critical",
+        priority: "medium",
         completedAt: new Date(),
       }
     ]);
 
     console.log("Created tasks.");
 
-    // 6. Create Performance Records
+    // 6. Performance Records
     await Performance.create([
       {
-        employeeId: emp1._id,
-        period: "Q1 2026",
-        score: 95,
-        tasksCompleted: 12,
+        employeeId: engineerDocs[0]._id,
+        period: "April 2026",
+        score: 96,
+        tasksCompleted: 5,
         tasksFailed: 0,
         efficiency: 98,
-        notes: "Excellent technical leadership",
       },
       {
-        employeeId: emp2._id,
-        period: "Q1 2026",
-        score: 82,
-        tasksCompleted: 8,
-        tasksFailed: 1,
-        efficiency: 85,
-        notes: "Exceeded sales targets by 10%",
+        employeeId: marketingEmp._id,
+        period: "April 2026",
+        score: 85,
+        tasksCompleted: 3,
+        tasksFailed: 0,
+        efficiency: 90,
       }
     ]);
 
-    console.log("Created performance records.");
-
-    console.log("\nDatabase seeded successfully!");
-    console.log("Collections created in Compass:");
-    console.log("- users\n- departments\n- employees\n- products\n- tasks\n- performances");
-    
+    console.log("\nDatabase seeded successfully with 'Cosmetic's A1' theme!");
     process.exit(0);
   } catch (error) {
     console.error("Error seeding database:", error);

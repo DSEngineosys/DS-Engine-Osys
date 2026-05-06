@@ -1,158 +1,116 @@
 import { useRoute } from "wouter";
-import { AuthenticatedLayout } from "@/components/layout";
+import { FlipchartLayout } from "@/components/flipchart-layout";
 import { useGetProduct, useGetProductPrediction } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Package, BrainCircuit, TrendingDown, TrendingUp, AlertTriangle, Zap } from "lucide-react";
+import { Package, BrainCircuit, TrendingDown, TrendingUp, AlertTriangle, Zap, ArrowLeft, Target } from "lucide-react";
+import { useState } from "react";
 
 export default function ProductDetail() {
   const [, params] = useRoute("/product-analysis/products/:id");
   const id = params?.id || "";
+  const [activePhase, setActivePhase] = useState<"employee" | "product">("product");
 
-  const { data: product, isLoading: isLoadingProd } = useGetProduct(id);
-
-  const { data: prediction, isLoading: isLoadingPred } = useGetProductPrediction(id);
+  const { data: product, isLoading: isLoadingProd } = useGetProduct(id as any);
+  const { data: prediction, isLoading: isLoadingPred } = useGetProductPrediction(id as any);
 
   return (
-    <AuthenticatedLayout>
-      <div className="space-y-6 max-w-5xl mx-auto">
-        {/* Product Header */}
+    <FlipchartLayout activePhase={activePhase} onPhaseChange={setActivePhase}>
+      <div className="space-y-6 pb-12">
+        <header className="flex items-center gap-4">
+          <button onClick={() => window.history.back()} className="p-2 bg-white rounded-xl shadow-sm border border-slate-100">
+            <ArrowLeft className="w-5 h-5 text-slate-600" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-black text-slate-900">Product Insights</h1>
+          </div>
+        </header>
+
         {isLoadingProd ? (
-          <Skeleton className="h-32 w-full rounded-xl" />
+          <Skeleton className="h-64 w-full rounded-3xl" />
         ) : product ? (
-          <div className="flex flex-col md:flex-row gap-6 bg-white p-6 rounded-2xl border shadow-sm">
-            <div className="w-full md:w-48 h-48 bg-slate-100 rounded-xl flex flex-shrink-0 items-center justify-center overflow-hidden">
-              {product.imageUrl ? (
-                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-              ) : (
-                <Package className="w-16 h-16 text-slate-300" />
-              )}
-            </div>
-            <div className="flex-1 flex flex-col justify-between py-2">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <Badge variant="outline" className="font-mono text-xs">{product.sku}</Badge>
-                  <span className="text-sm text-muted-foreground">{product.category}</span>
+          <div className="space-y-6">
+            <Card className="overflow-hidden border-none shadow-xl bg-white rounded-[2.5rem]">
+              <div className="aspect-square bg-slate-50 relative flex items-center justify-center">
+                {product.imageUrl ? (
+                  <img src={product.imageUrl} className="w-full h-full object-cover" />
+                ) : (
+                  <Package className="w-24 h-24 text-slate-200" />
+                )}
+                <div className="absolute top-4 right-4">
+                   <Badge className="bg-primary shadow-lg px-3 py-1 rounded-full">{product.marketStatus}</Badge>
                 </div>
-                <h1 className="text-2xl md:text-3xl font-bold leading-tight">{product.name}</h1>
-                <div className="flex items-center gap-4 mt-4">
-                  <div className="text-2xl font-bold">${product.price.toFixed(2)}</div>
-                  {product.offerPercentage && product.offerPercentage > 0 && (
-                    <Badge variant="destructive" className="text-sm">-{product.offerPercentage}% Active Offer</Badge>
+              </div>
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-900 leading-tight">{product.name}</h2>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{product.sku}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-black text-primary">${product.price}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">Current Price</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 py-4 border-t border-slate-50">
+                   <div className="bg-slate-50 p-3 rounded-2xl">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">In Stock</p>
+                      <p className="text-lg font-black text-slate-800">{product.stock} Units</p>
+                   </div>
+                   <div className="bg-slate-50 p-3 rounded-2xl">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Sold</p>
+                      <p className="text-lg font-black text-slate-800">{product.soldUnits} Units</p>
+                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-[2rem] border-slate-100 shadow-lg overflow-hidden bg-slate-900 text-white relative">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl -translate-y-1/2 translate-x-1/2" />
+               <CardHeader className="pb-4">
+                  <div className="flex items-center gap-2">
+                     <BrainCircuit className="w-5 h-5 text-primary" />
+                     <CardTitle className="text-lg font-black tracking-tight">AI Sales Prediction</CardTitle>
+                  </div>
+               </CardHeader>
+               <CardContent className="space-y-6">
+                  {isLoadingPred ? (
+                    <Skeleton className="h-32 w-full bg-slate-800" />
+                  ) : prediction ? (
+                    <>
+                       <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/10">
+                          <div>
+                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Predicted Demand</p>
+                             <p className={`text-xl font-black ${prediction.predictedDemand === 'high' ? 'text-green-400' : 'text-amber-400'}`}>
+                                {prediction.predictedDemand.toUpperCase()}
+                             </p>
+                          </div>
+                          <div className="text-right">
+                             <p className="text-3xl font-black text-white">{prediction.confidence}%</p>
+                             <p className="text-[10px] font-black text-slate-400 uppercase">Confidence</p>
+                          </div>
+                       </div>
+
+                       <div className="space-y-2">
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Growth Insights</p>
+                          {prediction.insights.slice(0, 2).map((insight: string, idx: number) => (
+                             <div key={idx} className="flex gap-3 text-sm text-slate-300 bg-white/5 p-3 rounded-xl border border-white/5">
+                                <Target className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                <p className="font-medium leading-snug">{insight}</p>
+                             </div>
+                          ))}
+                       </div>
+                    </>
+                  ) : (
+                    <p className="text-center text-slate-500 py-4">Predictive data initializing...</p>
                   )}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase font-semibold">Cost</p>
-                  <p className="font-medium">${product.cost.toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase font-semibold">Stock</p>
-                  <p className="font-medium">{product.stock} units</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase font-semibold">Sold</p>
-                  <p className="font-medium">{product.soldUnits} units</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase font-semibold">Status</p>
-                  <p className="font-medium capitalize">{product.marketStatus.replace('_', ' ')}</p>
-                </div>
-              </div>
-            </div>
+               </CardContent>
+            </Card>
           </div>
         ) : null}
-
-        {/* Prediction Engine Card */}
-        <Card className="border-secondary/30 shadow-md relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none" />
-          <CardHeader className="border-b bg-slate-50/50 pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-secondary/20 rounded-lg text-secondary-foreground">
-                  <BrainCircuit className="w-5 h-5" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">ML Prediction Analysis</CardTitle>
-                  <CardDescription>Algorithmic forecast based on historical data</CardDescription>
-                </div>
-              </div>
-              {prediction && (
-                <div className="text-right">
-                  <div className="text-xs text-muted-foreground font-semibold uppercase">Confidence</div>
-                  <div className="text-xl font-bold text-secondary-foreground">{prediction.confidence.toFixed(1)}%</div>
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {isLoadingPred ? (
-              <div className="space-y-4">
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-32 w-full" />
-              </div>
-            ) : prediction ? (
-              <div className="space-y-8">
-                <div className="grid md:grid-cols-3 gap-6">
-                  <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col">
-                    <span className="text-sm font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4" /> Predicted Demand
-                    </span>
-                    <span className={`text-2xl font-bold mt-auto capitalize
-                      ${prediction.predictedDemand === 'high' ? 'text-green-600' : 
-                        prediction.predictedDemand === 'low' ? 'text-red-600' : 'text-amber-600'}`}
-                    >
-                      {prediction.predictedDemand}
-                    </span>
-                  </div>
-                  
-                  <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col">
-                    <span className="text-sm font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-2">
-                      <Zap className="w-4 h-4" /> Action Recommendation
-                    </span>
-                    <span className="text-xl font-bold mt-auto text-slate-800 capitalize">
-                      {prediction.recommendation.replace('_', ' ')}
-                    </span>
-                    {prediction.suggestedOfferPercentage && (
-                      <span className="text-sm font-medium text-red-500 mt-1">
-                        Suggest: {prediction.suggestedOfferPercentage}% Off
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col">
-                    <span className="text-sm font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4" /> Est. Market Longevity
-                    </span>
-                    <div className="mt-auto flex items-end gap-1">
-                      <span className="text-3xl font-bold text-slate-800">{prediction.marketLongevityMonths}</span>
-                      <span className="text-sm text-muted-foreground mb-1">months</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Model Insights</h3>
-                  <ul className="space-y-3">
-                    {prediction.insights.map((insight, idx) => (
-                      <li key={idx} className="flex items-start gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm text-slate-700">
-                        <div className="w-1.5 h-1.5 rounded-full bg-secondary-foreground mt-2 shrink-0" />
-                        {insight}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                Prediction model data unavailable for this product.
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
-    </AuthenticatedLayout>
+    </FlipchartLayout>
   );
 }

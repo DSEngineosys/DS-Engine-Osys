@@ -8,6 +8,8 @@ import tasksRouter from "./tasks";
 import performanceRouter from "./performance";
 import productsRouter from "./products";
 import analyticsRouter from "./analytics";
+import settingsRouter from "./settings";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -20,5 +22,7 @@ router.use(tasksRouter);
 router.use(performanceRouter);
 router.use(productsRouter);
 router.use(analyticsRouter);
+router.use(settingsRouter);
+router.use(notificationsRouter);
 
 export default router;

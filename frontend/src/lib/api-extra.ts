@@ -99,6 +99,12 @@ export const api = {
       body: JSON.stringify({ avatarUrl }),
     });
   },
+  updateProfile(body: { name: string; mobile: string | null }) {
+    return request<{ user: CurrentUserExtended; message: string }>("/api/auth/profile", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  },
   adminLogin(body: { username: string; password: string }) {
     return request<{ admin: AdminProfile; message: string }>("/api/admin/login", {
       method: "POST",
@@ -126,5 +132,26 @@ export const api = {
   },
   adminDashboard() {
     return request<AdminDashboardData>("/api/admin/dashboard");
+  },
+  getSettings() {
+    return request<Record<string, string>>("/api/settings");
+  },
+  updateSetting(key: string, value: string) {
+    return request<any>(`/api/settings/${key}`, {
+      method: "PUT",
+      body: JSON.stringify({ value }),
+    });
+  },
+  sendBroadcastNotification(body: { title: string; message: string }) {
+    return request<any>("/api/admin/notifications", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+  getNotifications() {
+    return request<any[]>("/api/notifications");
+  },
+  markNotificationRead(id: string) {
+    return request<any>(`/api/notifications/${id}/read`, { method: "POST" });
   },
 };

@@ -16,8 +16,15 @@ import {
   LogOut,
   Mail,
   Phone,
+  Settings,
+  Layout,
+  Save,
+  Send,
+  Megaphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +35,7 @@ import {
 } from "@/lib/api-extra";
 import { useAdmin } from "@/lib/admin";
 
-const SLIDES = ["DS Engineer Details", "Company Improvement Progress"] as const;
+const SLIDES = ["DS Engineer Details", "Company Improvement Progress", "Branding & Layout", "Communication Hub"] as const;
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
@@ -63,10 +70,6 @@ export default function AdminDashboard() {
     if (admin) void refreshData();
   }, [admin]);
 
-  useEffect(() => {
-    const t = setInterval(() => setSlide((s) => (s + 1) % SLIDES.length), 8000);
-    return () => clearInterval(t);
-  }, []);
 
   async function handleAllow(id: number) {
     setBusyId(id);
@@ -118,13 +121,24 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gradient-to-b from-blue-50/40 via-white to-pink-50/30">
       <header className="border-b bg-white/80 backdrop-blur sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 lg:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-pink-400 text-white flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold leading-tight">Admin Console</p>
-              <p className="text-xs text-muted-foreground">DS Engineosys</p>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="rounded-full" 
+              onClick={() => window.history.back()}
+              aria-label="Back"
+            >
+              <ChevronLeft className="h-5 w-5 text-slate-500" />
+            </Button>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-pink-400 text-white flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold leading-tight">Admin Console</p>
+                <p className="text-xs text-muted-foreground">DS Engineosys</p>
+              </div>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={() => void logout()} data-testid="button-admin-logout">
@@ -295,7 +309,7 @@ export default function AdminDashboard() {
                   </CardContent>
                 </Card>
               </motion.div>
-            ) : (
+            ) : slide === 1 ? (
               <motion.div
                 key="progress"
                 initial={{ x: 30, opacity: 0 }}
@@ -360,11 +374,183 @@ export default function AdminDashboard() {
                   </CardContent>
                 </Card>
               </motion.div>
+            ) : slide === 2 ? (
+              <BrandingSettings />
+            ) : (
+              <CommunicationHub />
             )}
           </AnimatePresence>
         </section>
       </main>
     </div>
+  );
+}
+
+function CommunicationHub() {
+  const { toast } = useToast();
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function handleSend() {
+    if (!title.trim() || !message.trim()) return;
+    setBusy(true);
+    try {
+      await api.sendBroadcastNotification({ title, message });
+      toast({ title: "Broadcast sent!", description: "All engineers will see this message." });
+      setTitle("");
+      setMessage("");
+    } catch (err) {
+      toast({ variant: "destructive", title: "Failed to send", description: "Try again later." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <motion.div
+      key="comm"
+      initial={{ x: 30, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -30, opacity: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <Card className="border-blue-100 shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Megaphone className="w-5 h-5 text-primary" /> System Broadcast
+          </CardTitle>
+          <CardDescription>
+            Send a message to all DS-Engineers. This will appear in their "Notification" tab instantly.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="notif-title">Announcement Title</Label>
+            <Input 
+              id="notif-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. System Maintenance"
+              className="font-bold"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="notif-msg">Message Body</Label>
+            <textarea 
+              id="notif-msg"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type your message here..."
+              className="w-full min-h-[120px] rounded-xl bg-slate-50 border-slate-200 p-3 text-sm focus:ring-primary/20 transition-all outline-none border"
+            />
+          </div>
+          <Button 
+            className="w-full h-12 rounded-xl font-bold gap-2"
+            onClick={handleSend}
+            disabled={busy || !title.trim() || !message.trim()}
+          >
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            Send Broadcast
+          </Button>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function BrandingSettings() {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [settings, setSettings] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    api.getSettings().then(data => {
+      setSettings(data);
+      setLoading(false);
+    });
+  }, []);
+
+  async function handleSave(key: string, value: string) {
+    setSaving(true);
+    try {
+      await api.updateSetting(key, value);
+      toast({ title: "Settings updated", description: `${key} has been saved.` });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Save failed", description: "Try again." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-20 text-muted-foreground">
+      <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading platform settings…
+    </div>
+  );
+
+  return (
+    <motion.div
+      key="branding"
+      initial={{ x: 30, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -30, opacity: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Layout className="w-5 h-5 text-primary" /> Branding & Layout
+          </CardTitle>
+          <CardDescription>
+            Customize the platform identity. Changes reflect instantly on the DS Hub.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-4 max-w-md">
+            <div className="space-y-2">
+              <Label htmlFor="companyName">Company Name</Label>
+              <div className="flex gap-2">
+                <Input 
+                  id="companyName"
+                  value={settings.companyName || ""}
+                  onChange={(e) => setSettings(s => ({ ...s, companyName: e.target.value }))}
+                  placeholder="e.g. Cosmetic's A1"
+                  className="font-bold"
+                />
+                <Button 
+                  onClick={() => handleSave("companyName", settings.companyName)}
+                  disabled={saving}
+                  className="shrink-0"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">This appears as the main title in the Hub's animated section.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="mainProductCategory">Main Product Category</Label>
+              <div className="flex gap-2">
+                <Input 
+                  id="mainProductCategory"
+                  value={settings.mainProductCategory || ""}
+                  onChange={(e) => setSettings(s => ({ ...s, mainProductCategory: e.target.value }))}
+                  placeholder="e.g. Skin Care"
+                />
+                <Button 
+                  onClick={() => handleSave("mainProductCategory", settings.mainProductCategory)}
+                  disabled={saving}
+                >
+                   <Save className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
 

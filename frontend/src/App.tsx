@@ -16,21 +16,20 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import AdminLogin from "@/pages/admin/login";
 import AdminDashboard from "@/pages/admin/dashboard";
-
-import Dashboard from "@/pages/dashboard";
-import EmployeeAnalysisHub from "@/pages/employee-analysis/hub";
-import DepartmentsList from "@/pages/employee-analysis/departments/index";
-import DepartmentDetail from "@/pages/employee-analysis/departments/[id]";
-import EmployeesList from "@/pages/employee-analysis/employees/index";
-import EmployeeDetail from "@/pages/employee-analysis/employees/[id]";
-import Tasks from "@/pages/employee-analysis/tasks";
-import PerformanceAnalytics from "@/pages/employee-analysis/performance";
-
-import ProductAnalysisHub from "@/pages/product-analysis/hub";
+import Hub from "@/pages/hub";
+import DepartmentSelection from "@/pages/employee-analysis/departments/selection";
+import SubDepartmentSelection from "@/pages/employee-analysis/departments/sub-selection";
+import GrowthPage from "@/pages/growth";
+import AccountPage from "@/pages/account";
+import NotificationsPage from "@/pages/notifications";
 import ProductRanking from "@/pages/product-analysis/ranking";
 import ProductsList from "@/pages/product-analysis/products/index";
 import ProductDetail from "@/pages/product-analysis/products/[id]";
 import Offers from "@/pages/product-analysis/offers";
+import EmployeeDetail from "@/pages/employee-analysis/employees/[id]";
+import EmployeesList from "@/pages/employee-analysis/employees/index";
+import Tasks from "@/pages/employee-analysis/tasks";
+import PerformanceAnalytics from "@/pages/employee-analysis/performance";
 
 const queryClient = new QueryClient();
 
@@ -51,20 +50,23 @@ function Router() {
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
 
-      {/* Main App */}
-      <Route path="/dashboard" component={Dashboard} />
+      {/* Main App Hub */}
+      <Route path="/dashboard" component={Hub} />
+      <Route path="/growth" component={GrowthPage} />
+      <Route path="/account" component={AccountPage} />
+      <Route path="/notifications" component={NotificationsPage} />
       
-      {/* Employee Analysis Phase */}
-      <Route path="/employee-analysis" component={EmployeeAnalysisHub} />
-      <Route path="/employee-analysis/departments" component={DepartmentsList} />
-      <Route path="/employee-analysis/departments/:id" component={DepartmentDetail} />
+      {/* Employee Analysis Phase Flow */}
+      <Route path="/employee-analysis" component={Hub} />
+      <Route path="/employee-analysis/departments" component={DepartmentSelection} />
+      <Route path="/employee-analysis/departments/:deptId/sub" component={SubDepartmentSelection} />
       <Route path="/employee-analysis/employees" component={EmployeesList} />
       <Route path="/employee-analysis/employees/:id" component={EmployeeDetail} />
       <Route path="/employee-analysis/tasks" component={Tasks} />
       <Route path="/employee-analysis/performance" component={PerformanceAnalytics} />
 
-      {/* Product Analysis Phase */}
-      <Route path="/product-analysis" component={ProductAnalysisHub} />
+      {/* Product Analysis Phase Flow */}
+      <Route path="/product-analysis" component={Hub} />
       <Route path="/product-analysis/ranking" component={ProductRanking} />
       <Route path="/product-analysis/products" component={ProductsList} />
       <Route path="/product-analysis/products/:id" component={ProductDetail} />

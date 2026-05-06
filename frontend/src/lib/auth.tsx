@@ -7,6 +7,7 @@ interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,8 +27,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const refreshUser = async () => {
+    await queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
+  };
+
   return (
-    <AuthContext.Provider value={{ user: isError ? null : user ?? null, isLoading, logout }}>
+    <AuthContext.Provider value={{ user: isError ? null : user ?? null, isLoading, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -12,7 +12,8 @@ import {
   Trophy, 
   Tag, 
   LogOut, 
-  Menu
+  Menu,
+  ChevronLeft
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -135,6 +136,17 @@ export function AuthenticatedLayout({ children }: { children: ReactNode }) {
               <SidebarContent />
             </SheetContent>
           </Sheet>
+          {location !== "/dashboard" && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="rounded-full" 
+              onClick={() => window.history.back()}
+              aria-label="Back"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          )}
           <div className="w-full flex-1">
             {/* Search or breadcrumbs could go here */}
           </div>
@@ -142,7 +154,7 @@ export function AuthenticatedLayout({ children }: { children: ReactNode }) {
             <span className="text-sm font-medium hidden sm:inline-block">DS Engineosys Workspace</span>
           </div>
         </header>
-        <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 bg-slate-50/50">
+        <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 bg-gradient-to-b from-pink-100/30 via-white to-white">
           {children}
         </main>
       </div>
@@ -152,8 +164,19 @@ export function AuthenticatedLayout({ children }: { children: ReactNode }) {
 
 export function PublicLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <header className="flex h-16 items-center border-b px-4 lg:px-6">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-pink-200 via-pink-50 to-white">
+      <header className="flex h-16 items-center border-b px-4 lg:px-6 gap-2">
+        {useLocation()[0] !== "/home" && useLocation()[0] !== "/" && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full" 
+            onClick={() => window.history.back()}
+            aria-label="Back"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+        )}
         <Link href="/home" className="flex items-center gap-2 font-bold text-primary text-xl">
           <span className="bg-primary text-white p-1 rounded">DS</span> Engineosys
         </Link>
