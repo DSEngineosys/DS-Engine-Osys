@@ -122,12 +122,12 @@ export default function Register() {
 
   async function handleSetPassword(e: React.FormEvent) {
     e.preventDefault();
-    const isStrong = 
-      password.length >= 8 && 
-      password.length <= 15 && 
-      /[0-9]/.test(password) && 
-      /[A-Z]/.test(password) && 
-      /[a-z]/.test(password) && 
+    const isStrong =
+      password.length >= 8 &&
+      password.length <= 15 &&
+      /[0-9]/.test(password) &&
+      /[A-Z]/.test(password) &&
+      /[a-z]/.test(password) &&
       /[@#$%]/.test(password);
 
     if (!isStrong) {
@@ -278,7 +278,7 @@ export default function Register() {
                       </>
                     ) : (
                       <>
-                        <Send className="mr-2 h-5 w-5" /> Send Mail to REGISTER
+                        <Send className="mr-2 h-5 w-5" /> SUBMIT
                       </>
                     )}
                   </Button>
@@ -366,7 +366,7 @@ export default function Register() {
                       required
                     />
                   </div>
-                  
+
                   {/* Password Conditions */}
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Requirements</p>

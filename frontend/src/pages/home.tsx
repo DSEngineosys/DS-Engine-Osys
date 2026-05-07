@@ -2,9 +2,21 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { PublicLayout } from "@/components/layout";
 import { motion } from "framer-motion";
-import { BarChart3, Users, Target, Shield, ArrowRight } from "lucide-react";
+import { BarChart3, Users, Target, Shield, ArrowRight, PlayCircle, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { api } from "@/lib/api-extra";
 
 export default function Home() {
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.getSettings().then(settings => {
+      if (settings.promotionalVideo) {
+        setVideoUrl(settings.promotionalVideo);
+      }
+    }).catch(console.error);
+  }, []);
+
   return (
     <PublicLayout>
       {/* Hero Section */}
@@ -43,31 +55,93 @@ export default function Home() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="flex-1 w-full relative"
         >
-          <div className="aspect-[4/3] rounded-xl bg-gradient-to-tr from-primary/5 to-secondary/30 border shadow-2xl flex items-center justify-center p-8 overflow-hidden relative">
-            <div className="absolute inset-0 bg-white/40 backdrop-blur-3xl" />
-            <div className="relative z-10 w-full max-w-md space-y-4">
-              <div className="h-24 bg-white rounded-lg shadow-sm border p-4 flex gap-4 items-center">
-                <div className="w-12 h-12 rounded bg-primary/10 flex items-center justify-center text-primary font-bold">87%</div>
-                <div className="space-y-2 flex-1">
-                  <div className="h-4 bg-slate-100 rounded w-2/3" />
-                  <div className="h-4 bg-slate-50 rounded w-full" />
+          <div className="aspect-[4/3] rounded-[3rem] bg-[#020617] border border-white/5 shadow-[0_0_50px_-12px_rgba(59,130,246,0.3)] flex items-center justify-center overflow-hidden relative group">
+            {/* Bottom-to-top gradient shadow */}
+            <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 via-transparent to-transparent opacity-60" />
+            <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:32px_32px]" />
+            
+            {videoUrl ? (
+              <video 
+                src={videoUrl} 
+                className="w-full h-full object-cover"
+                autoPlay 
+                loop 
+                muted 
+                playsInline
+              />
+            ) : (
+              <div className="relative z-10 w-full h-full p-10 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-white font-black text-2xl tracking-tight">Business Growth Projection</h3>
+                  <div className="flex items-center gap-2 mt-1.5">
+                     <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                     <p className="text-red-400 font-bold text-[10px] uppercase tracking-[0.2em]">Real-time Optimization</p>
+                  </div>
+                </div>
+
+                <div className="flex-1 relative mt-8 mb-4">
+                  {/* Background Bars (Subtle) */}
+                  <div className="absolute inset-0 flex items-end justify-between gap-4 px-2 opacity-10">
+                    {[30, 45, 35, 60, 50, 80, 70, 95].map((val, i) => (
+                      <div key={i} className="flex-1 bg-blue-500 rounded-t-lg" style={{ height: `${val}%` }} />
+                    ))}
+                  </div>
+
+                  {/* Animated Red Growth Line */}
+                  <svg viewBox="0 0 400 200" className="w-full h-full overflow-visible">
+                    <defs>
+                      <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                      </filter>
+                    </defs>
+                    <motion.path
+                      d="M 0 180 Q 50 170 80 140 T 160 120 T 240 80 T 320 60 T 400 20"
+                      fill="none"
+                      stroke="#ef4444"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      filter="url(#glow)"
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      animate={{ pathLength: 1, opacity: 1 }}
+                      transition={{ duration: 2.5, ease: "easeOut" }}
+                    />
+                    {/* Pulsing endpoint */}
+                    <motion.circle
+                      cx="400"
+                      cy="20"
+                      r="6"
+                      fill="#ef4444"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: [1, 1.5, 1] }}
+                      transition={{ delay: 2.5, repeat: Infinity, duration: 1.5 }}
+                    />
+                  </svg>
+                </div>
+                
+                <div className="pt-8 border-t border-white/5 flex items-center justify-between">
+                  <div className="flex items-center gap-10">
+                    <div className="space-y-1">
+                      <p className="text-white/30 text-[10px] font-black uppercase tracking-widest">Market Advantage</p>
+                      <div className="flex items-center gap-2">
+                         <p className="text-white font-black text-2xl tracking-tighter">+48.2%</p>
+                         <TrendingUp className="w-4 h-4 text-red-500" />
+                      </div>
+                    </div>
+                    <div className="w-px h-10 bg-white/10" />
+                    <div className="space-y-1">
+                      <p className="text-white/30 text-[10px] font-black uppercase tracking-widest">Efficiency Lift</p>
+                      <p className="text-white font-black text-2xl tracking-tighter">x2.4</p>
+                    </div>
+                  </div>
+                  <div className="hidden sm:block">
+                     <div className="px-4 py-2 bg-red-500/10 rounded-2xl border border-red-500/20 backdrop-blur-md">
+                        <p className="text-red-400 font-black text-[10px] uppercase tracking-widest">Accelerated Scale</p>
+                     </div>
+                  </div>
                 </div>
               </div>
-              <div className="h-24 bg-white rounded-lg shadow-sm border p-4 flex gap-4 items-center">
-                <div className="w-12 h-12 rounded bg-secondary/30 flex items-center justify-center text-secondary-foreground font-bold">12k</div>
-                <div className="space-y-2 flex-1">
-                  <div className="h-4 bg-slate-100 rounded w-3/4" />
-                  <div className="h-4 bg-slate-50 rounded w-5/6" />
-                </div>
-              </div>
-              <div className="h-24 bg-white rounded-lg shadow-sm border p-4 flex gap-4 items-center">
-                <div className="w-12 h-12 rounded bg-accent/50 flex items-center justify-center text-accent-foreground font-bold">A+</div>
-                <div className="space-y-2 flex-1">
-                  <div className="h-4 bg-slate-100 rounded w-1/2" />
-                  <div className="h-4 bg-slate-50 rounded w-4/5" />
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </motion.div>
       </section>

@@ -49,7 +49,7 @@ export const UserProfileRole = {
 } as const;
 
 export interface UserProfile {
-  id: number;
+  id: string;
   name: string;
   email: string;
   role: UserProfileRole;
@@ -62,16 +62,16 @@ export interface AuthResponse {
 }
 
 export interface Department {
-  id: number;
+  id: string;
   name: string;
-  parentId?: number | null;
+  parentId?: string | null;
   description?: string | null;
   employeeCount: number;
 }
 
 export interface CreateDepartmentRequest {
   name: string;
-  parentId?: number | null;
+  parentId?: string | null;
   description?: string | null;
 }
 
@@ -85,11 +85,11 @@ export const EmployeeStatus = {
 } as const;
 
 export interface Employee {
-  id: number;
+  id: string;
   name: string;
   email: string;
   employeeId: string;
-  departmentId: number;
+  departmentId: string;
   departmentName: string;
   designation: string;
   joiningDate: string;
@@ -111,7 +111,7 @@ export interface CreateEmployeeRequest {
   name: string;
   email: string;
   employeeId: string;
-  departmentId: number;
+  departmentId: string;
   designation: string;
   joiningDate: string;
   status: CreateEmployeeRequestStatus;
@@ -129,7 +129,7 @@ export const UpdateEmployeeRequestStatus = {
 export interface UpdateEmployeeRequest {
   name?: string;
   email?: string;
-  departmentId?: number;
+  departmentId?: string;
   designation?: string;
   status?: UpdateEmployeeRequestStatus;
 }
@@ -153,10 +153,10 @@ export const TaskPriority = {
 } as const;
 
 export interface Task {
-  id: number;
+  id: string;
   title: string;
   description?: string | null;
-  employeeId: number;
+  employeeId: string;
   employeeName: string;
   status: TaskStatus;
   priority: TaskPriority;
@@ -188,7 +188,7 @@ export const CreateTaskRequestPriority = {
 export interface CreateTaskRequest {
   title: string;
   description?: string | null;
-  employeeId: number;
+  employeeId: string;
   status: CreateTaskRequestStatus;
   priority: CreateTaskRequestPriority;
   dueDate?: string | null;
@@ -223,8 +223,8 @@ export interface UpdateTaskRequest {
 }
 
 export interface PerformanceRecord {
-  id: number;
-  employeeId: number;
+  id: string;
+  employeeId: string;
   employeeName: string;
   period: string;
   score: number;
@@ -236,7 +236,7 @@ export interface PerformanceRecord {
 }
 
 export interface CreatePerformanceRequest {
-  employeeId: number;
+  employeeId: string;
   period: string;
   score: number;
   tasksCompleted: number;
@@ -256,7 +256,7 @@ export const ProductMarketStatus = {
 } as const;
 
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   category: string;
   sku: string;
@@ -329,7 +329,7 @@ export interface DashboardSummary {
 }
 
 export interface DepartmentPerformanceSummary {
-  departmentId: number;
+  departmentId: string;
   departmentName: string;
   avgScore: number;
   totalEmployees: number;
@@ -407,12 +407,12 @@ export interface TaskCompletionStats {
 }
 
 export type GetEmployeesParams = {
-  departmentId?: number;
+  departmentId?: string;
   search?: string;
 };
 
 export type GetTasksParams = {
-  employeeId?: number;
+  employeeId?: string;
   status?: GetTasksStatus;
 };
 
@@ -427,7 +427,7 @@ export const GetTasksStatus = {
 } as const;
 
 export type GetPerformanceRecordsParams = {
-  employeeId?: number;
+  employeeId?: string;
 };
 
 export type GetProductsParams = {

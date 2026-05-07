@@ -62,7 +62,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export interface CurrentUserExtended {
-  id: number;
+  id: string;
   name: string;
   email: string;
   mobile: string | null;

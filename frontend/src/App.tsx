@@ -16,6 +16,7 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import AdminLogin from "@/pages/admin/login";
 import AdminDashboard from "@/pages/admin/dashboard";
+import AdminAction from "@/pages/admin/action";
 import Hub from "@/pages/hub";
 import DepartmentSelection from "@/pages/employee-analysis/departments/selection";
 import SubDepartmentSelection from "@/pages/employee-analysis/departments/sub-selection";
@@ -49,6 +50,7 @@ function Router() {
       {/* Admin */}
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
+      <Route path="/admin/action" component={AdminAction} />
 
       {/* Main App Hub */}
       <Route path="/dashboard" component={Hub} />

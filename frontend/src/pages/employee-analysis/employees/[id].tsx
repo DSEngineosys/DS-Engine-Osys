@@ -14,9 +14,9 @@ export default function EmployeeDetail() {
   const id = params?.id || "";
   const [activePhase, setActivePhase] = useState<"employee" | "product">("employee");
 
-  const { data: employee, isLoading: isLoadingEmp } = useGetEmployee(id as any);
-  const { data: tasks, isLoading: isLoadingTasks } = useGetTasks({ employeeId: id as any });
-  const { data: performance, isLoading: isLoadingPerf } = useGetPerformanceRecords({ employeeId: id as any });
+  const { data: employee, isLoading: isLoadingEmp } = useGetEmployee(id);
+  const { data: tasks, isLoading: isLoadingTasks } = useGetTasks({ employeeId: id });
+  const { data: performance, isLoading: isLoadingPerf } = useGetPerformanceRecords({ employeeId: id });
 
   const pendingTasks = tasks?.filter(t => t.status === "pending" || t.status === "in_progress") || [];
   const completedTasks = tasks?.filter(t => t.status === "completed") || [];

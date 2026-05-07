@@ -2,15 +2,12 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": ".",
+    "rootDir": "src",
     "types": ["node"]
   },
-  "include": ["."],
+  "include": ["src/**/*"],
   "exclude": ["dist", "node_modules"],
   "references": [
-    {
-      "path": "../shared/db"
-    },
     {
       "path": "../shared/api-zod"
     }

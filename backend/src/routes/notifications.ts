@@ -7,7 +7,7 @@ const router = Router();
 // Admin: Send broadcast notification
 router.post("/admin/notifications", async (req, res) => {
   const session = req.session as unknown as Record<string, unknown>;
-  if (!session.adminId) {
+  if (!session.isAdmin) {
     res.status(401).json({ error: "Unauthorized", message: "Admin only" });
     return;
   }

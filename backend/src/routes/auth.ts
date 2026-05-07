@@ -1,6 +1,7 @@
 import { Router } from "express";
 import User from "../models/user.model";
 import Setting from "../models/setting.model";
+import Notification from "../models/notification.model";
 import { sendEmail } from "../lib/email";
 import { z } from "zod";
 
@@ -91,18 +92,47 @@ router.post("/auth/register-request", async (req, res) => {
     status: "pending",
   });
 
-  // HIGH SECURITY: Send email to admin
+  // HIGH SECURITY: Send email and notification to admin
   try {
     const adminEmailSetting = await Setting.findOne({ key: "adminEmail" });
+    const baseUrl = process.env.BASE_URL || "http://localhost:3000";
+    
+    // Create In-App Notification for Admin
+    await Notification.create({
+      title: "New Registration Request",
+      message: `${name} (${email}) has requested access as a DS-Engineer.`,
+      type: "registration_request",
+      data: { userId: user._id },
+      recipientId: null, // Broadcast to admin(s)
+    });
+
     if (adminEmailSetting?.value) {
+      const allowUrl = `${baseUrl}/admin/action?id=${user._id}&action=allow`;
+      const denyUrl = `${baseUrl}/admin/action?id=${user._id}&action=deny`;
+
       await sendEmail(
         adminEmailSetting.value,
         "New DS-Engineer Registration Request",
-        `A new registration request has been received from ${name} (${email}). Please review it in the Admin Dashboard.`
+        `A new registration request has been received from ${name} (${email}). Please review it in the Admin Dashboard.`,
+        `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; rounded: 12px;">
+          <h2 style="color: #1e293b; margin-bottom: 16px;">New Registration Request</h2>
+          <p style="color: #475569; font-size: 16px; line-height: 24px;">
+            A new DS-Engineer registration request has been received from <strong>${name}</strong> (${email}).
+          </p>
+          <div style="margin: 32px 0; display: flex; gap: 12px;">
+            <a href="${allowUrl}" style="background-color: #10b981; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-right: 8px;">ALLOW ACCESS</a>
+            <a href="${denyUrl}" style="background-color: #ef4444; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">DENY ACCESS</a>
+          </div>
+          <p style="color: #94a3b8; font-size: 12px;">
+            You can also manage this request from the <a href="${baseUrl}/admin/dashboard" style="color: #3b82f6;">Admin Dashboard</a>.
+          </p>
+        </div>
+        `
       );
     }
   } catch (err) {
-    console.error("Non-critical: Failed to notify admin via email", err);
+    console.error("Non-critical: Failed to notify admin", err);
   }
 
   res.status(201).json({

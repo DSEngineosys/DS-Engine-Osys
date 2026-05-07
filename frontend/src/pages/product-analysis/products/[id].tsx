@@ -12,8 +12,8 @@ export default function ProductDetail() {
   const id = params?.id || "";
   const [activePhase, setActivePhase] = useState<"employee" | "product">("product");
 
-  const { data: product, isLoading: isLoadingProd } = useGetProduct(id as any);
-  const { data: prediction, isLoading: isLoadingPred } = useGetProductPrediction(id as any);
+  const { data: product, isLoading: isLoadingProd } = useGetProduct(id);
+  const { data: prediction, isLoading: isLoadingPred } = useGetProductPrediction(id);
 
   return (
     <FlipchartLayout activePhase={activePhase} onPhaseChange={setActivePhase}>

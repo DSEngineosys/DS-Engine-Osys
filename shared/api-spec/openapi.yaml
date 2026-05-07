@@ -162,7 +162,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "200":
           description: Department
@@ -187,7 +187,7 @@ paths:
           in: query
           required: false
           schema:
-            type: integer
+            type: string
         - name: search
           in: query
           required: false
@@ -230,7 +230,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "200":
           description: Employee
@@ -253,7 +253,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       requestBody:
         required: true
         content:
@@ -276,7 +276,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "200":
           description: Deleted
@@ -295,7 +295,7 @@ paths:
           in: query
           required: false
           schema:
-            type: integer
+            type: string
         - name: status
           in: query
           required: false
@@ -339,7 +339,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "200":
           description: Task
@@ -356,7 +356,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       requestBody:
         required: true
         content:
@@ -381,7 +381,7 @@ paths:
           in: query
           required: false
           schema:
-            type: integer
+            type: string
       responses:
         "200":
           description: Performance records
@@ -457,7 +457,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "200":
           description: Product
@@ -474,7 +474,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       requestBody:
         required: true
         content:
@@ -497,7 +497,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "200":
           description: Deleted
@@ -516,7 +516,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       requestBody:
         required: true
         content:
@@ -584,7 +584,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "200":
           description: Product prediction
@@ -667,7 +667,7 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: string
         name:
           type: string
         email:
@@ -684,11 +684,11 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: string
         name:
           type: string
         parentId:
-          type: integer
+          type: string
           nullable: true
         description:
           type: string
@@ -703,7 +703,7 @@ components:
         name:
           type: string
         parentId:
-          type: integer
+          type: string
           nullable: true
         description:
           type: string
@@ -714,7 +714,7 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: string
         name:
           type: string
         email:
@@ -722,7 +722,7 @@ components:
         employeeId:
           type: string
         departmentId:
-          type: integer
+          type: string
         departmentName:
           type: string
         designation:
@@ -751,7 +751,7 @@ components:
         employeeId:
           type: string
         departmentId:
-          type: integer
+          type: string
         designation:
           type: string
         joiningDate:
@@ -770,7 +770,7 @@ components:
         email:
           type: string
         departmentId:
-          type: integer
+          type: string
         designation:
           type: string
         status:
@@ -781,14 +781,14 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: string
         title:
           type: string
         description:
           type: string
           nullable: true
         employeeId:
-          type: integer
+          type: string
         employeeName:
           type: string
         status:
@@ -819,7 +819,7 @@ components:
           type: string
           nullable: true
         employeeId:
-          type: integer
+          type: string
         status:
           type: string
           enum: [pending, in_progress, completed, failed]
@@ -855,9 +855,9 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: string
         employeeId:
-          type: integer
+          type: string
         employeeName:
           type: string
         period:
@@ -882,7 +882,7 @@ components:
       type: object
       properties:
         employeeId:
-          type: integer
+          type: string
         period:
           type: string
         score:
@@ -902,7 +902,7 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: string
         name:
           type: string
         category:
@@ -1008,7 +1008,7 @@ components:
       type: object
       properties:
         departmentId:
-          type: integer
+          type: string
         departmentName:
           type: string
         avgScore:

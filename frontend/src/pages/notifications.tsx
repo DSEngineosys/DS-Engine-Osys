@@ -2,15 +2,19 @@ import { useState, useEffect } from "react";
 import { FlipchartLayout } from "@/components/flipchart-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bell, BellOff, Megaphone, Clock, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Bell, BellOff, Megaphone, Clock, CheckCircle2, ArrowLeft, Check, X, Loader2 } from "lucide-react";
 import { api } from "@/lib/api-extra";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 export default function NotificationsPage() {
   const [activePhase, setActivePhase] = useState<"employee" | "product">("employee");
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const fetchNotifications = async () => {
     try {
@@ -38,6 +42,30 @@ export default function NotificationsPage() {
     }
   };
 
+  const handleAction = async (id: string, userId: string, action: "allow" | "deny") => {
+    setBusyId(id);
+    try {
+      if (action === "allow") {
+        await api.allowRequest(userId);
+        toast({ title: "Access granted", description: "DS Engineer has been approved." });
+      } else {
+        await api.denyRequest(userId);
+        toast({ title: "Access denied", description: "DS Engineer has been rejected." });
+      }
+      // After action, mark notification as read and maybe remove or update locally
+      await handleMarkAsRead(id);
+      fetchNotifications(); // Refresh to get latest statuses
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Action failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
@@ -46,7 +74,7 @@ export default function NotificationsPage() {
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-4">
              <button onClick={() => window.history.back()} className="p-2 bg-white rounded-xl shadow-sm border border-slate-100">
-               <ArrowLeft className="w-5 h-5 text-slate-600" />
+                <ArrowLeft className="w-5 h-5 text-slate-600" />
              </button>
              <div>
                 <h1 className="text-2xl font-black text-slate-900">Notifications</h1>
@@ -85,7 +113,7 @@ export default function NotificationsPage() {
                     className={`rounded-[2rem] border-none shadow-sm transition-all overflow-hidden relative ${
                       n.isRead ? "bg-white opacity-80" : "bg-gradient-to-r from-blue-50 to-white ring-2 ring-primary/5"
                     }`}
-                    onClick={() => !n.isRead && handleMarkAsRead(n._id)}
+                    onClick={() => !n.isRead && n.type !== "registration_request" && handleMarkAsRead(n._id)}
                   >
                     {!n.isRead && (
                        <div className="absolute top-4 right-4 w-3 h-3 bg-primary rounded-full shadow-lg shadow-primary/40" />
@@ -104,6 +132,37 @@ export default function NotificationsPage() {
                           <p className={`text-sm mt-2 font-medium leading-relaxed ${n.isRead ? "text-slate-400" : "text-slate-600"}`}>
                             {n.message}
                           </p>
+
+                          {n.type === "registration_request" && !n.isRead && (
+                            <div className="flex gap-2 mt-4">
+                              <Button 
+                                size="sm" 
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-full px-4 h-9 font-bold text-[10px] uppercase tracking-wider"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAction(n._id, n.data?.userId, "allow");
+                                }}
+                                disabled={busyId === n._id}
+                              >
+                                {busyId === n._id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Check className="w-3 h-3 mr-1" />}
+                                Allow
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="border-rose-200 text-rose-600 hover:bg-rose-50 rounded-full px-4 h-9 font-bold text-[10px] uppercase tracking-wider"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAction(n._id, n.data?.userId, "deny");
+                                }}
+                                disabled={busyId === n._id}
+                              >
+                                {busyId === n._id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <X className="w-3 h-3 mr-1" />}
+                                Deny
+                              </Button>
+                            </div>
+                          )}
+
                           <div className="flex items-center gap-3 mt-4">
                              <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                 <Clock className="w-3 h-3" />

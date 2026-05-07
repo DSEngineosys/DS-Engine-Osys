@@ -14,7 +14,7 @@ export default function Offers() {
   const [activePhase, setActivePhase] = useState<"employee" | "product">("product");
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [offerPercentage, setOfferPercentage] = useState("15");
   const [reason, setReason] = useState("Low demand ML prediction");
   const [isDialogOpen, setIsDialogOpen] = useState(false);

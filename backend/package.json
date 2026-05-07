@@ -4,25 +4,24 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm run build && pnpm run start",
+    "dev": "tsx watch src/server.ts",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/server.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "seed": "tsx src/seed.ts"
   },
   "dependencies": {
-    "@types/mongoose": "^5.11.97",
     "@workspace/api-zod": "workspace:*",
-    "@workspace/db": "workspace:*",
     "cookie-parser": "^1.4.7",
     "cors": "^2",
     "dotenv": "^17.4.2",
-    "drizzle-orm": "catalog:",
     "express": "^5",
     "express-session": "^1.19.0",
     "mongoose": "^9.6.1",
     "pino": "^9",
     "pino-http": "^10",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "tsx": "^4"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
