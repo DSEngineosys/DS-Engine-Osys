@@ -88,7 +88,7 @@ export default function ProductDetail() {
                              </p>
                           </div>
                           <div className="text-right">
-                             <p className="text-3xl font-black text-white">{prediction.confidence}%</p>
+                             <p className="text-3xl font-black text-white">{Math.round(prediction.confidence * 100)}%</p>
                              <p className="text-[10px] font-black text-slate-400 uppercase">Confidence</p>
                           </div>
                        </div>

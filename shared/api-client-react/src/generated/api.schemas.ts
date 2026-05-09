@@ -348,7 +348,7 @@ export const ProductRankingTrend = {
 } as const;
 
 export interface ProductRanking {
-  productId: number;
+  productId: string;
   productName: string;
   rank: number;
   score: number;
@@ -379,7 +379,7 @@ export const ProductPredictionRecommendation = {
 } as const;
 
 export interface ProductPrediction {
-  productId: number;
+  productId: string;
   productName: string;
   predictedDemand: ProductPredictionPredictedDemand;
   marketLongevityMonths: number;

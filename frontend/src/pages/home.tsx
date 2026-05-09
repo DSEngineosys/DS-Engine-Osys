@@ -5,9 +5,11 @@ import { motion } from "framer-motion";
 import { BarChart3, Users, Target, Shield, ArrowRight, PlayCircle, TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api-extra";
+import { useGetDashboardSummary } from "@workspace/api-client-react";
 
 export default function Home() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const { data: stats } = useGetDashboardSummary();
 
   useEffect(() => {
     api.getSettings().then(settings => {
@@ -28,7 +30,7 @@ export default function Home() {
             transition={{ duration: 0.5 }}
           >
             <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-foreground mb-6 leading-tight">
-              Intelligence for <br/>
+              Intelligence for <br />
               <span className="text-primary">Data Science</span> Engineers
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto lg:mx-0">
@@ -48,8 +50,8 @@ export default function Home() {
             </div>
           </motion.div>
         </div>
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -59,14 +61,14 @@ export default function Home() {
             {/* Bottom-to-top gradient shadow */}
             <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 via-transparent to-transparent opacity-60" />
             <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:32px_32px]" />
-            
+
             {videoUrl ? (
-              <video 
-                src={videoUrl} 
+              <video
+                src={videoUrl}
                 className="w-full h-full object-cover"
-                autoPlay 
-                loop 
-                muted 
+                autoPlay
+                loop
+                muted
                 playsInline
               />
             ) : (
@@ -74,8 +76,8 @@ export default function Home() {
                 <div>
                   <h3 className="text-white font-black text-2xl tracking-tight">Business Growth Projection</h3>
                   <div className="flex items-center gap-2 mt-1.5">
-                     <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                     <p className="text-red-400 font-bold text-[10px] uppercase tracking-[0.2em]">Real-time Optimization</p>
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    <p className="text-red-400 font-bold text-[10px] uppercase tracking-[0.2em]">Real-time Optimization</p>
                   </div>
                 </div>
 
@@ -118,26 +120,32 @@ export default function Home() {
                     />
                   </svg>
                 </div>
-                
+
                 <div className="pt-8 border-t border-white/5 flex items-center justify-between">
                   <div className="flex items-center gap-10">
                     <div className="space-y-1">
-                      <p className="text-white/30 text-[10px] font-black uppercase tracking-widest">Market Advantage</p>
+                      <p className="text-white/30 text-[10px] font-black uppercase tracking-widest">Global Revenue</p>
                       <div className="flex items-center gap-2">
-                         <p className="text-white font-black text-2xl tracking-tighter">+48.2%</p>
-                         <TrendingUp className="w-4 h-4 text-red-500" />
+                        <p className="text-white font-black text-2xl tracking-tighter">
+                          ${stats ? (stats.totalRevenue / 1000).toFixed(1) : "0.0"}k
+                        </p>
+                        <TrendingUp className="w-4 h-4 text-red-500" />
                       </div>
                     </div>
                     <div className="w-px h-10 bg-white/10" />
                     <div className="space-y-1">
                       <p className="text-white/30 text-[10px] font-black uppercase tracking-widest">Efficiency Lift</p>
-                      <p className="text-white font-black text-2xl tracking-tighter">x2.4</p>
+                      <p className="text-white font-black text-2xl tracking-tighter">
+                        x{stats ? (stats.avgPerformanceScore / 40).toFixed(1) : "0.0"}
+                      </p>
                     </div>
                   </div>
                   <div className="hidden sm:block">
-                     <div className="px-4 py-2 bg-red-500/10 rounded-2xl border border-red-500/20 backdrop-blur-md">
-                        <p className="text-red-400 font-black text-[10px] uppercase tracking-widest">Accelerated Scale</p>
-                     </div>
+                    <div className="px-4 py-2 bg-red-500/10 rounded-2xl border border-red-500/20 backdrop-blur-md">
+                      <p className="text-red-400 font-black text-[10px] uppercase tracking-widest">
+                        {stats?.highDemandProducts} High Demand Units
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>

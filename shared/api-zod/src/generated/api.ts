@@ -485,7 +485,7 @@ export const GetEmployeePerformanceSummaryResponse = zod.array(
  * @summary Get ML-based product ranking
  */
 export const GetProductRankingResponseItem = zod.object({
-  productId: zod.number(),
+  productId: zod.string(),
   productName: zod.string(),
   rank: zod.number(),
   score: zod.number(),
@@ -507,7 +507,7 @@ export const GetProductPredictionParams = zod.object({
 });
 
 export const GetProductPredictionResponse = zod.object({
-  productId: zod.number(),
+  productId: zod.string(),
   productName: zod.string(),
   predictedDemand: zod.enum(["high", "medium", "low"]),
   marketLongevityMonths: zod.number(),

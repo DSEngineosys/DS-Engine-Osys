@@ -1027,7 +1027,7 @@ components:
       type: object
       properties:
         productId:
-          type: integer
+          type: string
         productName:
           type: string
         rank:
@@ -1051,7 +1051,7 @@ components:
       type: object
       properties:
         productId:
-          type: integer
+          type: string
         productName:
           type: string
         predictedDemand:

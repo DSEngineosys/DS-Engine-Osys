@@ -9,7 +9,7 @@ import type { ProductPredictionPredictedDemand } from "./productPredictionPredic
 import type { ProductPredictionRecommendation } from "./productPredictionRecommendation";
 
 export interface ProductPrediction {
-  productId: number;
+  productId: string;
   productName: string;
   predictedDemand: ProductPredictionPredictedDemand;
   marketLongevityMonths: number;

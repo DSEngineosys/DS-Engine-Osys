@@ -8,7 +8,7 @@
 import type { ProductRankingTrend } from "./productRankingTrend";
 
 export interface ProductRanking {
-  productId: number;
+  productId: string;
   productName: string;
   rank: number;
   score: number;
