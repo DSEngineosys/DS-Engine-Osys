@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export default function Hub() {
   const [activePhase, setActivePhase] = useState<"employee" | "product">("employee");
   const [settings, setSettings] = useState<any>({});
+  const [bonuses, setBonuses] = useState<any[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { data: products, isLoading: loadingProducts } = useGetProducts();
   const { data: employees, isLoading: loadingEmployees } = useGetEmployees();
@@ -20,7 +21,8 @@ export default function Hub() {
   const [location, setLocation] = useLocation();
 
   useEffect(() => {
-    api.getSettings().then(setSettings);
+    api.getSettings().then(setSettings).catch(console.error);
+    api.getBonuses().then(setBonuses).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -29,16 +31,35 @@ export default function Hub() {
     }
   }, [settings.promotionalVideo]);
 
-  const offers = products?.filter(p => p.offerPercentage && p.offerPercentage > 0) || [];
-  const dsEngineers = employees?.filter(e => e.designation.toLowerCase().includes("engineer")) || [];
+  const productOffers = (products?.filter(p => p.offerPercentage && p.offerPercentage > 0) || []).map(p => ({
+    id: `prod-${p.id}`,
+    badge: "Limited Product Offer",
+    title: p.name,
+    tag: `${p.offerPercentage}% OFF`,
+    subtitle: `Special discount on ${p.category} stock`,
+    actionText: "Claim Discount",
+    bgClass: "from-pink-500 to-rose-600",
+  }));
 
+  const bonusOffers = bonuses.map(b => ({
+    id: `bonus-${b._id}`,
+    badge: `Bonus Incentive • ${b.departmentName || "All Depts"}`,
+    title: b.title,
+    tag: b.bonusAmount,
+    subtitle: b.description,
+    actionText: "Claim Bonus",
+    bgClass: "from-blue-600 to-indigo-700",
+  }));
+
+  const combinedOffers = [...bonusOffers, ...productOffers];
+  const dsEngineers = employees?.filter(e => e.designation.toLowerCase().includes("engineer")) || [];
 
   return (
     <FlipchartLayout activePhase={activePhase} onPhaseChange={setActivePhase}>
       {activePhase === "employee" ? (
         <EmployeePhase 
           settings={settings} 
-          offers={offers} 
+          offers={combinedOffers} 
           dsEngineers={dsEngineers} 
           videoRef={videoRef}
         />
@@ -66,32 +87,39 @@ function OfferCarousel({ offers }: { offers: any[] }) {
 
   if (offers.length === 0) {
     return (
-      <Card className="w-full bg-slate-100 h-40 flex items-center justify-center border-dashed rounded-3xl">
-        <p className="text-slate-400 font-medium">No active offers today</p>
+      <Card className="w-full bg-slate-100 h-44 flex items-center justify-center border-dashed rounded-3xl">
+        <p className="text-slate-400 font-medium">No active bonus offers or product discounts today</p>
       </Card>
     );
   }
+
+  const currentItem = offers[index];
 
   return (
     <div className="relative overflow-hidden rounded-3xl">
       <AnimatePresence mode="wait">
         <motion.div
-          key={offers[index].id}
+          key={currentItem.id}
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -50 }}
           transition={{ duration: 0.5 }}
           className="w-full"
         >
-          <Card className="bg-gradient-to-br from-pink-500 to-rose-600 text-white overflow-hidden border-none shadow-lg h-40">
-            <CardContent className="p-4 flex flex-col justify-between h-full">
-              <div>
-                <span className="bg-white/20 text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest">Limited Offer</span>
-                <h3 className="text-xl font-black mt-2 leading-tight">{offers[index].name}</h3>
+          <Card className={`bg-gradient-to-br ${currentItem.bgClass || "from-pink-500 to-rose-600"} text-white overflow-hidden border-none shadow-xl h-44`}>
+            <CardContent className="p-5 flex flex-col justify-between h-full relative">
+              <div className="space-y-1">
+                <span className="bg-white/20 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest backdrop-blur-md">
+                  {currentItem.badge}
+                </span>
+                <h3 className="text-2xl font-black mt-2 leading-tight drop-shadow-sm truncate">{currentItem.title}</h3>
+                <p className="text-xs text-white/80 line-clamp-1 font-medium">{currentItem.subtitle}</p>
               </div>
-              <div className="flex items-end justify-between">
-                <span className="text-4xl font-black">{offers[index].offerPercentage}% OFF</span>
-                <button className="bg-white text-rose-600 text-[10px] font-black px-4 py-2 rounded-xl shadow-md uppercase tracking-widest">Claim Now</button>
+              <div className="flex items-end justify-between pt-2">
+                <span className="text-3xl font-black tracking-tight">{currentItem.tag}</span>
+                <button className="bg-white text-slate-900 hover:bg-slate-100 text-[11px] font-black px-5 py-2.5 rounded-xl shadow-lg uppercase tracking-wider transition-transform active:scale-95">
+                  {currentItem.actionText || "Claim Now"}
+                </button>
               </div>
             </CardContent>
           </Card>
@@ -99,7 +127,7 @@ function OfferCarousel({ offers }: { offers: any[] }) {
       </AnimatePresence>
       <div className="flex gap-1.5 justify-center mt-3">
         {offers.map((_, i) => (
-          <div key={i} className={`h-1 rounded-full transition-all duration-500 ${i === index ? "w-6 bg-primary" : "w-2 bg-slate-200"}`} />
+          <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === index ? "w-8 bg-primary" : "w-2 bg-slate-200"}`} />
         ))}
       </div>
     </div>

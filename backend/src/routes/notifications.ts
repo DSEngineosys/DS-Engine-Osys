@@ -40,8 +40,10 @@ router.get("/notifications", async (req, res) => {
     return;
   }
 
+  // DS Engineers only see admin broadcast messages, NOT registration_request or unknown types
   const notifications = await Notification.find({
     $or: [{ recipientId: session.userId }, { recipientId: null }],
+    type: { $nin: ["registration_request"] },
   }).sort({ createdAt: -1 });
 
   res.json(notifications);

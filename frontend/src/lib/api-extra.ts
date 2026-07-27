@@ -159,4 +159,49 @@ export const api = {
   markNotificationRead(id: string) {
     return request<any>(`/api/notifications/${id}/read`, { method: "POST" });
   },
+  forgotPasswordRequestOtp(identifier: string) {
+    return request<{ message: string; mobile: string; maskedMobile: string; email: string; name: string }>(
+      "/api/auth/forgot-password/request-otp",
+      {
+        method: "POST",
+        body: JSON.stringify({ identifier }),
+      }
+    );
+  },
+  forgotPasswordVerifyOtp(body: { email: string; otp: string }) {
+    return request<{ message: string; email: string }>("/api/auth/forgot-password/verify-otp", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+  forgotPasswordReset(body: { email: string; password: string }) {
+    return request<{ message: string; email: string }>("/api/auth/forgot-password/reset", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+  testSmtp() {
+    return request<{ message: string }>("/api/admin/test-smtp", { method: "POST" });
+  },
+  getBonuses() {
+    return request<any[]>("/api/bonuses");
+  },
+  adminGetBonuses() {
+    return request<any[]>("/api/admin/bonuses");
+  },
+  createBonus(body: { title: string; description: string; bonusAmount: string; departmentId?: string; subDepartment?: string }) {
+    return request<any>("/api/admin/bonuses", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+  deleteBonus(id: string) {
+    return request<any>(`/api/admin/bonuses/${id}`, { method: "DELETE" });
+  },
+  assignBonus(id: string, employeeId: string) {
+    return request<any>(`/api/bonuses/${id}/assign`, {
+      method: "POST",
+      body: JSON.stringify({ employeeId }),
+    });
+  },
 };

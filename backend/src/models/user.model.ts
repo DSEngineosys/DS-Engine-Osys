@@ -8,6 +8,8 @@ export interface IUser extends Document {
   role: string;
   status: string;
   avatarUrl?: string;
+  resetOtp?: string;
+  resetOtpExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,6 +23,8 @@ const UserSchema: Schema = new Schema(
     role: { type: String, default: "ds_engineer" },
     status: { type: String, default: "approved" },
     avatarUrl: { type: String },
+    resetOtp: { type: String },
+    resetOtpExpires: { type: Date },
   },
   {
     timestamps: true,

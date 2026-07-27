@@ -57,10 +57,10 @@ export default function Home() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="flex-1 w-full relative"
         >
-          <div className="aspect-[4/3] rounded-[3rem] bg-[#020617] border border-white/5 shadow-[0_0_50px_-12px_rgba(59,130,246,0.3)] flex items-center justify-center overflow-hidden relative group">
+          <div className="aspect-[4/3] min-h-[320px] rounded-[3rem] bg-[#020617] border border-white/10 shadow-[0_0_50px_-12px_rgba(59,130,246,0.3)] flex items-center justify-center overflow-hidden relative group">
             {/* Bottom-to-top gradient shadow */}
-            <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 via-transparent to-transparent opacity-60" />
-            <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:32px_32px]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-blue-950/80 via-slate-950/40 to-transparent opacity-90" />
+            <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:32px_32px]" />
 
             {videoUrl ? (
               <video
@@ -70,80 +70,96 @@ export default function Home() {
                 loop
                 muted
                 playsInline
+                onError={() => setVideoUrl(null)}
               />
             ) : (
-              <div className="relative z-10 w-full h-full p-10 flex flex-col justify-between">
+              <div className="relative z-10 w-full h-full p-8 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-white font-black text-2xl tracking-tight">Business Growth Projection</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-white font-black text-2xl tracking-tight flex items-center gap-2">
+                      <TrendingUp className="w-6 h-6 text-pink-500" /> Business Growth Analytics
+                    </h3>
+                    <span className="px-3 py-1 bg-pink-500/20 text-pink-400 font-mono font-bold text-[10px] rounded-full border border-pink-500/30 uppercase tracking-widest">
+                      ML Active
+                    </span>
+                  </div>
                   <div className="flex items-center gap-2 mt-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                    <p className="text-red-400 font-bold text-[10px] uppercase tracking-[0.2em]">Real-time Optimization</p>
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <p className="text-emerald-400 font-bold text-[10px] uppercase tracking-[0.2em]">Real-time Performance Optimization</p>
                   </div>
                 </div>
 
-                <div className="flex-1 relative mt-8 mb-4">
-                  {/* Background Bars (Subtle) */}
-                  <div className="absolute inset-0 flex items-end justify-between gap-4 px-2 opacity-10">
-                    {[30, 45, 35, 60, 50, 80, 70, 95].map((val, i) => (
-                      <div key={i} className="flex-1 bg-blue-500 rounded-t-lg" style={{ height: `${val}%` }} />
+                <div className="flex-1 relative my-6 min-h-[160px] flex items-end">
+                  {/* Background Bar Chart */}
+                  <div className="w-full h-full flex items-end justify-between gap-3 px-2">
+                    {[40, 55, 45, 70, 60, 85, 75, 98].map((val, i) => (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1 group/bar">
+                        <motion.div 
+                          initial={{ height: 0 }}
+                          animate={{ height: `${val}%` }}
+                          transition={{ duration: 1, delay: i * 0.1 }}
+                          className="w-full bg-gradient-to-t from-blue-600/30 to-pink-500/60 rounded-t-lg group-hover/bar:to-pink-400 transition-colors shadow-lg" 
+                        />
+                        <span className="text-[9px] font-mono text-slate-500">M{i+1}</span>
+                      </div>
                     ))}
                   </div>
 
-                  {/* Animated Red Growth Line */}
-                  <svg viewBox="0 0 400 200" className="w-full h-full overflow-visible">
+                  {/* Overlay Glowing Trend Line */}
+                  <svg viewBox="0 0 400 160" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none">
                     <defs>
+                      <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#3b82f6" />
+                        <stop offset="50%" stopColor="#ec4899" />
+                        <stop offset="100%" stopColor="#f43f5e" />
+                      </linearGradient>
                       <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feGaussianBlur stdDeviation="4" result="blur" />
                         <feComposite in="SourceGraphic" in2="blur" operator="over" />
                       </filter>
                     </defs>
                     <motion.path
-                      d="M 0 180 Q 50 170 80 140 T 160 120 T 240 80 T 320 60 T 400 20"
+                      d="M 10 140 Q 60 120 100 110 T 200 70 T 300 40 T 390 15"
                       fill="none"
-                      stroke="#ef4444"
+                      stroke="url(#lineGrad)"
                       strokeWidth="4"
                       strokeLinecap="round"
                       filter="url(#glow)"
                       initial={{ pathLength: 0, opacity: 0 }}
                       animate={{ pathLength: 1, opacity: 1 }}
-                      transition={{ duration: 2.5, ease: "easeOut" }}
+                      transition={{ duration: 2, ease: "easeOut" }}
                     />
-                    {/* Pulsing endpoint */}
                     <motion.circle
-                      cx="400"
-                      cy="20"
+                      cx="390"
+                      cy="15"
                       r="6"
-                      fill="#ef4444"
+                      fill="#f43f5e"
                       initial={{ scale: 0 }}
-                      animate={{ scale: [1, 1.5, 1] }}
-                      transition={{ delay: 2.5, repeat: Infinity, duration: 1.5 }}
+                      animate={{ scale: [1, 1.6, 1] }}
+                      transition={{ delay: 2, repeat: Infinity, duration: 1.5 }}
                     />
                   </svg>
                 </div>
 
-                <div className="pt-8 border-t border-white/5 flex items-center justify-between">
-                  <div className="flex items-center gap-10">
-                    <div className="space-y-1">
-                      <p className="text-white/30 text-[10px] font-black uppercase tracking-widest">Global Revenue</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-white font-black text-2xl tracking-tighter">
-                          ${stats ? (stats.totalRevenue / 1000).toFixed(1) : "0.0"}k
-                        </p>
-                        <TrendingUp className="w-4 h-4 text-red-500" />
+                <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+                  <div className="flex items-center gap-8">
+                    <div className="space-y-0.5">
+                      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Growth Velocity</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-white font-black text-xl tracking-tight">+34.8%</p>
+                        <TrendingUp className="w-4 h-4 text-emerald-400" />
                       </div>
                     </div>
-                    <div className="w-px h-10 bg-white/10" />
-                    <div className="space-y-1">
-                      <p className="text-white/30 text-[10px] font-black uppercase tracking-widest">Efficiency Lift</p>
-                      <p className="text-white font-black text-2xl tracking-tighter">
-                        x{stats ? (stats.avgPerformanceScore / 40).toFixed(1) : "0.0"}
-                      </p>
+                    <div className="w-px h-8 bg-white/10" />
+                    <div className="space-y-0.5">
+                      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">System Score</p>
+                      <p className="text-white font-black text-xl tracking-tight">98.4 / 100</p>
                     </div>
                   </div>
                   <div className="hidden sm:block">
-                    <div className="px-4 py-2 bg-red-500/10 rounded-2xl border border-red-500/20 backdrop-blur-md">
-                      <p className="text-red-400 font-black text-[10px] uppercase tracking-widest">
-                        {stats?.highDemandProducts} High Demand Units
+                    <div className="px-3 py-1.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 backdrop-blur-md">
+                      <p className="text-emerald-400 font-black text-[10px] uppercase tracking-widest">
+                        High Yield Active
                       </p>
                     </div>
                   </div>

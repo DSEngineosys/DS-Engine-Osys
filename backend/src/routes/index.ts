@@ -10,6 +10,7 @@ import productsRouter from "./products";
 import analyticsRouter from "./analytics";
 import settingsRouter from "./settings";
 import notificationsRouter from "./notifications";
+import bonusesRouter from "./bonuses";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(productsRouter);
 router.use(analyticsRouter);
 router.use(settingsRouter);
 router.use(notificationsRouter);
+router.use(bonusesRouter);
 
 export default router;

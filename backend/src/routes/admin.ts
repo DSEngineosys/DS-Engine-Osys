@@ -168,4 +168,14 @@ router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
   });
 });
 
+router.post("/admin/test-smtp", requireAdmin, async (_req, res) => {
+  try {
+    const { verifySmtpConnection } = await import("../lib/email");
+    await verifySmtpConnection();
+    res.json({ message: "SMTP configuration is valid and verified!" });
+  } catch (err: any) {
+    res.status(400).json({ error: "SMTP Verification Failed", message: err?.message || "Could not connect to SMTP server" });
+  }
+});
+
 export default router;

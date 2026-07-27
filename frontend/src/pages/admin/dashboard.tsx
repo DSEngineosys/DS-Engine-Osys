@@ -35,8 +35,9 @@ import {
   RegistrationRequest,
 } from "@/lib/api-extra";
 import { useAdmin } from "@/lib/admin";
+import { Gift } from "lucide-react";
 
-const SLIDES = ["DS Engineer Details", "Company Improvement Progress", "Branding & Security", "Communication Hub"] as const;
+const SLIDES = ["DS Engineer Details", "Company Improvement Progress", "Branding & Security", "Communication Hub", "BONUS"] as const;
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
@@ -400,8 +401,10 @@ export default function AdminDashboard() {
               </motion.div>
             ) : slide === 2 ? (
               <BrandingSettings />
-            ) : (
+            ) : slide === 3 ? (
               <CommunicationHub />
+            ) : (
+              <BonusManagement />
             )}
           </AnimatePresence>
         </section>
@@ -564,32 +567,66 @@ function BrandingSettings() {
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-sm font-bold text-slate-500 uppercase">SMTP Configuration (Gmail)</h3>
+              <h3 className="text-sm font-bold text-slate-500 uppercase">SMTP Configuration</h3>
               <div className="space-y-2">
-                <Label htmlFor="smtpUser">Gmail SMTP User</Label>
+                <Label htmlFor="smtpUser">Sender Email (Gmail / Custom SMTP)</Label>
                 <Input 
                   id="smtpUser"
                   value={settings.smtpUser || ""}
                   onChange={(e) => setSettings(s => ({ ...s, smtpUser: e.target.value }))}
-                  placeholder="your-app@gmail.com"
+                  placeholder="your-email@gmail.com"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="smtpPass">Gmail App Password</Label>
+                <Label htmlFor="smtpPass">App Password (16 characters)</Label>
                 <div className="flex gap-2">
                   <Input 
                     id="smtpPass"
                     type="password"
                     value={settings.smtpPass || ""}
                     onChange={(e) => setSettings(s => ({ ...s, smtpPass: e.target.value }))}
-                    placeholder="xxxx xxxx xxxx xxxx"
+                    placeholder="abcd efgh ijkl mnop"
                   />
                   <Button onClick={() => {
                     handleSave("smtpUser", settings.smtpUser);
                     handleSave("smtpPass", settings.smtpPass);
+                    if (settings.smtpHost) handleSave("smtpHost", settings.smtpHost);
+                    if (settings.smtpPort) handleSave("smtpPort", settings.smtpPort);
                   }} disabled={saving}><Save className="h-4 w-4" /></Button>
                 </div>
-                <p className="text-[10px] text-muted-foreground">Required for sending registration alerts and approval emails.</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div>
+                  <Label htmlFor="smtpHost" className="text-[11px]">SMTP Server</Label>
+                  <Input 
+                    id="smtpHost"
+                    value={settings.smtpHost || "smtp.gmail.com"}
+                    onChange={(e) => setSettings(s => ({ ...s, smtpHost: e.target.value }))}
+                    placeholder="smtp.gmail.com"
+                    className="text-xs"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="smtpPort" className="text-[11px]">Port (587 or 465)</Label>
+                  <Input 
+                    id="smtpPort"
+                    value={settings.smtpPort || "587"}
+                    onChange={(e) => setSettings(s => ({ ...s, smtpPort: e.target.value }))}
+                    placeholder="587"
+                    className="text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                <p className="text-[11px] font-bold text-slate-700">How to get a Gmail App Password:</p>
+                <ol className="text-[10px] text-slate-500 list-decimal list-inside space-y-0.5 font-medium">
+                  <li>Go to your Google Account (myaccount.google.com)</li>
+                  <li>Enable <strong>2-Step Verification</strong> under Security</li>
+                  <li>Search for <strong>App passwords</strong> and create one named "DS Engineosys"</li>
+                  <li>Paste the 16-letter code here and click <strong>Save</strong></li>
+                </ol>
               </div>
             </div>
           </div>
@@ -643,7 +680,7 @@ function BrandingSettings() {
                     id="promotionalVideo"
                     value={settings.promotionalVideo || ""}
                     onChange={(e) => setSettings(s => ({ ...s, promotionalVideo: e.target.value }))}
-                    placeholder="Video URL or Uploaded Data"
+                    placeholder="Video URL or Uploaded Data (MP4/WebM)"
                     className="text-[10px] font-mono"
                   />
                   <Button 
@@ -658,7 +695,7 @@ function BrandingSettings() {
                 <div className="flex items-center gap-4">
                   <input
                     type="file"
-                    accept="video/*"
+                    accept="video/mp4,video/webm,video/*"
                     id="video-upload"
                     className="hidden"
                     onChange={async (e) => {
@@ -696,8 +733,8 @@ function BrandingSettings() {
                     <label htmlFor="video-upload" className="cursor-pointer">
                       {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Settings className="w-5 h-5 text-primary" />}
                       <div className="text-left">
-                         <p className="text-sm font-bold">Upload Video File</p>
-                         <p className="text-[10px] text-muted-foreground font-medium">MP4, WebM (Max 20MB)</p>
+                         <p className="text-sm font-bold">Upload MP4 / WebM Video File</p>
+                         <p className="text-[10px] text-muted-foreground font-medium font-mono">Supports .mp4, .webm (Max 20MB)</p>
                       </div>
                     </label>
                   </Button>
@@ -706,6 +743,218 @@ function BrandingSettings() {
               <p className="text-[10px] text-muted-foreground">Uploaded videos will play automatically on the DS Hub home page. <strong>Note:</strong> If using a URL, ensure it is a direct link to an MP4/WebM file.</p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function BonusManagement() {
+  const { toast } = useToast();
+  const [bonuses, setBonuses] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [bonusAmount, setBonusAmount] = useState("");
+  const [selectedDeptId, setSelectedDeptId] = useState("");
+  const [subDepartment, setSubDepartment] = useState("");
+
+  const loadData = async () => {
+    try {
+      const [bList, dList] = await Promise.all([
+        api.adminGetBonuses(),
+        fetch("/api/departments").then((r) => r.json()),
+      ]);
+      setBonuses(bList);
+      setDepartments(dList);
+    } catch (err) {
+      console.error("Failed to load bonuses data", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleCreateBonus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !description.trim() || !bonusAmount.trim()) return;
+    setBusy(true);
+    try {
+      await api.createBonus({
+        title,
+        description,
+        bonusAmount,
+        departmentId: selectedDeptId || undefined,
+        subDepartment: subDepartment || undefined,
+      });
+      toast({ title: "Bonus Offer Created Successfully!", description: "DS Engineers will see this offer on their home page." });
+      setTitle("");
+      setDescription("");
+      setBonusAmount("");
+      setSelectedDeptId("");
+      setSubDepartment("");
+      loadData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Failed to create bonus offer", description: err?.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDeleteBonus = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this bonus offer?")) return;
+    try {
+      await api.deleteBonus(id);
+      toast({ title: "Bonus Offer Deleted" });
+      loadData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Failed to delete bonus offer" });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading bonus offers…
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      key="bonus-mgmt"
+      initial={{ x: 30, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -30, opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-6"
+    >
+      <Card className="border-pink-100 shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-pink-600">
+            <Gift className="w-5 h-5" /> Add Bonus Offer
+          </CardTitle>
+          <CardDescription>
+            Create advertisement bonus offers for high-performing employees in specific departments or sub-departments.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleCreateBonus} className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bonus-title">Bonus Title</Label>
+                <Input
+                  id="bonus-title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Q3 Top Performance Bonus"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bonus-amount">Bonus Amount / Reward</Label>
+                <Input
+                  id="bonus-amount"
+                  value={bonusAmount}
+                  onChange={(e) => setBonusAmount(e.target.value)}
+                  placeholder="e.g. $500 or 25% Incentive"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bonus-dept">Target Department / Branch</Label>
+                <select
+                  id="bonus-dept"
+                  value={selectedDeptId}
+                  onChange={(e) => setSelectedDeptId(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm focus:ring-primary/20 outline-none"
+                >
+                  <option value="">All Departments</option>
+                  {departments.map((d: any) => (
+                    <option key={d._id} value={d._id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bonus-subdept">Specific Sub-Department (Optional)</Label>
+                <Input
+                  id="bonus-subdept"
+                  value={subDepartment}
+                  onChange={(e) => setSubDepartment(e.target.value)}
+                  placeholder="e.g. Software Testing or Quality Assurance"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bonus-desc">Bonus Details & Description</Label>
+              <textarea
+                id="bonus-desc"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe the qualifications, reward criteria, and details..."
+                className="w-full min-h-[90px] rounded-xl bg-slate-50 border border-slate-200 p-3 text-sm focus:ring-primary/20 outline-none"
+                required
+              />
+            </div>
+
+            <Button type="submit" className="w-full h-12 font-bold gap-2 bg-gradient-to-r from-pink-500 to-rose-600 text-white" disabled={busy}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
+              Publish Bonus Offer
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-bold">Active Bonus Offers</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {bonuses.length === 0 ? (
+            <p className="text-center py-6 text-sm text-slate-400 font-medium">No bonus offers created yet.</p>
+          ) : (
+            <div className="grid gap-3">
+              {bonuses.map((b: any) => (
+                <div key={b._id} className="p-4 border rounded-2xl bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-extrabold text-slate-900 text-base">{b.title}</span>
+                      <Badge className="bg-pink-100 text-pink-700 font-bold">{b.bonusAmount}</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {b.departmentName || "All Departments"} {b.subDepartment ? `(${b.subDepartment})` : ""}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">{b.description}</p>
+                    <p className="text-[10px] text-slate-400 font-semibold">
+                      Assigned to {b.assignedEmployees?.length || 0} Employees
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-rose-200 text-rose-600 hover:bg-rose-50 font-bold shrink-0"
+                    onClick={() => handleDeleteBonus(b._id)}
+                  >
+                    Delete Offer
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </motion.div>
