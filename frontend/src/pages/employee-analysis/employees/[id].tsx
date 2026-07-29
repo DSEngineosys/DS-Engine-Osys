@@ -7,7 +7,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Mail, Calendar, Hash, CheckCircle2, Clock, AlertCircle, ArrowLeft } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { api } from "@/lib/api-extra";
+import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Gift } from "lucide-react";
 
 export default function EmployeeDetail() {
   const [, params] = useRoute("/employee-analysis/employees/:id");
@@ -17,6 +21,30 @@ export default function EmployeeDetail() {
   const { data: employee, isLoading: isLoadingEmp } = useGetEmployee(id);
   const { data: tasks, isLoading: isLoadingTasks } = useGetTasks({ employeeId: id });
   const { data: performance, isLoading: isLoadingPerf } = useGetPerformanceRecords({ employeeId: id });
+
+  const [bonuses, setBonuses] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api.getBonuses().then(setBonuses).catch(console.error);
+  }, []);
+
+  const employeeBonuses = bonuses.filter(b => b.assignedEmployees?.some((a: any) => a.employeeId === id));
+
+  const handleClaim = async (bonusId: string) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await api.claimBonus(bonusId, id);
+      toast({ title: "Bonus Claimed", description: res.message });
+      const updated = await api.getBonuses();
+      setBonuses(updated);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Claim Failed", description: err?.message || "Could not claim bonus." });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const pendingTasks = tasks?.filter(t => t.status === "pending" || t.status === "in_progress") || [];
   const completedTasks = tasks?.filter(t => t.status === "completed") || [];
@@ -106,6 +134,44 @@ export default function EmployeeDetail() {
                  </div>
                ))}
             </div>
+
+            {employeeBonuses.length > 0 && (
+               <div className="grid gap-4 mt-6">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                     <Gift className="w-4 h-4 text-pink-500" /> Assigned Bonuses
+                  </h3>
+                  {employeeBonuses.map(bonus => {
+                    const assignment = bonus.assignedEmployees.find((a: any) => a.employeeId === id);
+                    const isClaimed = assignment?.status === "claimed";
+                    return (
+                      <div key={bonus._id} className="bg-gradient-to-r from-pink-50 to-rose-50 p-4 rounded-2xl border border-pink-100 shadow-sm flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                         <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                               {bonus.title}
+                               {isClaimed && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                            </h4>
+                            <p className="text-[10px] text-slate-500 font-medium truncate mt-1">{bonus.description}</p>
+                         </div>
+                         <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto">
+                            <span className="text-lg font-black text-pink-600 tracking-tight">{bonus.bonusAmount}</span>
+                            {!isClaimed ? (
+                               <Button 
+                                 size="sm" 
+                                 disabled={busy} 
+                                 onClick={() => handleClaim(bonus._id)}
+                                 className="bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-xl h-8 px-4"
+                               >
+                                 {busy ? "..." : "Claim Bonus"}
+                               </Button>
+                            ) : (
+                               <Badge className="bg-green-100 text-green-700 hover:bg-green-100 uppercase text-[10px] tracking-widest font-black py-1">Claimed</Badge>
+                            )}
+                         </div>
+                      </div>
+                    );
+                  })}
+               </div>
+            )}
           </div>
         ) : null}
       </div>

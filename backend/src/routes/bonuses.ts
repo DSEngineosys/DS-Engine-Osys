@@ -181,4 +181,102 @@ router.post("/bonuses/:id/assign", async (req, res) => {
   res.json({ message: `Bonus assigned to ${employee.name} successfully`, bonus });
 });
 
+// DS Engineer: Automatically assign bonus to eligible employees (performance >= 8.0)
+router.post("/bonuses/:id/assign-batch", async (req, res) => {
+  const session = req.session as unknown as Record<string, unknown>;
+  if (!session.userId) {
+    res.status(401).json({ error: "Unauthorized", message: "Not logged in" });
+    return;
+  }
+
+  const id = req.params.id;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    res.status(400).json({ error: "Invalid bonus ID" });
+    return;
+  }
+
+  const bonus = await Bonus.findById(id);
+  if (!bonus) {
+    res.status(404).json({ error: "Bonus offer not found" });
+    return;
+  }
+
+  // Predefined criteria: active employees with performanceScore >= 8.0
+  const query: any = { status: "active", performanceScore: { $gte: 8 } };
+  if (bonus.departmentId) {
+    query.departmentId = bonus.departmentId;
+  }
+
+  const employees = await Employee.find(query);
+  if (employees.length === 0) {
+    res.status(404).json({ message: "No eligible employees found for this bonus criteria" });
+    return;
+  }
+
+  let assignedCount = 0;
+  for (const emp of employees) {
+    const alreadyAssigned = bonus.assignedEmployees.some(
+      (a) => a.employeeId.toString() === emp._id.toString()
+    );
+    if (!alreadyAssigned) {
+      bonus.assignedEmployees.push({
+        employeeId: emp._id as any,
+        employeeName: emp.name,
+        assignedAt: new Date(),
+        status: "assigned",
+      });
+      assignedCount++;
+    }
+  }
+
+  if (assignedCount > 0) {
+    await bonus.save();
+  }
+
+  res.json({ message: `Bonus assigned to ${assignedCount} eligible employee(s).`, assignedCount, bonus });
+});
+
+// DS Engineer / Employee Account: Claim an assigned bonus
+router.post("/bonuses/:id/claim", async (req, res) => {
+  const id = req.params.id;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    res.status(400).json({ error: "Invalid bonus ID" });
+    return;
+  }
+
+  const schema = z.object({
+    employeeId: z.string().min(1),
+  });
+
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", message: parsed.error.message });
+    return;
+  }
+
+  const { employeeId } = parsed.data;
+
+  const bonus = await Bonus.findById(id);
+  if (!bonus) {
+    res.status(404).json({ error: "Bonus not found" });
+    return;
+  }
+
+  const assignment = bonus.assignedEmployees.find(a => a.employeeId.toString() === employeeId);
+  if (!assignment) {
+    res.status(404).json({ error: "Bonus is not assigned to this employee" });
+    return;
+  }
+
+  if (assignment.status === "claimed") {
+    res.status(400).json({ error: "Bonus is already claimed" });
+    return;
+  }
+
+  assignment.status = "claimed";
+  await bonus.save();
+
+  res.json({ message: "Bonus claimed successfully!", bonus });
+});
+
 export default router;

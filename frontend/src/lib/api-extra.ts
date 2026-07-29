@@ -204,4 +204,15 @@ export const api = {
       body: JSON.stringify({ employeeId }),
     });
   },
+  assignBonusBatch(id: string) {
+    return request<{ message: string; assignedCount: number; bonus: any }>(`/api/bonuses/${id}/assign-batch`, {
+      method: "POST",
+    });
+  },
+  claimBonus(id: string, employeeId: string) {
+    return request<{ message: string; bonus: any }>(`/api/bonuses/${id}/claim`, {
+      method: "POST",
+      body: JSON.stringify({ employeeId }),
+    });
+  },
 };

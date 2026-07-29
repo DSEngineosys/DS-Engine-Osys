@@ -999,8 +999,10 @@ function BonusRow({
           </Badge>
         </div>
         <p className="text-xs text-slate-600 leading-relaxed">{bonus.description}</p>
-        <p className="text-[10px] text-slate-400 font-semibold">
-          Assigned to {bonus.assignedEmployees?.length || 0} Employees
+        <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-2 mt-1">
+          <span>Assigned: <strong className="text-slate-600">{bonus.assignedEmployees?.length || 0}</strong></span>
+          <span className="w-1 h-1 bg-slate-300 rounded-full" />
+          <span className="text-emerald-600">Claimed: <strong>{bonus.assignedEmployees?.filter((a: any) => a.status === "claimed").length || 0}</strong></span>
         </p>
       </div>
 

@@ -9,11 +9,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export default function Hub() {
   const [activePhase, setActivePhase] = useState<"employee" | "product">("employee");
   const [settings, setSettings] = useState<any>({});
   const [bonuses, setBonuses] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [selectedBonusId, setSelectedBonusId] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { data: products, isLoading: loadingProducts } = useGetProducts();
   const { data: employees, isLoading: loadingEmployees } = useGetEmployees();
@@ -47,21 +52,55 @@ export default function Hub() {
     title: b.title,
     tag: b.bonusAmount,
     subtitle: b.description,
-    actionText: "Claim Bonus",
+    actionText: "Assign Bonus",
     bgClass: "from-blue-600 to-indigo-700",
+    isBonus: true,
+    bonusId: b._id
   }));
 
   const combinedOffers = [...bonusOffers, ...productOffers];
   const dsEngineers = employees?.filter(e => e.designation.toLowerCase().includes("engineer")) || [];
 
+  const handleAction = async (item: any) => {
+    if (item.isBonus) {
+      setSelectedBonusId(item.bonusId);
+    } else {
+      // Handle product discount action
+      toast({ title: "Product Offer", description: "Discount claim flow initiated." });
+    }
+  };
+
+  const handleManualAssign = async (bonusId: string, employeeId: string) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await api.assignBonus(bonusId, employeeId);
+      toast({ title: "Bonus Assigned", description: res.message });
+      const updated = await api.getBonuses();
+      setBonuses(updated);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Assignment Failed", description: err?.message || "Could not assign bonus" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const activeBonus = bonuses.find(b => b._id === selectedBonusId);
+  const eligibleEmployees = employees?.filter((e: any) => 
+    e.status === "active" && (!activeBonus?.departmentId || e.departmentId === activeBonus.departmentId)
+  ) || [];
+
   return (
-    <FlipchartLayout activePhase={activePhase} onPhaseChange={setActivePhase}>
+    <>
+      <FlipchartLayout activePhase={activePhase} onPhaseChange={setActivePhase}>
       {activePhase === "employee" ? (
         <EmployeePhase 
           settings={settings} 
           offers={combinedOffers} 
           dsEngineers={dsEngineers} 
           videoRef={videoRef}
+          onOfferAction={handleAction}
+          busy={busy}
         />
       ) : (
         <ProductPhase 
@@ -70,11 +109,61 @@ export default function Hub() {
           loading={loadingProducts}
         />
       )}
-    </FlipchartLayout>
+      </FlipchartLayout>
+
+      <Dialog open={!!selectedBonusId} onOpenChange={(open) => !open && setSelectedBonusId(null)}>
+        <DialogContent className="max-w-md bg-white rounded-3xl overflow-hidden max-h-[80vh] flex flex-col p-0">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="text-2xl font-black">Assign Bonus</DialogTitle>
+            <DialogDescription className="font-medium">
+              Select eligible employees to assign this bonus manually.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto p-6 pt-2 space-y-3">
+            {eligibleEmployees.length === 0 ? (
+              <p className="text-center text-slate-500 font-medium py-4">No eligible employees found.</p>
+            ) : (
+              eligibleEmployees.map((emp: any) => {
+                const isAssigned = activeBonus?.assignedEmployees?.some((a: any) => a.employeeId === emp.id);
+                return (
+                  <div key={emp.id} className="flex items-center justify-between p-3 border border-slate-100 rounded-xl bg-slate-50">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10 border border-slate-200">
+                        <AvatarImage src={emp.avatarUrl} />
+                        <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                          {emp.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800">{emp.name}</h4>
+                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">{emp.designation}</p>
+                      </div>
+                    </div>
+                    {isAssigned ? (
+                      <span className="text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full uppercase tracking-wider">Assigned</span>
+                    ) : (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        disabled={busy}
+                        onClick={() => handleManualAssign(activeBonus._id, emp.id)}
+                        className="font-bold border-pink-200 text-pink-600 hover:bg-pink-50"
+                      >
+                        Assign
+                      </Button>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
-function OfferCarousel({ offers }: { offers: any[] }) {
+function OfferCarousel({ offers, onAction, busy }: { offers: any[], onAction: (item: any) => void, busy?: boolean }) {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -117,8 +206,11 @@ function OfferCarousel({ offers }: { offers: any[] }) {
               </div>
               <div className="flex items-end justify-between pt-2">
                 <span className="text-3xl font-black tracking-tight">{currentItem.tag}</span>
-                <button className="bg-white text-slate-900 hover:bg-slate-100 text-[11px] font-black px-5 py-2.5 rounded-xl shadow-lg uppercase tracking-wider transition-transform active:scale-95">
-                  {currentItem.actionText || "Claim Now"}
+                <button 
+                  disabled={busy}
+                  onClick={() => onAction(currentItem)}
+                  className="bg-white text-slate-900 hover:bg-slate-100 disabled:opacity-50 text-[11px] font-black px-5 py-2.5 rounded-xl shadow-lg uppercase tracking-wider transition-transform active:scale-95">
+                  {busy ? "Processing..." : currentItem.actionText || "Claim Now"}
                 </button>
               </div>
             </CardContent>
@@ -194,12 +286,12 @@ function EngineerCarousel({ engineers }: { engineers: any[] }) {
   );
 }
 
-function EmployeePhase({ settings, offers, dsEngineers, videoRef }: any) {
+function EmployeePhase({ settings, offers, dsEngineers, videoRef, onOfferAction, busy }: any) {
   return (
     <div className="space-y-8 pb-12">
       {/* Product Offers Slider */}
       <section>
-        <OfferCarousel offers={offers} />
+        <OfferCarousel offers={offers} onAction={onOfferAction} busy={busy} />
       </section>
 
       {/* Company Name Section */}
