@@ -1,45 +1,34 @@
-import Setting from "../models/setting.model";
+import twilio from 'twilio';
 
-export async function sendSms(mobile: string, message: string, otp?: string) {
-  const settings = await Setting.find();
-  const config = settings.reduce((acc: any, curr) => {
-    acc[curr.key] = curr.value;
-    return acc;
-  }, {});
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const fromNumber = process.env.TWILIO_FROM_NUMBER;
 
-  const smsApiKey = config.smsApiKey || process.env.SMS_API_KEY;
+if (!accountSid || !authToken || !fromNumber) {
+  console.warn('[SMS] Twilio environment variables are not set. SMS sending will be disabled.');
+}
 
-  console.log(`\n==================================================`);
-  console.log(`[SMS GATEWAY DISPATCH]`);
-  console.log(`📱 Destination Mobile: ${mobile}`);
-  console.log(`🔑 OTP Code: ${otp || "N/A"}`);
-  console.log(`💬 Message: "${message}"`);
-  console.log(`==================================================\n`);
-
-  if (!smsApiKey) {
-    console.log(`[SMS Gateway Info] No external SMS API key (e.g., Twilio/Fast2SMS) configured. Simulated SMS delivery successful for mobile ${mobile}.`);
-    return { success: true, mode: "simulated", mobile, otp };
+/**
+ * Sends an SMS message using Twilio.
+ * @param to Recipient phone number in E.164 format (e.g., +1234567890)
+ * @param body Text message body
+ * @param otp Optional OTP code for logging purposes
+ */
+export async function sendSms(to: string, body: string, otp?: string): Promise<void> {
+  if (!accountSid || !authToken || !fromNumber) {
+    console.warn('[SMS] Skipping send because Twilio credentials are missing');
+    return;
   }
-
+  const client = twilio(accountSid, authToken);
   try {
-    // If user configures Fast2SMS / Twilio webhook URL or API key
-    const res = await fetch("https://www.fast2sms.com/dev/bulkV2", {
-      method: "POST",
-      headers: {
-        authorization: smsApiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        route: "otp",
-        variables_values: otp,
-        numbers: mobile,
-      }),
+    await client.messages.create({
+      body,
+      from: fromNumber,
+      to,
     });
-    const data = await res.json();
-    console.log("[SMS Gateway Success] Response:", data);
-    return { success: true, data };
-  } catch (err: any) {
-    console.warn("[SMS Gateway Warning] External API call failed, falling back to local dispatch:", err?.message);
-    return { success: true, mode: "fallback", mobile, otp };
+    console.info(`[SMS] Sent message to ${to}` + (otp ? ` (OTP: ${otp})` : ''));
+  } catch (err) {
+    console.error('[SMS] Failed to send message', err);
+    throw err;
   }
 }

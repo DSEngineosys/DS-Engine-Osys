@@ -189,7 +189,7 @@ export const api = {
   adminGetBonuses() {
     return request<any[]>("/api/admin/bonuses");
   },
-  createBonus(body: { title: string; description: string; bonusAmount: string; departmentId?: string; subDepartment?: string }) {
+  createBonus(body: { title: string; description: string; bonusAmount: string; departmentId?: string; subDepartment?: string; expiryHours?: number; expiryMinutes?: number; expirySeconds?: number }) {
     return request<any>("/api/admin/bonuses", {
       method: "POST",
       body: JSON.stringify(body),

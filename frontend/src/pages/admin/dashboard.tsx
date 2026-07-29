@@ -35,7 +35,8 @@ import {
   RegistrationRequest,
 } from "@/lib/api-extra";
 import { useAdmin } from "@/lib/admin";
-import { Gift } from "lucide-react";
+import { Gift, Timer } from "lucide-react";
+import { CountdownTimer } from "@/components/countdown-timer";
 
 const SLIDES = ["DS Engineer Details", "Company Improvement Progress", "Branding & Security", "Communication Hub", "BONUS"] as const;
 
@@ -736,6 +737,10 @@ function BonusManagement() {
   const [bonusAmount, setBonusAmount] = useState("");
   const [selectedDeptId, setSelectedDeptId] = useState("");
   const [subDepartment, setSubDepartment] = useState("");
+  // Expiry duration state
+  const [expiryHours, setExpiryHours] = useState(0);
+  const [expiryMinutes, setExpiryMinutes] = useState(0);
+  const [expirySeconds, setExpirySeconds] = useState(0);
 
   const loadData = async () => {
     try {
@@ -767,13 +772,19 @@ function BonusManagement() {
         bonusAmount,
         departmentId: selectedDeptId || undefined,
         subDepartment: subDepartment || undefined,
+        expiryHours,
+        expiryMinutes,
+        expirySeconds,
       });
-      toast({ title: "Bonus Offer Created Successfully!", description: "DS Engineers will see this offer on their home page." });
+      toast({ title: "Bonus Offer Created!", description: "DS Engineers will see this offer with a live countdown timer." });
       setTitle("");
       setDescription("");
       setBonusAmount("");
       setSelectedDeptId("");
       setSubDepartment("");
+      setExpiryHours(0);
+      setExpiryMinutes(0);
+      setExpirySeconds(0);
       loadData();
     } catch (err: any) {
       toast({ variant: "destructive", title: "Failed to create bonus offer", description: err?.message });
@@ -886,6 +897,60 @@ function BonusManagement() {
               />
             </div>
 
+            {/* HH:MM:SS Expiry Picker */}
+            <div className="space-y-2 bg-blue-50/60 rounded-2xl p-4 border border-blue-100">
+              <Label className="flex items-center gap-1.5 text-blue-700 font-bold">
+                <Timer className="w-4 h-4" />
+                Offer Validity Period (HH : MM : SS)
+              </Label>
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col items-center gap-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={99}
+                    value={expiryHours}
+                    onChange={(e) => setExpiryHours(Math.max(0, Math.min(99, Number(e.target.value))))}
+                    className="w-20 text-center font-mono font-bold text-lg h-12 rounded-xl bg-white"
+                    placeholder="HH"
+                  />
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Hours</span>
+                </div>
+                <span className="text-2xl font-black text-slate-400 pb-4">:</span>
+                <div className="flex flex-col items-center gap-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={expiryMinutes}
+                    onChange={(e) => setExpiryMinutes(Math.max(0, Math.min(59, Number(e.target.value))))}
+                    className="w-20 text-center font-mono font-bold text-lg h-12 rounded-xl bg-white"
+                    placeholder="MM"
+                  />
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Minutes</span>
+                </div>
+                <span className="text-2xl font-black text-slate-400 pb-4">:</span>
+                <div className="flex flex-col items-center gap-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={expirySeconds}
+                    onChange={(e) => setExpirySeconds(Math.max(0, Math.min(59, Number(e.target.value))))}
+                    className="w-20 text-center font-mono font-bold text-lg h-12 rounded-xl bg-white"
+                    placeholder="SS"
+                  />
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Seconds</span>
+                </div>
+                <div className="ml-4 flex-1">
+                  <p className="text-[11px] text-blue-600 font-medium leading-relaxed">
+                    Set the time limit for this offer. When the timer reaches <strong>00:00:00</strong>, the bonus is automatically removed from both the Admin Dashboard and DS Engineer Home Page.
+                    Leave all fields at <strong>0</strong> for a permanent offer.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <Button type="submit" className="w-full h-12 font-bold gap-2 bg-gradient-to-r from-pink-500 to-rose-600 text-white" disabled={busy}>
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
               Publish Bonus Offer
@@ -904,35 +969,54 @@ function BonusManagement() {
           ) : (
             <div className="grid gap-3">
               {bonuses.map((b: any) => (
-                <div key={b._id} className="p-4 border rounded-2xl bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-extrabold text-slate-900 text-base">{b.title}</span>
-                      <Badge className="bg-pink-100 text-pink-700 font-bold">{b.bonusAmount}</Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {b.departmentName || "All Departments"} {b.subDepartment ? `(${b.subDepartment})` : ""}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">{b.description}</p>
-                    <p className="text-[10px] text-slate-400 font-semibold">
-                      Assigned to {b.assignedEmployees?.length || 0} Employees
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-rose-200 text-rose-600 hover:bg-rose-50 font-bold shrink-0"
-                    onClick={() => handleDeleteBonus(b._id)}
-                  >
-                    Delete Offer
-                  </Button>
-                </div>
+                <BonusRow key={b._id} bonus={b} onDelete={handleDeleteBonus} onExpire={loadData} />
               ))}
             </div>
           )}
         </CardContent>
       </Card>
     </motion.div>
+  );
+}
+
+function BonusRow({
+  bonus,
+  onDelete,
+  onExpire,
+}: {
+  bonus: any;
+  onDelete: (id: string) => void;
+  onExpire: () => void;
+}) {
+  return (
+    <div className="p-4 border rounded-2xl bg-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-pink-200 transition-colors">
+      <div className="space-y-1 flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-extrabold text-slate-900 text-base">{bonus.title}</span>
+          <Badge className="bg-pink-100 text-pink-700 font-bold">{bonus.bonusAmount}</Badge>
+          <Badge variant="outline" className="text-xs">
+            {bonus.departmentName || "All Departments"} {bonus.subDepartment ? `(${bonus.subDepartment})` : ""}
+          </Badge>
+        </div>
+        <p className="text-xs text-slate-600 leading-relaxed">{bonus.description}</p>
+        <p className="text-[10px] text-slate-400 font-semibold">
+          Assigned to {bonus.assignedEmployees?.length || 0} Employees
+        </p>
+      </div>
+
+      {/* Countdown timer on the right */}
+      <div className="flex items-center gap-3 shrink-0">
+        <CountdownTimer expiry={bonus.expiry} onExpire={onExpire} />
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-rose-200 text-rose-600 hover:bg-rose-50 font-bold"
+          onClick={() => onDelete(bonus._id)}
+        >
+          Delete
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -945,6 +1029,7 @@ function StatusBadge({ status }: { status: string }) {
   }
   return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Pending</Badge>;
 }
+
 
 function StatTile({
   label,

@@ -7,17 +7,21 @@ import { z } from "zod";
 
 const router = Router();
 
-// Get active bonus offers for DS Engineer home page
+// Get active (non-expired) bonus offers for DS Engineer home page
 router.get("/bonuses", async (_req, res) => {
   try {
-    const bonuses = await Bonus.find({ status: "active" }).sort({ createdAt: -1 });
+    const now = new Date();
+    const bonuses = await Bonus.find({
+      status: "active",
+      $or: [{ expiry: { $exists: false } }, { expiry: null }, { expiry: { $gt: now } }],
+    }).sort({ createdAt: -1 });
     res.json(bonuses);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch bonuses" });
   }
 });
 
-// Admin: Get all bonus offers
+// Admin: Get all bonus offers (filters expired ones too)
 router.get("/admin/bonuses", async (req, res) => {
   const session = req.session as unknown as Record<string, unknown>;
   if (!session.isAdmin) {
@@ -25,14 +29,17 @@ router.get("/admin/bonuses", async (req, res) => {
     return;
   }
   try {
-    const bonuses = await Bonus.find().sort({ createdAt: -1 });
+    const now = new Date();
+    const bonuses = await Bonus.find({
+      $or: [{ expiry: { $exists: false } }, { expiry: null }, { expiry: { $gt: now } }],
+    }).sort({ createdAt: -1 });
     res.json(bonuses);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch admin bonuses" });
   }
 });
 
-// Admin: Create a new bonus offer
+// Admin: Create a new bonus offer with optional HH:MM:SS expiry
 router.post("/admin/bonuses", async (req, res) => {
   const session = req.session as unknown as Record<string, unknown>;
   if (!session.isAdmin) {
@@ -46,6 +53,9 @@ router.post("/admin/bonuses", async (req, res) => {
     bonusAmount: z.string().min(1),
     departmentId: z.string().optional(),
     subDepartment: z.string().optional(),
+    expiryHours: z.number().min(0).max(99).optional(),
+    expiryMinutes: z.number().min(0).max(59).optional(),
+    expirySeconds: z.number().min(0).max(59).optional(),
   });
 
   const parsed = schema.safeParse(req.body);
@@ -54,7 +64,15 @@ router.post("/admin/bonuses", async (req, res) => {
     return;
   }
 
-  const { title, description, bonusAmount, departmentId, subDepartment } = parsed.data;
+  const { title, description, bonusAmount, departmentId, subDepartment, expiryHours, expiryMinutes, expirySeconds } = parsed.data;
+
+  // Compute absolute expiry timestamp from HH:MM:SS
+  let expiry: Date | undefined;
+  const totalMs =
+    ((expiryHours ?? 0) * 3600 + (expiryMinutes ?? 0) * 60 + (expirySeconds ?? 0)) * 1000;
+  if (totalMs > 0) {
+    expiry = new Date(Date.now() + totalMs);
+  }
 
   let departmentName = "";
   if (departmentId && mongoose.Types.ObjectId.isValid(departmentId)) {
@@ -70,6 +88,7 @@ router.post("/admin/bonuses", async (req, res) => {
       departmentId: departmentId && mongoose.Types.ObjectId.isValid(departmentId) ? departmentId : undefined,
       departmentName: departmentName || "All Departments",
       subDepartment: subDepartment || "",
+      expiry,
       status: "active",
       assignedEmployees: [],
     });

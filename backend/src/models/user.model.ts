@@ -10,6 +10,8 @@ export interface IUser extends Document {
   avatarUrl?: string;
   resetOtp?: string;
   resetOtpExpires?: Date;
+  lastOtpSentAt?: Date;
+  performanceScore?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +27,8 @@ const UserSchema: Schema = new Schema(
     avatarUrl: { type: String },
     resetOtp: { type: String },
     resetOtpExpires: { type: Date },
+    lastOtpSentAt: { type: Date },
+    performanceScore: { type: Number, default: 0 },
   },
   {
     timestamps: true,

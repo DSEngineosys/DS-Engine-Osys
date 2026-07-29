@@ -2,16 +2,29 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { PublicLayout } from "@/components/layout";
 import { motion } from "framer-motion";
-import { BarChart3, Users, Target, Shield, ArrowRight, PlayCircle, TrendingUp } from "lucide-react";
+import { BarChart3, Users, Target, Shield, ArrowRight, PlayCircle, TrendingUp, Gift } from "lucide-react";
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api-extra";
 import { useGetDashboardSummary } from "@workspace/api-client-react";
+import { Badge } from "@/components/ui/badge";
+import { CountdownTimer } from "@/components/countdown-timer";
 
 export default function Home() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [bonuses, setBonuses] = useState<any[]>([]);
   const { data: stats } = useGetDashboardSummary();
 
+  const fetchBonuses = async () => {
+    try {
+      const data = await api.getBonuses();
+      setBonuses(data);
+    } catch (err) {
+      console.error("Failed to fetch bonuses:", err);
+    }
+  };
+
   useEffect(() => {
+    fetchBonuses();
     api.getSettings().then(settings => {
       if (settings.promotionalVideo) {
         setVideoUrl(settings.promotionalVideo);
@@ -229,6 +242,49 @@ export default function Home() {
               </ul>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Active Bonus Offers Section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4 flex items-center justify-center gap-2">
+              <Gift className="w-8 h-8 text-pink-500" /> Active Bonus Offers
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Exclusive performance incentives for DS Engineers. Keep an eye on the countdown!
+            </p>
+          </div>
+
+          {bonuses.length === 0 ? (
+            <div className="text-center p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+              <p className="text-slate-500 font-medium">No active bonus offers at the moment.</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {bonuses.map((bonus: any) => (
+                <div key={bonus._id} className="bg-white rounded-3xl p-6 border shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <Badge className="bg-pink-100 text-pink-700 hover:bg-pink-100 mb-2">
+                        {bonus.departmentName || "All Departments"} {bonus.subDepartment ? `(${bonus.subDepartment})` : ""}
+                      </Badge>
+                      <h3 className="text-xl font-bold">{bonus.title}</h3>
+                    </div>
+                    <div className="bg-emerald-100 text-emerald-700 font-bold px-3 py-1 rounded-xl whitespace-nowrap">
+                      {bonus.bonusAmount}
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-600 flex-1">{bonus.description}</p>
+                  
+                  <div className="pt-4 border-t flex items-center justify-between mt-auto">
+                    <CountdownTimer expiry={bonus.expiry} onExpire={fetchBonuses} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </PublicLayout>

@@ -8,6 +8,7 @@ export interface IAssignedEmployee {
 }
 
 export interface IBonus extends Document {
+  expiry?: Date;
   title: string;
   description: string;
   bonusAmount: string;
@@ -28,6 +29,7 @@ const BonusSchema: Schema = new Schema(
     departmentId: { type: Schema.Types.ObjectId, ref: "Department" },
     departmentName: { type: String },
     subDepartment: { type: String, default: "" },
+    expiry: { type: Date },
     status: { type: String, default: "active" },
     assignedEmployees: [
       {
