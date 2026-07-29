@@ -590,32 +590,7 @@ function BrandingSettings() {
                   <Button onClick={() => {
                     handleSave("smtpUser", settings.smtpUser);
                     handleSave("smtpPass", settings.smtpPass);
-                    if (settings.smtpHost) handleSave("smtpHost", settings.smtpHost);
-                    if (settings.smtpPort) handleSave("smtpPort", settings.smtpPort);
                   }} disabled={saving}><Save className="h-4 w-4" /></Button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <div>
-                  <Label htmlFor="smtpHost" className="text-[11px]">SMTP Server</Label>
-                  <Input 
-                    id="smtpHost"
-                    value={settings.smtpHost || "smtp.gmail.com"}
-                    onChange={(e) => setSettings(s => ({ ...s, smtpHost: e.target.value }))}
-                    placeholder="smtp.gmail.com"
-                    className="text-xs"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="smtpPort" className="text-[11px]">Port (587 or 465)</Label>
-                  <Input 
-                    id="smtpPort"
-                    value={settings.smtpPort || "587"}
-                    onChange={(e) => setSettings(s => ({ ...s, smtpPort: e.target.value }))}
-                    placeholder="587"
-                    className="text-xs"
-                  />
                 </div>
               </div>
 
