@@ -262,20 +262,24 @@ router.post("/auth/forgot-password/request-otp", async (req, res) => {
     return;
   }
 
-  // Generate 6-digit OTP & expiration (15 mins)
+  // Generate 6-digit OTP & expiration (60 seconds)
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   user.resetOtp = otp;
-  user.resetOtpExpires = new Date(Date.now() + 15 * 60 * 1000);
+  user.resetOtpExpires = new Date(Date.now() + 60 * 1000); // 60 seconds
   await user.save();
 
   const maskedMobile = user.mobile
     ? user.mobile.replace(/(\+\d{1,3}\s?\d{2})\d+(\d{2})/, "$1****$2")
     : "Registered Mobile";
 
+  let smsSuccess = false;
+  let emailSuccess = false;
+
   // Send OTP SMS to mobile
   if (user.mobile) {
     try {
       await sendSms(user.mobile, `[DS Engineosys] Your password reset authorization OTP code is: ${otp}`, otp);
+      smsSuccess = true;
     } catch (smsErr) {
       console.error("[OTP SMS Error] Failed to dispatch SMS:", smsErr);
     }
@@ -286,7 +290,7 @@ router.post("/auth/forgot-password/request-otp", async (req, res) => {
     await sendEmail(
       user.email,
       "Password Reset Verification Code - DS Engineosys",
-      `Your OTP code for resetting your password is: ${otp}. It will expire in 15 minutes.`,
+      `Your OTP code for resetting your password is: ${otp}. It will expire in 60 seconds.`,
       `
       <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px;">
         <h2 style="color: #0f172a; margin-bottom: 8px;">Password Reset Authorization</h2>
@@ -295,12 +299,18 @@ router.post("/auth/forgot-password/request-otp", async (req, res) => {
         <div style="background-color: #f8fafc; padding: 20px; border-radius: 12px; text-align: center; margin: 24px 0; border: 1px dashed #cbd5e1;">
           <span style="font-family: monospace; font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #ec4899;">${otp}</span>
         </div>
-        <p style="color: #64748b; font-size: 12px;">This code is valid for 15 minutes. If you did not request a password reset, please ignore this email.</p>
+        <p style="color: #64748b; font-size: 12px;">This code is valid for 60 seconds. If you did not request a password reset, please ignore this email.</p>
       </div>
       `
     );
+    emailSuccess = true;
   } catch (err) {
     console.error("[OTP Email Error] Failed to send OTP email:", err);
+  }
+
+  if (!smsSuccess && !emailSuccess) {
+    res.status(500).json({ error: "Delivery Failed", message: "Failed to send OTP to both email and mobile. Please check system configurations." });
+    return;
   }
 
   res.json({

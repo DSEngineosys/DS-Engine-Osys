@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, KeyRound, CheckCircle2, Phone, ShieldCheck, ArrowLeft, MessageSquare } from "lucide-react";
 import { api } from "@/lib/api-extra";
 import { motion, AnimatePresence } from "framer-motion";
+import { useCountdown } from "@/hooks/use-countdown";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -32,6 +33,8 @@ export default function Login() {
   const [forgotStep, setForgotStep] = useState<"request" | "otp" | "verified" | "reset">("request");
   const [identifier, setIdentifier] = useState("");
   const [forgotData, setForgotData] = useState<{ email: string; mobile: string; maskedMobile: string; otp?: string; name: string } | null>(null);
+  const [otpExpiryDate, setOtpExpiryDate] = useState<Date | null>(null);
+  const { isExpired: isOtpExpired, seconds: otpSeconds, minutes: otpMinutes } = useCountdown(otpExpiryDate);
   const [userEnteredOtp, setUserEnteredOtp] = useState("");
   const [busy, setBusy] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -68,14 +71,15 @@ export default function Login() {
     );
   }
 
-  async function handleRequestOtp(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleRequestOtp(e?: React.FormEvent) {
+    if (e) e.preventDefault();
     if (!identifier.trim()) return;
     setBusy(true);
     try {
       const res = await api.forgotPasswordRequestOtp(identifier);
       setForgotData(res);
       setForgotStep("otp");
+      setOtpExpiryDate(new Date(Date.now() + 60 * 1000));
       toast({
         title: "SMS Verification OTP Sent",
         description: `OTP sent to registered mobile number ${res.maskedMobile}`,
@@ -352,12 +356,24 @@ export default function Login() {
                     />
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" onClick={() => setForgotStep("request")} className="flex-1">
-                      <ArrowLeft className="w-4 h-4 mr-1" /> Back
-                    </Button>
-                    <Button type="submit" className="flex-1 font-bold">
-                      Verify OTP
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" onClick={() => { setForgotStep("request"); setOtpExpiryDate(null); }} className="flex-1">
+                        <ArrowLeft className="w-4 h-4 mr-1" /> Back
+                      </Button>
+                      <Button type="submit" className="flex-1 font-bold" disabled={isOtpExpired || busy}>
+                        Verify OTP
+                      </Button>
+                    </div>
+                    
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      onClick={() => handleRequestOtp()} 
+                      disabled={!isOtpExpired || busy}
+                      className="w-full text-sm font-bold text-slate-500 hover:text-slate-700"
+                    >
+                      {isOtpExpired ? "Resend OTP" : `Resend OTP in 00:${String(otpSeconds).padStart(2, '0')}`}
                     </Button>
                   </div>
                 </form>
