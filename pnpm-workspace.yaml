@@ -4,6 +4,9 @@ packages:
   - shared/*
   - scripts
 
+allowBuilds:
+  esbuild: true
+
 autoInstallPeers: false
 
 catalog:
