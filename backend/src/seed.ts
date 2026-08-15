@@ -57,6 +57,15 @@ async function seed() {
       status: "approved",
     });
 
+    await User.create({
+      name: "HR Manager",
+      email: "hr@admin.com",
+      hrId: "EMP1001HR",
+      password: "GENHR@100",
+      role: "hr",
+      status: "approved",
+    });
+
     console.log("Created users.");
 
     // 2. Create Departments (Matching the new UI flow)

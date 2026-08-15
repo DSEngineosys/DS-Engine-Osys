@@ -17,6 +17,10 @@ import Register from "@/pages/register";
 import AdminLogin from "@/pages/admin/login";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminAction from "@/pages/admin/action";
+import HRLogin from "@/pages/hr/login";
+import HRDashboard from "@/pages/hr/dashboard";
+import EmployeeLogin from "@/pages/employee/login";
+import EmployeeWorkspace from "@/pages/employee/workspace";
 import Hub from "@/pages/hub";
 import DepartmentSelection from "@/pages/employee-analysis/departments/selection";
 import SubDepartmentSelection from "@/pages/employee-analysis/departments/sub-selection";
@@ -54,6 +58,15 @@ function Router() {
 
       {/* Main App Hub */}
       <Route path="/dashboard" component={Hub} />
+      
+      {/* HR Portal */}
+      <Route path="/hr/login" component={HRLogin} />
+      <Route path="/hr/dashboard" component={HRDashboard} />
+
+      {/* Employee Portal */}
+      <Route path="/employee/login" component={EmployeeLogin} />
+      <Route path="/employee/workspace" component={EmployeeWorkspace} />
+
       <Route path="/growth" component={GrowthPage} />
       <Route path="/account" component={AccountPage} />
       <Route path="/notifications" component={NotificationsPage} />

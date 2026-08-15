@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -162,6 +162,55 @@ export function AuthenticatedLayout({ children }: { children: ReactNode }) {
   );
 }
 
+function LoginDropdown() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const options = [
+    { label: "DS Engineer Login", href: "/login", icon: "🔬" },
+    { label: "HR Login", href: "/hr/login", icon: "👔" },
+    { label: "Employee Login", href: "/employee/login", icon: "👤" },
+  ];
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1"
+      >
+        Login
+        <svg className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-8 w-52 bg-white border border-slate-100 shadow-xl rounded-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+          {options.map((opt) => (
+            <Link
+              key={opt.href}
+              href={opt.href}
+              onClick={() => setOpen(false)}
+            >
+              <div className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-primary/5 hover:text-primary transition-colors cursor-pointer">
+                <span className="text-base">{opt.icon}</span>
+                {opt.label}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-pink-200 via-pink-50 to-white">
@@ -187,9 +236,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
           <Link href="/help" className="text-sm font-medium hover:text-primary transition-colors">
             Help
           </Link>
-          <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors">
-            Login
-          </Link>
+          <LoginDropdown />
           <Link href="/admin/login" data-testid="link-admin-login">
             <Button variant="outline" size="sm" className="border-primary/40 text-primary hover:bg-primary/5">
               Admin Login
@@ -212,6 +259,31 @@ export function PublicLayout({ children }: { children: ReactNode }) {
           <Link href="/about" className="text-sm text-muted-foreground hover:text-foreground">Privacy</Link>
         </div>
       </footer>
+    </div>
+  );
+}
+
+export function HRLayout({ children }: { children: ReactNode }) {
+  const { user, logout } = useAuth();
+  
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <header className="flex h-16 items-center border-b px-4 lg:px-6 bg-white gap-4 justify-between">
+        <div className="flex items-center gap-2">
+          <Link href="/hr/dashboard" className="flex items-center gap-2 font-bold text-slate-800 text-xl">
+            <span className="bg-blue-600 text-white p-1 rounded">HR</span> Portal
+          </Link>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium text-slate-600 hidden sm:inline-block">Logged in as {user?.name || "HR Manager"}</span>
+          <Button variant="outline" size="sm" onClick={logout} className="text-destructive">
+            <LogOut className="h-4 w-4 mr-2" /> Logout
+          </Button>
+        </div>
+      </header>
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8">
+        {children}
+      </main>
     </div>
   );
 }

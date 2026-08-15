@@ -3,6 +3,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { connectToDatabase } from "./lib/db";
 import Bonus from "./models/bonus.model";
+import { startDailyCollector } from "./jobs/daily-collector";
 
 const rawPort = process.env["PORT"];
 
@@ -20,6 +21,9 @@ if (Number.isNaN(port) || port <= 0) {
 
 // Connect to MongoDB
 await connectToDatabase();
+
+// Start daily data collection job
+startDailyCollector();
 
 // Background cleanup: remove expired bonus offers every 30 seconds
 setInterval(async () => {

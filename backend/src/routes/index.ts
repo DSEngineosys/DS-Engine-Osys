@@ -11,6 +11,8 @@ import analyticsRouter from "./analytics";
 import settingsRouter from "./settings";
 import notificationsRouter from "./notifications";
 import bonusesRouter from "./bonuses";
+import hrRouter from "./hr";
+import employeeWorkspaceRouter from "./employee-workspace";
 
 const router: IRouter = Router();
 
@@ -26,5 +28,7 @@ router.use(analyticsRouter);
 router.use(settingsRouter);
 router.use(notificationsRouter);
 router.use(bonusesRouter);
+router.use(hrRouter);
+router.use(employeeWorkspaceRouter);
 
 export default router;

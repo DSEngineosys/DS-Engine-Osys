@@ -2,6 +2,7 @@ import { Router } from "express";
 import User from "../models/user.model";
 import Setting from "../models/setting.model";
 import Notification from "../models/notification.model";
+import Employee from "../models/employee.model";
 import { sendEmail } from "../lib/email";
 import { sendSms } from "../lib/sms";
 import { z } from "zod";
@@ -21,7 +22,7 @@ const setPasswordSchema = z.object({
 });
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string(),
   password: z.string(),
 });
 
@@ -216,27 +217,49 @@ router.post("/auth/login", async (req, res) => {
     return;
   }
   const { email, password } = parsed.data;
-  const user = await User.findOne({ email });
+  
+  // First check User collection (DS Engineers, HR, Admin)
+  let user = await User.findOne({ $or: [{ email }, { hrId: email }] });
+  let isEmployee = false;
+
+  // If not found, check Employee collection
+  if (!user) {
+    user = await Employee.findOne({ employeeId: email });
+    isEmployee = !!user;
+  }
+
   if (!user || !user.password || user.password !== password) {
-    res.status(401).json({ error: "Unauthorized", message: "Invalid email or password" });
+    res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
     return;
   }
-  if (user.status === "pending") {
-    res.status(403).json({
-      error: "Pending",
-      message: "Your account is awaiting Admin approval.",
-    });
-    return;
+
+  if (!isEmployee) {
+    if (user.status === "pending") {
+      res.status(403).json({ error: "Pending", message: "Your account is awaiting Admin approval." });
+      return;
+    }
+    if (user.status === "denied") {
+      res.status(403).json({ error: "Denied", message: "Admin has denied your access to the platform." });
+      return;
+    }
+  } else {
+    // Check employee account status
+    if ((user as any).accountStatus === "Inactive") {
+      res.status(403).json({ error: "Inactive", message: "Your account is inactive." });
+      return;
+    }
   }
-  if (user.status === "denied") {
-    res.status(403).json({
-      error: "Denied",
-      message: "Admin has denied your access to the platform.",
-    });
-    return;
-  }
-  (req.session as unknown as Record<string, unknown>).userId = user._id;
-  res.json({ user: formatUser(user), message: "Login successful" });
+
+  const session = req.session as unknown as Record<string, unknown>;
+  session.userId = user._id;
+  session.role = isEmployee ? "employee" : user.role;
+
+  res.json({ 
+    user: isEmployee ? { 
+      id: user._id, name: user.name, role: "employee", email: user.email, employeeId: (user as any).employeeId 
+    } : formatUser(user), 
+    message: "Login successful" 
+  });
 });
 
 // Forgot Password - Request OTP (Sends OTP via Email & SMS)
