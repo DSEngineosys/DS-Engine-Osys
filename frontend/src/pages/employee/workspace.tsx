@@ -152,7 +152,7 @@ export default function EmployeeWorkspace() {
                     >
                       <option value="">-- Choose Product --</option>
                       {products?.map((p: any) => (
-                        <option key={p._id} value={p._id}>{p.name} (Stock: {p.stock} | ${p.price})</option>
+                        <option key={p._id} value={p._id}>{p.name} (Stock: {p.stock} | {p.price}₹)</option>
                       ))}
                     </select>
                   </div>
@@ -269,11 +269,11 @@ export default function EmployeeWorkspace() {
             <div className="grid grid-cols-2 gap-3">
               {products?.map((p: any) => (
                 <div key={p._id} className="bg-white border rounded-xl p-3 shadow-sm">
-                  <div className="text-xs font-bold text-blue-600 mb-1">{p.sku}</div>
+
                   <h3 className="font-bold text-sm leading-tight mb-1">{p.name}</h3>
                   <div className="text-xs text-slate-500 mb-2">{p.category}</div>
                   <div className="flex justify-between items-center mt-auto pt-2 border-t">
-                    <span className="font-black text-slate-800">${p.price}</span>
+                    <span className="font-black text-slate-800">{p.price}₹</span>
                     <span className="text-xs bg-slate-100 px-1.5 py-0.5 rounded">Stock: {p.stock}</span>
                   </div>
                 </div>

@@ -45,7 +45,7 @@ export default function HRLogin() {
       <div className="min-h-[80vh] flex items-center justify-center py-12 px-4">
         <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-2xl shadow-lg border border-slate-100">
           <div className="text-center">
-            <div className="mx-auto w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg mb-4">
+            <div className="mx-auto w-16 h-16 bg-primary text-white rounded-xl flex items-center justify-center text-2xl font-bold shadow-md mb-6">
               <Shield className="w-8 h-8" />
             </div>
             <h1 className="text-3xl font-extrabold text-gray-900">HR Portal</h1>
@@ -84,7 +84,7 @@ export default function HRLogin() {
                 </button>
               </div>
             </div>
-            <Button type="submit" disabled={loading} className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700">
+            <Button type="submit" disabled={loading} className="w-full h-12 text-base font-bold shadow-md">
               {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
               Sign in to HR Portal
             </Button>
