@@ -7,19 +7,16 @@ export interface IProduct extends Document {
   subCategory?: string;
   type?: string;
   description?: string;
-  ingredients?: string;
+  ingredients?: string[];
   ageGroup?: string;
   gender?: string;
   manufactureDate?: Date;
   expiryDate?: Date;
   batchNumber?: string;
-  sku: string;
   mrp: number;
   discountPercent?: number;
   taxPercent?: number;
-  costPrice: number;
   price: number;
-  cost: number;
   stock: number;
   soldUnits: number;
   revenue: number;
@@ -39,19 +36,16 @@ const ProductSchema: Schema = new Schema(
     subCategory: { type: String },
     type: { type: String },
     description: { type: String },
-    ingredients: { type: String },
+    ingredients: [{ type: String }],
     ageGroup: { type: String },
     gender: { type: String },
     manufactureDate: { type: Date },
     expiryDate: { type: Date },
     batchNumber: { type: String },
-    sku: { type: String, required: true, unique: true },
     mrp: { type: Number, default: 0 },
     discountPercent: { type: Number, default: 0 },
     taxPercent: { type: Number, default: 0 },
-    costPrice: { type: Number, default: 0 },
     price: { type: Number, required: true },
-    cost: { type: Number, required: true },
     stock: { type: Number, required: true, default: 0 },
     soldUnits: { type: Number, required: true, default: 0 },
     revenue: { type: Number, required: true, default: 0 },

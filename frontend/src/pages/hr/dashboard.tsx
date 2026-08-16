@@ -8,6 +8,24 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Users, Package, HelpCircle, Mail, Settings, RefreshCcw } from "lucide-react";
 
+const PRODUCT_CATEGORIES: Record<string, string[]> = {
+  "Skincare": ["Face Wash", "Moisturizer", "Serum", "Sunscreen", "Face Cream", "Toner", "Face Mask"],
+  "Haircare": ["Shampoo", "Conditioner", "Hair Oil", "Hair Serum", "Hair Mask", "Hair Color"],
+  "Makeup": ["Foundation", "Concealer", "Compact Powder", "Lipstick", "Lip Gloss", "Mascara", "Eyeliner", "Blush"],
+  "Fragrance": ["Perfume", "Eau de Parfum", "Eau de Toilette", "Body Mist", "Deodorant"],
+  "Body Care": ["Body Lotion", "Body Wash", "Body Scrub", "Hand Cream", "Body Butter"],
+  "Bath & Hygiene": ["Soap", "Shower Gel", "Bath Salts", "Hand Wash"],
+  "Sun Care": ["Sunscreen Lotion", "Sunscreen Gel", "After-Sun Lotion", "Sun Protection Spray"],
+  "Men's Grooming": ["Beard Oil", "Shaving Cream", "Aftershave", "Face Wash", "Men's Moisturizer"],
+  "Lip Care": ["Lip Balm", "Lip Scrub", "Lip Mask", "Tinted Lip Balm"],
+  "Beauty & Personal Care": ["Facial Kits"],
+  "Beauty Tools": ["Cosmetic Accessories", "Makeup Remover"]
+};
+
+const PRODUCT_TYPES = ["Cream", "Lotion", "Gel", "Serum", "Oil", "Powder", "Liquid", "Spray", "Mist", "Balm", "Stick", "Mask", "Scrub", "Wash", "Shampoo", "Conditioner", "Soap/Bar", "Perfume", "Eau de Parfum", "Eau de Toilette", "Pencil", "Sheet Mask"];
+
+const INGREDIENTS_LIST = ["Aqua (Water)", "Glycerin", "Aloe Vera", "Hyaluronic Acid", "Niacinamide", "Salicylic Acid", "Glycolic Acid", "Lactic Acid", "Ascorbic Acid (Vitamin C)", "Vitamin E", "Retinol", "Ceramides", "Squalane", "Shea Butter", "Cocoa Butter", "Coconut Oil", "Jojoba Oil", "Argan Oil", "Castor Oil", "Rosehip Oil", "Tea Tree Oil", "Green Tea Extract", "Chamomile Extract", "Cucumber Extract", "Turmeric Extract", "Licorice Extract", "Rosemary Extract", "Centella Asiatica", "Zinc Oxide", "Titanium Dioxide", "Kaolin", "Bentonite", "Charcoal", "Beeswax", "Cetearyl Alcohol", "Cetyl Alcohol", "Stearic Acid", "Dimethicone", "Carbomer", "Xanthan Gum", "Tocopherol", "Panthenol", "Biotin", "Keratin", "Hydrolyzed Protein", "Sodium Hyaluronate", "Sodium Benzoate", "Potassium Sorbate", "Phenoxyethanol", "Citric Acid", "Fragrance", "Parfum", "Menthol", "Peppermint Extract", "Lavender Extract", "Rose Extract", "Vanilla Extract"];
+
 export default function HRDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -26,8 +44,10 @@ export default function HRDashboard() {
     employeeId: "", name: "", email: "", password: "", departmentId: "", 
     subDepartment: "General", contactNumber: "+91 ", gender: "Male", location: "", employmentType: "Fulltime", shift: "", monthlySalary: 0
   });
-  const [prodForm, setProdForm] = useState({
-    productId: "", name: "", category: "", subCategory: "", type: "", description: "", ingredients: "", ageGroup: "", gender: "", manufactureDate: "", expiryDate: "", batchNumber: "", sku: "", mrp: 0, discountPercent: 0, taxPercent: 0, costPrice: 0, price: 0, cost: 0, stock: 0
+  const [prodForm, setProdForm] = useState<{
+    productId: string; name: string; category: string; subCategory: string; type: string; description: string; ingredients: string[]; ageGroup: string; gender: string; manufactureDate: string; expiryDate: string; batchNumber: string; mrp: number; discountPercent: number; taxPercent: number; price: number; stock: number;
+  }>({
+    productId: "", name: "", category: "", subCategory: "", type: "", description: "", ingredients: [], ageGroup: "", gender: "Other", manufactureDate: "", expiryDate: "", batchNumber: "", mrp: 0, discountPercent: 0, taxPercent: 0, price: 0, stock: 0
   });
 
   const fetchData = async () => {
@@ -68,6 +88,9 @@ export default function HRDashboard() {
       if (!res.ok) throw new Error((await res.json()).message);
       toast({ title: "Product Added" });
       fetchData();
+      setProdForm({
+        productId: "", name: "", category: "", subCategory: "", type: "", description: "", ingredients: [], ageGroup: "", gender: "Other", manufactureDate: "", expiryDate: "", batchNumber: "", mrp: 0, discountPercent: 0, taxPercent: 0, price: 0, stock: 0
+      });
     } catch (err: any) { toast({ variant: "destructive", title: "Error", description: err.message }); }
     finally { setLoading(false); }
   };
@@ -168,20 +191,17 @@ export default function HRDashboard() {
                   
                   <div>
                     <label className="text-sm font-semibold mb-1 block">Department</label>
-                    <select className="w-full h-10 border rounded-md px-3 text-sm bg-white" value={empForm.departmentId} onChange={e => setEmpForm({...empForm, departmentId: e.target.value})} required>
+                    <select className="w-full h-10 border rounded-md px-3 text-sm bg-white" value={empForm.departmentId} onChange={e => setEmpForm({...empForm, departmentId: e.target.value, subDepartment: ""})} required>
                       <option value="">-- Select Department --</option>
-                      {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      {departments.filter(d => !d.parentId).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
                   </div>
                   
                   <div>
                     <label className="text-sm font-semibold mb-1 block">Sub Department</label>
-                    <select className="w-full h-10 border rounded-md px-3 text-sm bg-white" value={empForm.subDepartment} onChange={e => setEmpForm({...empForm, subDepartment: e.target.value})}>
-                      <option value="General">General</option>
-                      <option value="Management">Management</option>
-                      <option value="Operations">Operations</option>
-                      <option value="Technical">Technical</option>
-                      <option value="Support">Support</option>
+                    <select className="w-full h-10 border rounded-md px-3 text-sm bg-white" value={empForm.subDepartment} onChange={e => setEmpForm({...empForm, subDepartment: e.target.value})} disabled={!empForm.departmentId}>
+                      <option value="">-- Select Sub Department --</option>
+                      {departments.filter(d => d.parentId === empForm.departmentId).map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                     </select>
                   </div>
                   
@@ -266,17 +286,120 @@ export default function HRDashboard() {
               <CardHeader><CardTitle>Add New Product</CardTitle></CardHeader>
               <CardContent>
                 <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {Object.keys(prodForm).map(field => (
-                    <div key={field} className={field === 'description' ? 'md:col-span-4' : ''}>
-                      <label className="text-sm font-semibold mb-1 block capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}</label>
-                      <Input
-                        type={['mrp', 'discountPercent', 'taxPercent', 'costPrice', 'price', 'cost', 'stock'].includes(field) ? 'number' : field.includes('Date') ? 'date' : 'text'}
-                        value={(prodForm as any)[field]}
-                        onChange={e => setProdForm({ ...prodForm, [field]: e.target.type === 'number' ? Number(e.target.value) : e.target.value })}
-                        required={['name', 'category', 'sku', 'price', 'cost', 'stock'].includes(field)}
-                      />
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">Product ID</label>
+                    <Input value={prodForm.productId} onChange={e => setProdForm({ ...prodForm, productId: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">Name</label>
+                    <Input value={prodForm.name} onChange={e => setProdForm({ ...prodForm, name: e.target.value })} required />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">Category</label>
+                    <select className="w-full h-10 border rounded-md px-3 text-sm bg-white" value={prodForm.category} onChange={e => setProdForm({ ...prodForm, category: e.target.value, subCategory: "" })} required>
+                      <option value="">Select Category</option>
+                      {Object.keys(PRODUCT_CATEGORIES).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">Sub Category</label>
+                    <select className="w-full h-10 border rounded-md px-3 text-sm bg-white" value={prodForm.subCategory} onChange={e => setProdForm({ ...prodForm, subCategory: e.target.value })} disabled={!prodForm.category}>
+                      <option value="">Select Sub Category</option>
+                      {(PRODUCT_CATEGORIES[prodForm.category] || []).map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">Type</label>
+                    <select className="w-full h-10 border rounded-md px-3 text-sm bg-white" value={prodForm.type} onChange={e => setProdForm({ ...prodForm, type: e.target.value })}>
+                      <option value="">Select Type</option>
+                      {PRODUCT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">Gender</label>
+                    <select className="w-full h-10 border rounded-md px-3 text-sm bg-white" value={prodForm.gender} onChange={e => setProdForm({ ...prodForm, gender: e.target.value })}>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">Age Group</label>
+                    <Input value={prodForm.ageGroup} onChange={e => setProdForm({ ...prodForm, ageGroup: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">Batch Number</label>
+                    <Input value={prodForm.batchNumber} onChange={e => setProdForm({ ...prodForm, batchNumber: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">Manufacture Date</label>
+                    <Input type="date" value={prodForm.manufactureDate} onChange={e => setProdForm({ ...prodForm, manufactureDate: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">Expiry Date</label>
+                    <Input type="date" value={prodForm.expiryDate} onChange={e => setProdForm({ ...prodForm, expiryDate: e.target.value })} />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">MRP</label>
+                    <div className="relative">
+                      <Input type="number" value={prodForm.mrp} onChange={e => setProdForm({ ...prodForm, mrp: Number(e.target.value) })} className="pr-8" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-semibold pointer-events-none">₹</span>
                     </div>
-                  ))}
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">Selling Price</label>
+                    <div className="relative">
+                      <Input type="number" value={prodForm.price} onChange={e => setProdForm({ ...prodForm, price: Number(e.target.value) })} className="pr-8" required />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-semibold pointer-events-none">₹</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">Stock Quantity</label>
+                    <Input type="number" value={prodForm.stock} onChange={e => setProdForm({ ...prodForm, stock: Number(e.target.value) })} required />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">Discount</label>
+                    <div className="relative">
+                      <Input type="number" value={prodForm.discountPercent} onChange={e => setProdForm({ ...prodForm, discountPercent: Number(e.target.value) })} className="pr-8" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-semibold pointer-events-none">%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">Tax</label>
+                    <div className="relative">
+                      <Input type="number" value={prodForm.taxPercent} onChange={e => setProdForm({ ...prodForm, taxPercent: Number(e.target.value) })} className="pr-8" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-semibold pointer-events-none">%</span>
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-4">
+                    <label className="text-sm font-semibold mb-1 block">Ingredients</label>
+                    <div className="flex flex-wrap gap-2 border rounded-md p-3 max-h-48 overflow-y-auto bg-white">
+                      {INGREDIENTS_LIST.map(ing => (
+                        <label key={ing} className="flex items-center gap-2 text-sm bg-slate-50 px-2 py-1 rounded cursor-pointer hover:bg-slate-100">
+                          <input 
+                            type="checkbox" 
+                            checked={prodForm.ingredients.includes(ing)} 
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setProdForm({ ...prodForm, ingredients: [...prodForm.ingredients, ing] });
+                              } else {
+                                setProdForm({ ...prodForm, ingredients: prodForm.ingredients.filter(i => i !== ing) });
+                              }
+                            }} 
+                            className="rounded"
+                          />
+                          {ing}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-4">
+                    <label className="text-sm font-semibold mb-1 block">Description</label>
+                    <Input value={prodForm.description} onChange={e => setProdForm({ ...prodForm, description: e.target.value })} />
+                  </div>
                   <div className="md:col-span-4"><Button type="submit" className="w-full h-12" disabled={loading}>Add Product</Button></div>
                 </form>
               </CardContent>
@@ -289,12 +412,12 @@ export default function HRDashboard() {
               <CardContent className="overflow-auto">
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                    <tr><th>SKU</th><th>Name</th><th>Price</th><th>Stock</th><th>Status</th><th className="text-right">Actions</th></tr>
+                    <tr><th>Category</th><th>Name</th><th>Price</th><th>Stock</th><th>Status</th><th className="text-right">Actions</th></tr>
                   </thead>
                   <tbody>
                     {products.map(p => (
                       <tr key={p._id} className="border-b">
-                        <td className="py-3">{p.sku}</td><td className="font-medium">{p.name}</td><td>${p.price}</td><td>{p.stock}</td>
+                        <td className="py-3">{p.category}</td><td className="font-medium">{p.name}</td><td>{p.price}₹</td><td>{p.stock}</td>
                         <td><span className={`px-2 py-1 rounded-full text-xs ${p.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status}</span></td>
                         <td className="text-right">
                           <Button size="sm" variant={p.status === 'active' ? 'outline' : 'default'} onClick={() => updateProdStatus(p._id, p.status === 'active' ? 'inactive' : 'active')}>

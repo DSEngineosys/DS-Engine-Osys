@@ -412,6 +412,17 @@ router.get("/auth/me", async (req, res) => {
     res.status(401).json({ error: "Unauthorized", message: "Not logged in" });
     return;
   }
+  
+  if (session.role === "employee") {
+    const emp = await Employee.findById(session.userId);
+    if (!emp) {
+      res.status(401).json({ error: "Unauthorized", message: "Employee not found" });
+      return;
+    }
+    res.json({ id: emp._id, name: emp.name, role: "employee", email: emp.email, employeeId: (emp as any).employeeId });
+    return;
+  }
+
   const user = await User.findById(session.userId);
   if (!user) {
     res.status(401).json({ error: "Unauthorized", message: "User not found" });

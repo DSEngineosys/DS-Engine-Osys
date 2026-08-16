@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Eye, EyeOff, UserCircle } from "lucide-react";
 import { PublicLayout } from "@/components/layout";
+import { useAuth } from "@/lib/auth";
 
 export default function EmployeeLogin() {
   const [, setLocation] = useLocation();
@@ -12,6 +13,7 @@ export default function EmployeeLogin() {
   const [employeeId, setEmployeeId] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const { refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -31,8 +33,9 @@ export default function EmployeeLogin() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Login failed");
       
-      // Default new employees might have role ds_engineer in the backend by default unless specified differently,
-      // but for this UI, we just check if it's successful.
+      // Refresh user context to populate the session state
+      await refreshUser();
+      
       toast({ title: "Welcome back!", description: "Opening your workspace..." });
       setLocation("/employee/workspace");
     } catch (err: any) {
