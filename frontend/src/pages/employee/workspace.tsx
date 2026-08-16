@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -48,13 +48,22 @@ export default function EmployeeWorkspace() {
   const queryClient = useQueryClient();
 
   // Sale form state
-  const [sellForm, setSellForm] = useState({ productId: "", quantity: 1, customerDetails: "", proofImageUrl: "" });
+  const [sellForm, setSellForm] = useState({ productId: "", quantity: 1, customerName: "", customerPhone: "", customerEmail: "", customerAddress: "", proofImageUrl: "" });
   const [feedbackForm, setFeedbackForm] = useState({ customerName: "", feedback: "", rating: 5 });
+
+  // Camera state
+  const [cameraActive, setCameraActive] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Avatar upload state
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const handleSell = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sellForm.proofImageUrl) {
-      toast({ variant: "destructive", title: "Proof Required", description: "Please capture or upload the bill proof." });
+      toast({ variant: "destructive", title: "Proof Required", description: "Please capture the bill proof using camera." });
       return;
     }
     
@@ -65,13 +74,76 @@ export default function EmployeeWorkspace() {
         body: JSON.stringify({ ...sellForm, taskId: tasks?.[0]?._id })
       });
       if (!res.ok) throw new Error((await res.json()).error || "Sale failed");
-      toast({ title: "Sale Recorded Successfuly" });
-      setSellForm({ productId: "", quantity: 1, customerDetails: "", proofImageUrl: "" });
+      toast({ title: "Sale Recorded Successfully" });
+      setSellForm({ productId: "", quantity: 1, customerName: "", customerPhone: "", customerEmail: "", customerAddress: "", proofImageUrl: "" });
       queryClient.invalidateQueries({ queryKey: ["emp-products"] });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Error", description: err.message });
     }
   };
+
+  // Camera functions
+  const openCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } });
+      streamRef.current = stream;
+      setCameraActive(true);
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+        }
+      }, 100);
+    } catch (err) {
+      toast({ variant: "destructive", title: "Camera Error", description: "Could not access camera. Please allow camera permissions." });
+    }
+  }, [toast]);
+
+  const capturePhoto = useCallback(() => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    setSellForm(prev => ({ ...prev, proofImageUrl: dataUrl }));
+    stopCamera();
+    toast({ title: "Bill Captured", description: "Proof photo saved successfully." });
+  }, [toast]);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+  }, []);
+
+  // Avatar upload
+  const handleAvatarUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      try {
+        const res = await fetch("/api/employee/avatar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ avatarUrl: base64 })
+        });
+        if (!res.ok) throw new Error("Upload failed");
+        toast({ title: "Profile Photo Updated" });
+        queryClient.invalidateQueries({ queryKey: ["emp-me"] });
+      } catch (err: any) {
+        toast({ variant: "destructive", title: "Error", description: err.message });
+      }
+    };
+    reader.readAsDataURL(file);
+  }, [toast, queryClient]);
 
   const handleFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,12 +159,6 @@ export default function EmployeeWorkspace() {
     } catch (err: any) {
       toast({ variant: "destructive", title: "Error", description: err.message });
     }
-  };
-
-  const handleProofUpload = () => {
-    // Mocking camera/upload
-    toast({ title: "Camera Activated", description: "Bill captured successfully." });
-    setSellForm({ ...sellForm, proofImageUrl: "captured_bill_proof.jpg" });
   };
 
   if (!user || !profile) return <div className="min-h-screen bg-slate-50 flex justify-center items-center">Loading Workspace...</div>;
@@ -138,9 +204,16 @@ export default function EmployeeWorkspace() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className={!tasks || tasks.length === 0 ? "opacity-60 pointer-events-none relative" : ""}>
               <CardHeader className="pb-3"><CardTitle className="text-base">Product Selling Workspace</CardTitle></CardHeader>
               <CardContent>
+                {(!tasks || tasks.length === 0) && (
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-xl z-10 flex flex-col items-center justify-center">
+                    <Target className="w-8 h-8 text-slate-400 mb-2" />
+                    <p className="text-sm font-bold text-slate-500">No Task Assigned</p>
+                    <p className="text-xs text-slate-400">Product selling is available only when a task is active.</p>
+                  </div>
+                )}
                 <form onSubmit={handleSell} className="space-y-4">
                   <div>
                     <label className="text-xs font-semibold mb-1 block">Select Product</label>
@@ -156,24 +229,51 @@ export default function EmployeeWorkspace() {
                       ))}
                     </select>
                   </div>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label className="text-xs font-semibold mb-1 block">Quantity</label>
-                      <Input type="number" min="1" value={sellForm.quantity} onChange={e => setSellForm({...sellForm, quantity: Number(e.target.value)})} required />
+                  <div>
+                    <label className="text-xs font-semibold mb-1 block">Quantity</label>
+                    <Input type="number" min="1" value={sellForm.quantity} onChange={e => setSellForm({...sellForm, quantity: Number(e.target.value)})} required />
+                  </div>
+
+                  {/* Expanded Customer Details */}
+                  <div className="border rounded-lg p-3 space-y-3 bg-slate-50/50">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Customer Details</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block">Name</label>
+                        <Input placeholder="Customer name" value={sellForm.customerName} onChange={e => setSellForm({...sellForm, customerName: e.target.value})} required />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block">Phone</label>
+                        <Input type="tel" placeholder="+91 XXXXX" value={sellForm.customerPhone} onChange={e => setSellForm({...sellForm, customerPhone: e.target.value})} required />
+                      </div>
                     </div>
-                    <div className="flex-[2]">
-                      <label className="text-xs font-semibold mb-1 block">Customer Details</label>
-                      <Input type="text" placeholder="Name / Phone" value={sellForm.customerDetails} onChange={e => setSellForm({...sellForm, customerDetails: e.target.value})} required />
+                    <div>
+                      <label className="text-xs font-semibold mb-1 block">Email (optional)</label>
+                      <Input type="email" placeholder="customer@email.com" value={sellForm.customerEmail} onChange={e => setSellForm({...sellForm, customerEmail: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold mb-1 block">Address (optional)</label>
+                      <Input placeholder="Customer address" value={sellForm.customerAddress} onChange={e => setSellForm({...sellForm, customerAddress: e.target.value})} />
                     </div>
                   </div>
                   
-                  <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:bg-slate-50 transition-colors" onClick={handleProofUpload}>
+                  {/* Camera Capture Area */}
+                  <div 
+                    className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:bg-slate-50 transition-colors" 
+                    onClick={() => { if (!sellForm.proofImageUrl) openCamera(); }}
+                  >
                     {sellForm.proofImageUrl ? (
-                      <div className="text-green-600 font-bold flex items-center justify-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500"/> Proof Captured</div>
+                      <div className="space-y-2">
+                        <div className="text-green-600 font-bold flex items-center justify-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500"/> Bill Proof Captured</div>
+                        {sellForm.proofImageUrl.startsWith("data:") && (
+                          <img src={sellForm.proofImageUrl} alt="Bill proof" className="w-full max-h-32 object-contain rounded" />
+                        )}
+                        <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSellForm(prev => ({...prev, proofImageUrl: ""})); }}>Retake</Button>
+                      </div>
                     ) : (
                       <div className="text-slate-500 flex flex-col items-center gap-1">
                         <Camera className="w-6 h-6 mb-1"/>
-                        <span className="text-sm font-semibold">Tap to Scan/Capture Bill Proof</span>
+                        <span className="text-sm font-semibold">Tap to Open Camera & Capture Bill</span>
                         <span className="text-xs">Required for sale</span>
                       </div>
                     )}
@@ -287,9 +387,17 @@ export default function EmployeeWorkspace() {
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <Card>
               <CardContent className="pt-6 text-center">
-                <div className="w-20 h-20 bg-slate-200 rounded-full mx-auto mb-4 overflow-hidden">
-                  <img src={profile.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.name}`} alt="avatar" />
+                <div 
+                  className="w-20 h-20 bg-slate-200 rounded-full mx-auto mb-4 overflow-hidden relative group cursor-pointer"
+                  onClick={() => avatarInputRef.current?.click()}
+                >
+                  <img src={profile.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.name}`} alt="avatar" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                    <Camera className="w-5 h-5 text-white" />
+                  </div>
                 </div>
+                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                <p className="text-xs text-blue-500 font-medium mb-2 cursor-pointer" onClick={() => avatarInputRef.current?.click()}>Tap photo to change</p>
                 <h2 className="text-xl font-black">{profile.name}</h2>
                 <p className="text-sm text-slate-500 font-medium">{profile.designation}</p>
                 <div className="inline-block bg-slate-100 text-slate-700 text-xs px-2 py-1 rounded mt-2">{profile.employeeId}</div>
@@ -307,6 +415,39 @@ export default function EmployeeWorkspace() {
           </div>
         )}
       </div>
+
+      {/* Camera Overlay (Google Pay QR-scanner style) */}
+      {cameraActive && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center">
+          <div className="relative w-full max-w-md px-4">
+            <p className="text-white text-center text-sm font-bold mb-4">Position the bill in the frame and capture</p>
+            <div className="relative rounded-2xl overflow-hidden border-4 border-white/30 shadow-2xl">
+              <video ref={videoRef} autoPlay playsInline muted className="w-full aspect-[4/3] object-cover bg-black" />
+              {/* Scanner corners */}
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-400 rounded-br-lg" />
+              {/* Scanning line animation */}
+              <div className="absolute left-4 right-4 h-0.5 bg-blue-400/60 animate-pulse" style={{ top: "50%" }} />
+            </div>
+            <div className="flex items-center justify-center gap-6 mt-6">
+              <button onClick={stopCamera} className="w-14 h-14 rounded-full bg-white/20 text-white font-bold text-xs flex items-center justify-center border-2 border-white/40 hover:bg-white/30 transition-colors">
+                Cancel
+              </button>
+              <button onClick={capturePhoto} className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-xl shadow-white/20 hover:scale-105 transition-transform">
+                <div className="w-16 h-16 rounded-full border-4 border-blue-500 flex items-center justify-center">
+                  <Camera className="w-7 h-7 text-blue-600" />
+                </div>
+              </button>
+              <div className="w-14 h-14" /> {/* Spacer for alignment */}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden canvas for photo capture */}
+      <canvas ref={canvasRef} className="hidden" />
 
       {/* Floating Bottom Nav */}
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-lg bg-slate-900 text-slate-400 rounded-2xl p-2 flex justify-between shadow-xl shadow-slate-900/20">

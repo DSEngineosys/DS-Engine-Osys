@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Users, Package, HelpCircle, Mail, Settings, RefreshCcw } from "lucide-react";
+import { Loader2, Users, Package, HelpCircle, Mail, Settings, RefreshCcw, MessageSquare, Star } from "lucide-react";
 
 const PRODUCT_CATEGORIES: Record<string, string[]> = {
   "Skincare": ["Face Wash", "Moisturizer", "Serum", "Sunscreen", "Face Cream", "Toner", "Face Mask"],
@@ -38,6 +38,7 @@ export default function HRDashboard() {
   const [emailSettings, setEmailSettings] = useState({ hrEmail: "", hrAppPassword: "" });
   const [departments, setDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [customerFeedbacks, setCustomerFeedbacks] = useState<any[]>([]);
 
   // Forms state
   const [empForm, setEmpForm] = useState({
@@ -52,14 +53,15 @@ export default function HRDashboard() {
 
   const fetchData = async () => {
     try {
-      const [empRes, prodRes, helpRes, settingsRes, deptRes] = await Promise.all([
-        fetch("/api/hr/employees"), fetch("/api/hr/products"), fetch("/api/hr/help-requests"), fetch("/api/hr/settings/email"), fetch("/api/departments")
+      const [empRes, prodRes, helpRes, settingsRes, deptRes, feedbackRes] = await Promise.all([
+        fetch("/api/hr/employees"), fetch("/api/hr/products"), fetch("/api/hr/help-requests"), fetch("/api/hr/settings/email"), fetch("/api/departments"), fetch("/api/hr/customer-feedback")
       ]);
       if (empRes.ok) setEmployees(await empRes.json());
       if (prodRes.ok) setProducts(await prodRes.json());
       if (helpRes.ok) setHelpRequests(await helpRes.json());
       if (settingsRes.ok) setEmailSettings(await settingsRes.json());
       if (deptRes.ok) setDepartments(await deptRes.json());
+      if (feedbackRes.ok) setCustomerFeedbacks(await feedbackRes.json());
     } catch (e) {
       console.error("Failed to fetch HR data", e);
     }
@@ -140,12 +142,13 @@ export default function HRDashboard() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-2 md:grid-cols-6 h-auto p-1 bg-slate-100">
+          <TabsList className="grid grid-cols-2 md:grid-cols-7 h-auto p-1 bg-slate-100">
             <TabsTrigger value="overview" className="py-3">Overview</TabsTrigger>
             <TabsTrigger value="hire" className="py-3">Hire Employee</TabsTrigger>
             <TabsTrigger value="employees" className="py-3">Employee List</TabsTrigger>
             <TabsTrigger value="add-product" className="py-3">Add Product</TabsTrigger>
             <TabsTrigger value="products" className="py-3">Product List</TabsTrigger>
+            <TabsTrigger value="feedback" className="py-3">Customer Feedback</TabsTrigger>
             <TabsTrigger value="help" className="py-3">Help Inbox</TabsTrigger>
           </TabsList>
 
@@ -161,6 +164,10 @@ export default function HRDashboard() {
             <Card>
               <CardHeader className="pb-2 flex-row justify-between"><CardTitle>Pending Help</CardTitle><HelpCircle className="h-5 w-5 text-amber-500" /></CardHeader>
               <CardContent><div className="text-3xl font-bold">{helpRequests.filter(h => h.status === 'Pending').length}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2 flex-row justify-between"><CardTitle>Customer Feedback</CardTitle><MessageSquare className="h-5 w-5 text-teal-500" /></CardHeader>
+              <CardContent><div className="text-3xl font-bold">{customerFeedbacks.length}</div></CardContent>
             </Card>
 
             <Card className="md:col-span-3 mt-4">
@@ -453,6 +460,32 @@ export default function HRDashboard() {
                       <Button size="sm" variant="outline" onClick={() => updateHelpStatus(req._id, 'In Progress')} disabled={req.status === 'In Progress'}>Mark In Progress</Button>
                       <Button size="sm" variant="default" onClick={() => updateHelpStatus(req._id, 'Resolved')} disabled={req.status === 'Resolved'}>Mark Resolved</Button>
                     </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="feedback">
+            <Card>
+              <CardHeader><CardTitle className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-teal-500" /> Customer Feedback from Employees</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                {customerFeedbacks.length === 0 ? <p className="text-muted-foreground text-center py-8">No customer feedback submitted yet.</p> : null}
+                {customerFeedbacks.map(fb => (
+                  <div key={fb._id} className="border rounded-xl p-4 shadow-sm">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h4 className="font-bold text-slate-800">{fb.customerName || "Anonymous Customer"}</h4>
+                        <p className="text-xs text-muted-foreground">Submitted by <span className="font-semibold text-blue-600">{fb.employeeName}</span> ({fb.employeeId})</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {fb.rating ? Array.from({ length: 5 }).map((_, i) => (
+                          <Star key={i} className={`w-4 h-4 ${i < fb.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'}`} />
+                        )) : <span className="text-xs text-slate-400">No rating</span>}
+                      </div>
+                    </div>
+                    <div className="mt-2 p-3 bg-slate-50 rounded text-sm text-slate-700 whitespace-pre-wrap">{fb.feedback}</div>
+                    <p className="text-xs text-muted-foreground mt-2 text-right">{new Date(fb.createdAt).toLocaleString()}</p>
                   </div>
                 ))}
               </CardContent>

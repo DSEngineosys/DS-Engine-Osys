@@ -2,11 +2,13 @@ import { Router } from "express";
 import Employee from "../models/employee.model";
 import Product from "../models/product.model";
 import HelpRequest from "../models/help-request.model";
+import CustomerFeedback from "../models/customer-feedback.model";
 import Setting from "../models/setting.model";
 import Department from "../models/department.model";
 import { sendEmail } from "../lib/email";
 import { z } from "zod";
 import mongoose from "mongoose";
+import nodemailer from "nodemailer";
 
 const router = Router();
 
@@ -36,18 +38,26 @@ router.post("/help-requests", async (req: any, res: any) => {
   try {
     const hrEmailSetting = await Setting.findOne({ key: "hrEmail" });
     const hrEmail = hrEmailSetting?.value;
+    
+    const hrAppPasswordSetting = await Setting.findOne({ key: "hrAppPassword" });
+    const hrAppPassword = hrAppPasswordSetting?.value;
 
-    if (hrEmail) {
-      await sendEmail(
-        hrEmail,
-        `Employee Help Request: ${parsed.data.issueType}`,
-        `Employee ${parsed.data.employeeName} (${parsed.data.employeeId}) has submitted a help request.`,
-        `
+    if (hrEmail && hrAppPassword) {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: hrEmail,
+          pass: hrAppPassword,
+        },
+      });
+
+      const emailHtml = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="color: #1e293b;">New Employee Help Request</h2>
           <table style="width:100%; border-collapse: collapse; font-size: 14px;">
             <tr><td style="padding: 6px 0; color: #64748b; width: 160px;"><strong>Employee ID</strong></td><td>${parsed.data.employeeId}</td></tr>
             <tr><td style="padding: 6px 0; color: #64748b;"><strong>Employee Name</strong></td><td>${parsed.data.employeeName}</td></tr>
+            <tr><td style="padding: 6px 0; color: #64748b;"><strong>Email</strong></td><td>${parsed.data.email || "N/A"}</td></tr>
             <tr><td style="padding: 6px 0; color: #64748b;"><strong>Department</strong></td><td>${parsed.data.department}${parsed.data.subDepartment ? ` / ${parsed.data.subDepartment}` : ""}</td></tr>
             <tr><td style="padding: 6px 0; color: #64748b;"><strong>Phone Number</strong></td><td>${parsed.data.phoneNumber}</td></tr>
             <tr><td style="padding: 6px 0; color: #64748b;"><strong>Issue Type</strong></td><td>${parsed.data.issueType}</td></tr>
@@ -58,8 +68,14 @@ router.post("/help-requests", async (req: any, res: any) => {
           </div>
           <p style="margin-top: 16px; color: #94a3b8; font-size: 12px;">This request can be viewed and managed from the HR Dashboard → Employee Help section.</p>
         </div>
-        `
-      );
+      `;
+
+      await transporter.sendMail({
+        from: hrEmail,
+        to: hrEmail,
+        subject: `Employee Help Request: ${parsed.data.issueType}`,
+        html: emailHtml,
+      });
     }
   } catch (err) {
     console.error("Failed to send HR help request email", err);
@@ -83,6 +99,14 @@ router.put("/hr/help-requests/:id/status", async (req: any, res: any) => {
   }
   const updated = await HelpRequest.findByIdAndUpdate(id, { status }, { new: true });
   res.json(updated);
+});
+
+// ─────────────────────────────────────────────
+// HR CUSTOMER FEEDBACK VIEW
+// ─────────────────────────────────────────────
+router.get("/hr/customer-feedback", async (_req: any, res: any) => {
+  const feedbacks = await CustomerFeedback.find().sort({ createdAt: -1 });
+  res.json(feedbacks);
 });
 
 // ─────────────────────────────────────────────

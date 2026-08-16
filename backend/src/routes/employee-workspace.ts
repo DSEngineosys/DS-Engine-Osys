@@ -113,10 +113,26 @@ router.get("/employee/company", async (_req: any, res: any) => {
   res.json({ companyName: setting?.value || "DS Engineosys" });
 });
 
+// Update employee profile photo
+router.post("/employee/avatar", requireEmployee, async (req: any, res: any) => {
+  const session = req.session as any;
+  const { avatarUrl } = req.body;
+  if (!avatarUrl || typeof avatarUrl !== "string") {
+    return res.status(400).json({ error: "avatarUrl is required" });
+  }
+  const updated = await Employee.findByIdAndUpdate(
+    session.userId,
+    { avatarUrl },
+    { new: true }
+  );
+  if (!updated) return res.status(404).json({ error: "Employee not found" });
+  res.json({ message: "Profile photo updated", avatarUrl: updated.avatarUrl });
+});
+
 // Record a product sale (with proof)
 router.post("/employee/sell", requireEmployee, async (req: any, res: any) => {
   const session = req.session as any;
-  const { productId, quantity, taskId, proofImageUrl, customerDetails } = req.body;
+  const { productId, quantity, taskId, proofImageUrl, customerName, customerPhone, customerEmail, customerAddress } = req.body;
   if (!productId || !quantity) return res.status(400).json({ error: "productId and quantity are required" });
 
   const product = await Product.findById(productId);
@@ -142,7 +158,10 @@ router.post("/employee/sell", requireEmployee, async (req: any, res: any) => {
       saleAmount,
       taskId,
       proofImageUrl,
-      customerDetails,
+      customerName,
+      customerPhone,
+      customerEmail,
+      customerAddress,
       timestamp: new Date().toISOString(),
     },
   });

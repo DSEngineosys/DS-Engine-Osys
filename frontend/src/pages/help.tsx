@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PublicLayout } from "@/components/layout";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
@@ -21,15 +21,38 @@ export default function Help() {
   const [form, setForm] = useState({
     employeeId: "",
     employeeName: "",
+    email: "",
     department: "",
     subDepartment: "",
-    phoneNumber: "",
+    phoneNumber: "+91 ",
     issueType: "",
     description: "",
   });
+  const [departments, setDepartments] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/departments")
+      .then(res => res.json())
+      .then(data => setDepartments(data))
+      .catch(err => console.error("Failed to load departments:", err));
+  }, []);
 
   function setField(key: string, value: string) {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    if (key === "phoneNumber" && !value.startsWith("+91 ")) {
+      // Ensure the prefix stays
+      if (value.startsWith("+91")) value = value.replace("+91", "+91 ");
+      else if (!value.startsWith("+")) value = "+91 " + value;
+      else value = "+91 " + value.substring(value.indexOf(" ") + 1 || 3);
+    }
+    
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      // If department changes, reset sub-department
+      if (key === "department") {
+        next.subDepartment = "";
+      }
+      return next;
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -50,7 +73,7 @@ export default function Help() {
         throw new Error(data.message || "Failed to submit request");
       }
       toast({ title: "✅ Help request submitted!", description: "HR has been notified and will contact you soon." });
-      setForm({ employeeId: "", employeeName: "", department: "", subDepartment: "", phoneNumber: "", issueType: "", description: "" });
+      setForm({ employeeId: "", employeeName: "", email: "", department: "", subDepartment: "", phoneNumber: "+91 ", issueType: "", description: "" });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Submission failed", description: err.message });
     } finally {
@@ -110,16 +133,38 @@ export default function Help() {
                 <Input placeholder="Your full name" value={form.employeeName} onChange={e => setField("employeeName", e.target.value)} required />
               </div>
               <div>
+                <label className="text-sm font-semibold text-slate-700 mb-1 block">Email (optional)</label>
+                <Input type="email" placeholder="Your email address" value={form.email} onChange={e => setField("email", e.target.value)} />
+              </div>
+              <div>
                 <label className="text-sm font-semibold text-slate-700 mb-1 block">Department *</label>
-                <Input placeholder="e.g. Sales, Production" value={form.department} onChange={e => setField("department", e.target.value)} required />
+                <select
+                  value={form.department}
+                  onChange={e => setField("department", e.target.value)}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  required
+                >
+                  <option value="">Select Department...</option>
+                  {departments.map(d => <option key={d._id} value={d.name}>{d.name}</option>)}
+                </select>
               </div>
               <div>
                 <label className="text-sm font-semibold text-slate-700 mb-1 block">Sub-Department</label>
-                <Input placeholder="e.g. Marketing, QA" value={form.subDepartment} onChange={e => setField("subDepartment", e.target.value)} />
+                <select
+                  value={form.subDepartment}
+                  onChange={e => setField("subDepartment", e.target.value)}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  disabled={!form.department || !departments.find(d => d.name === form.department)?.subDepartments?.length}
+                >
+                  <option value="">Select Sub-Department...</option>
+                  {departments.find(d => d.name === form.department)?.subDepartments?.map((sd: string) => (
+                    <option key={sd} value={sd}>{sd}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-sm font-semibold text-slate-700 mb-1 block">Phone Number *</label>
-                <Input placeholder="Your contact number" value={form.phoneNumber} onChange={e => setField("phoneNumber", e.target.value)} required />
+                <Input placeholder="+91 XXXXX XXXXX" value={form.phoneNumber} onChange={e => setField("phoneNumber", e.target.value)} required />
               </div>
               <div>
                 <label className="text-sm font-semibold text-slate-700 mb-1 block">Issue Type *</label>
