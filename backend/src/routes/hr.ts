@@ -98,6 +98,45 @@ router.put("/hr/help-requests/:id/status", async (req: any, res: any) => {
     return res.status(400).json({ error: "Invalid status" });
   }
   const updated = await HelpRequest.findByIdAndUpdate(id, { status }, { new: true });
+  
+  if (updated && status === "Resolved" && updated.email) {
+    try {
+      const hrEmailSetting = await Setting.findOne({ key: "hrEmail" });
+      const hrEmail = hrEmailSetting?.value;
+      const hrAppPasswordSetting = await Setting.findOne({ key: "hrAppPassword" });
+      const hrAppPassword = hrAppPasswordSetting?.value;
+
+      if (hrEmail && hrAppPassword) {
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: { user: hrEmail, pass: hrAppPassword },
+        });
+
+        const emailHtml = `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+            <h2 style="color: #1e293b;">Help Request Resolved</h2>
+            <p style="color: #475569; font-size: 16px;">Hello <strong>${updated.employeeName}</strong>,</p>
+            <p style="color: #475569; font-size: 14px;">Your help request regarding <strong>${updated.issueType}</strong> has been marked as resolved by HR.</p>
+            <div style="margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <p style="margin: 0; color: #475569; font-size: 14px;"><strong>Your Original Request:</strong></p>
+              <p style="margin: 8px 0 0; color: #334155;">${updated.description}</p>
+            </div>
+            <p style="margin-top: 16px; color: #94a3b8; font-size: 12px;">If you still need assistance, please submit a new help request.</p>
+          </div>
+        `;
+
+        await transporter.sendMail({
+          from: hrEmail,
+          to: updated.email,
+          subject: `Resolved: ${updated.issueType}`,
+          html: emailHtml,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to send resolution email", err);
+    }
+  }
+
   res.json(updated);
 });
 
