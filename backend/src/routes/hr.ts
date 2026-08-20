@@ -8,9 +8,18 @@ import Department from "../models/department.model";
 import { sendEmail } from "../lib/email";
 import { z } from "zod";
 import mongoose from "mongoose";
+import User from "../models/user.model";
 import nodemailer from "nodemailer";
 
 const router = Router();
+
+function requireHR(req: any, res: any, next: any) {
+  const session = req.session as any;
+  if (!session.userId || session.role !== "hr") {
+    return res.status(401).json({ error: "Unauthorized", message: "HR login required" });
+  }
+  next();
+}
 
 // ─────────────────────────────────────────────
 // HELP REQUESTS (from public help page)
@@ -165,6 +174,107 @@ const hireEmployeeSchema = z.object({
   employmentType: z.string().optional(),
   shift: z.string().optional(),
   monthlySalary: z.number().optional(),
+});
+
+// HR Employee Recruitment Endpoints
+
+router.get("/hr/employee-requests", requireHR, async (req: any, res: any) => {
+  const session = req.session as any;
+  const hrUser = await User.findById(session.userId);
+  if (!hrUser || !hrUser.departmentId) return res.status(403).json({ error: "Forbidden", message: "HR not associated with a department" });
+
+  const requests = await Employee.find({ accountStatus: { $in: ["Pending", "Denied"] }, departmentId: hrUser.departmentId }).sort({ createdAt: -1 });
+  const enriched = await Promise.all(
+    requests.map(async (emp: any) => {
+      const dept = await Department.findById(emp.departmentId);
+      return {
+        _id: emp._id,
+        employeeId: emp.employeeId,
+        name: emp.name,
+        email: emp.email,
+        departmentName: dept?.name ?? "Unknown",
+        subDepartment: emp.subDepartment,
+        contactNumber: emp.contactNumber,
+        gender: emp.gender,
+        location: emp.location,
+        employmentType: emp.employmentType,
+        accountStatus: emp.accountStatus,
+        createdAt: emp.createdAt,
+      };
+    })
+  );
+  res.json(enriched);
+});
+
+router.post("/hr/employee-requests/:id/allow", requireHR, async (req: any, res: any) => {
+  const { id } = req.params;
+  const { employeeId, shift, monthlySalary } = req.body;
+  if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "Invalid ID" });
+  if (!employeeId || !shift || !monthlySalary) return res.status(400).json({ error: "employeeId, shift, and monthlySalary are required" });
+
+  const session = req.session as any;
+  const hrUser = await User.findById(session.userId);
+  
+  const emp = await Employee.findById(id);
+  if (!emp) return res.status(404).json({ error: "Not found" });
+  
+  if (hrUser && emp.departmentId.toString() !== hrUser.departmentId?.toString()) {
+    return res.status(403).json({ error: "Forbidden", message: "Employee is not in your department" });
+  }
+
+  // Check for duplicate employeeId
+  const existing = await Employee.findOne({ employeeId, _id: { $ne: emp._id } });
+  if (existing) return res.status(409).json({ error: "Duplicate", message: "An employee with this ID already exists." });
+
+  emp.accountStatus = "Active";
+  emp.status = "active";
+  emp.employeeId = employeeId;
+  emp.shift = shift;
+  emp.monthlySalary = monthlySalary;
+  emp.joiningDate = new Date();
+  await emp.save();
+
+  try {
+    await sendEmail(
+      emp.email,
+      "Employee Registration Approved - DS Engineosys",
+      `Congratulations ${emp.name}! Your employee registration has been APPROVED by your Department HR. Your EMP-ID is ${employeeId}. You can now proceed to set your password and access the platform.`
+    );
+  } catch (err) {
+    console.error("Non-critical: Failed to notify Employee of approval", err);
+  }
+
+  res.json({ message: "Employee approved", employee: emp });
+});
+
+router.post("/hr/employee-requests/:id/deny", requireHR, async (req: any, res: any) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "Invalid ID" });
+
+  const session = req.session as any;
+  const hrUser = await User.findById(session.userId);
+
+  const emp = await Employee.findById(id);
+  if (!emp) return res.status(404).json({ error: "Not found" });
+  
+  if (hrUser && emp.departmentId.toString() !== hrUser.departmentId?.toString()) {
+    return res.status(403).json({ error: "Forbidden", message: "Employee is not in your department" });
+  }
+
+  emp.accountStatus = "Denied";
+  await emp.save();
+
+  try {
+    await sendEmail(
+      emp.email,
+      "Employee Registration Denied - DS Engineosys",
+      `Hello ${emp.name}, your employee registration request has been DENIED by your Department HR.`
+    );
+  } catch (err) {
+    console.error("Non-critical: Failed to notify Employee of denial", err);
+  }
+
+  res.json({ message: "Employee denied", employee: emp });
 });
 
 router.post("/hr/employees", async (req: any, res: any) => {

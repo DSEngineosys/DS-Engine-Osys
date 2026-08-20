@@ -164,6 +164,14 @@ export function ProfileCard() {
               <p className="text-xs text-muted-foreground mt-1 capitalize">
                 Role: {me.role.replace(/_/g, " ")}
               </p>
+              {me.role === "hr" && (
+                <div className="mt-2 text-sm">
+                  {me.hrId && <p><span className="font-semibold text-slate-700">HR ID:</span> {me.hrId}</p>}
+                  {me.monthlySalary !== undefined && (
+                    <p><span className="font-semibold text-slate-700">Monthly Salary:</span> ₹{me.monthlySalary.toLocaleString()}</p>
+                  )}
+                </div>
+              )}
             </div>
             <Button
               variant="outline"

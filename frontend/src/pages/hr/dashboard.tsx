@@ -1,4 +1,5 @@
 import { HRLayout } from "@/components/layout";
+import { ProfileCard } from "@/components/profile-card";
 import { useAuth } from "@/lib/auth";
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Users, Package, HelpCircle, Mail, Settings, RefreshCcw, MessageSquare, Star } from "lucide-react";
+import { Loader2, Users, Package, HelpCircle, Mail, Settings, RefreshCcw, MessageSquare, Star, IndianRupee } from "lucide-react";
 
 const PRODUCT_CATEGORIES: Record<string, string[]> = {
   "Skincare": ["Face Wash", "Moisturizer", "Serum", "Sunscreen", "Face Cream", "Toner", "Face Mask"],
@@ -33,6 +34,7 @@ export default function HRDashboard() {
 
   // State for data
   const [employees, setEmployees] = useState<any[]>([]);
+  const [employeeRequests, setEmployeeRequests] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [helpRequests, setHelpRequests] = useState<any[]>([]);
   const [emailSettings, setEmailSettings] = useState({ hrEmail: "", hrAppPassword: "" });
@@ -41,10 +43,8 @@ export default function HRDashboard() {
   const [customerFeedbacks, setCustomerFeedbacks] = useState<any[]>([]);
 
   // Forms state
-  const [empForm, setEmpForm] = useState({
-    employeeId: "", name: "", email: "", password: "", departmentId: "", 
-    subDepartment: "General", contactNumber: "+91 ", gender: "Male", location: "", employmentType: "Fulltime", shift: "", monthlySalary: 0
-  });
+  const [activeReqId, setActiveReqId] = useState("");
+  const [allowForm, setAllowForm] = useState({ employeeId: "", shift: "", monthlySalary: 0 });
   const [prodForm, setProdForm] = useState<{
     productId: string; name: string; category: string; subCategory: string; type: string; description: string; ingredients: string[]; ageGroup: string; gender: string; manufactureDate: string; expiryDate: string; batchNumber: string; mrp: number; discountPercent: number; taxPercent: number; price: number; stock: number;
   }>({
@@ -53,10 +53,11 @@ export default function HRDashboard() {
 
   const fetchData = async () => {
     try {
-      const [empRes, prodRes, helpRes, settingsRes, deptRes, feedbackRes] = await Promise.all([
-        fetch("/api/hr/employees"), fetch("/api/hr/products"), fetch("/api/hr/help-requests"), fetch("/api/hr/settings/email"), fetch("/api/departments"), fetch("/api/hr/customer-feedback")
+      const [empRes, reqRes, prodRes, helpRes, settingsRes, deptRes, feedbackRes] = await Promise.all([
+        fetch("/api/hr/employees"), fetch("/api/hr/employee-requests"), fetch("/api/hr/products"), fetch("/api/hr/help-requests"), fetch("/api/hr/settings/email"), fetch("/api/departments"), fetch("/api/hr/customer-feedback")
       ]);
       if (empRes.ok) setEmployees(await empRes.json());
+      if (reqRes.ok) setEmployeeRequests(await reqRes.json());
       if (prodRes.ok) setProducts(await prodRes.json());
       if (helpRes.ok) setHelpRequests(await helpRes.json());
       if (settingsRes.ok) setEmailSettings(await settingsRes.json());
@@ -69,17 +70,43 @@ export default function HRDashboard() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleHireEmployee = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAllowReq = async (id: string) => {
+    if (!allowForm.employeeId || !allowForm.shift || !allowForm.monthlySalary) {
+      toast({ variant: "destructive", title: "Error", description: "Please fill in all assignment fields." });
+      return;
+    }
     setLoading(true);
     try {
-      const res = await fetch("/api/hr/employees", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(empForm) });
+      const res = await fetch(`/api/hr/employee-requests/${id}/allow`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(allowForm)
+      });
       if (!res.ok) throw new Error((await res.json()).message);
-      toast({ title: "Employee Hired" });
+      toast({ title: "Employee Approved", description: "Employee access granted successfully." });
+      setAllowForm({ employeeId: "", shift: "", monthlySalary: 0 });
+      setActiveReqId("");
       fetchData();
-      setEmpForm({ ...empForm, employeeId: "", name: "", email: "", password: "", contactNumber: "+91 ", departmentId: "" });
-    } catch (err: any) { toast({ variant: "destructive", title: "Error", description: err.message }); }
-    finally { setLoading(false); }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDenyReq = async (id: string) => {
+    if (!confirm("Are you sure you want to deny this request?")) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/hr/employee-requests/${id}/deny`, { method: "POST" });
+      if (!res.ok) throw new Error((await res.json()).message);
+      toast({ title: "Request Denied" });
+      fetchData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddProduct = async (e: React.FormEvent) => {
@@ -108,12 +135,7 @@ export default function HRDashboard() {
     fetchData();
   };
 
-  const resetEmpPassword = async (id: string) => {
-    const newPassword = prompt("Enter new password:");
-    if (!newPassword) return;
-    await fetch(`/api/hr/employees/${id}/reset-password`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ newPassword }) });
-    toast({ title: "Password Reset" });
-  };
+
 
   const updateProdStatus = async (id: string, status: string) => {
     await fetch(`/api/hr/products/${id}/status`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
@@ -136,15 +158,12 @@ export default function HRDashboard() {
   return (
     <HRLayout>
       <div className="space-y-6 pb-20">
-        <div>
-          <h2 className="text-3xl font-bold">HR Management Dashboard</h2>
-          <p className="text-muted-foreground mt-1">Welcome back, {user?.name}</p>
-        </div>
+        <ProfileCard />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid grid-cols-2 md:grid-cols-7 h-auto p-1 bg-slate-100">
             <TabsTrigger value="overview" className="py-3">Overview</TabsTrigger>
-            <TabsTrigger value="hire" className="py-3">Hire Employee</TabsTrigger>
+            <TabsTrigger value="recruitment" className="py-3">Employee Recruitment</TabsTrigger>
             <TabsTrigger value="employees" className="py-3">Employee List</TabsTrigger>
             <TabsTrigger value="add-product" className="py-3">Add Product</TabsTrigger>
             <TabsTrigger value="products" className="py-3">Product List</TabsTrigger>
@@ -170,92 +189,76 @@ export default function HRDashboard() {
               <CardContent><div className="text-3xl font-bold">{customerFeedbacks.length}</div></CardContent>
             </Card>
 
-            <Card className="md:col-span-3 mt-4">
-              <CardHeader><CardTitle className="flex items-center gap-2"><Settings /> SMTP Email Settings</CardTitle></CardHeader>
-              <CardContent>
-                <form onSubmit={saveSettings} className="flex gap-4 items-end">
-                  <div className="flex-1"><label className="text-sm font-semibold mb-1 block">HR Email Address</label>
-                    <Input value={emailSettings.hrEmail} onChange={e => setEmailSettings({ ...emailSettings, hrEmail: e.target.value })} required type="email" placeholder="hr@company.com" />
-                  </div>
-                  <div className="flex-1"><label className="text-sm font-semibold mb-1 block">Google App Password</label>
-                    <Input value={emailSettings.hrAppPassword} onChange={e => setEmailSettings({ ...emailSettings, hrAppPassword: e.target.value })} type="password" placeholder="••••••••" />
-                  </div>
-                  <Button type="submit" disabled={loading}>{loading ? <Loader2 className="animate-spin w-4 h-4" /> : "Save"}</Button>
-                </form>
-              </CardContent>
-            </Card>
           </TabsContent>
 
-          <TabsContent value="hire">
+          <TabsContent value="recruitment">
             <Card>
-              <CardHeader><CardTitle>Hire New Employee</CardTitle></CardHeader>
+              <CardHeader><CardTitle>Employee Recruitment Requests</CardTitle></CardHeader>
               <CardContent>
-                <form onSubmit={handleHireEmployee} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div><label className="text-sm font-semibold mb-1 block">Employee ID</label><Input value={empForm.employeeId} onChange={e => setEmpForm({...empForm, employeeId: e.target.value})} required /></div>
-                  <div><label className="text-sm font-semibold mb-1 block">Name</label><Input value={empForm.name} onChange={e => setEmpForm({...empForm, name: e.target.value})} required /></div>
-                  <div><label className="text-sm font-semibold mb-1 block">Email</label><Input type="email" value={empForm.email} onChange={e => setEmpForm({...empForm, email: e.target.value})} required /></div>
-                  <div><label className="text-sm font-semibold mb-1 block">Password</label><Input type="password" value={empForm.password} onChange={e => setEmpForm({...empForm, password: e.target.value})} required /></div>
-                  
-                  <div>
-                    <label className="text-sm font-semibold mb-1 block">Department</label>
-                    <select className="w-full h-10 border rounded-md px-3 text-sm bg-white" value={empForm.departmentId} onChange={e => setEmpForm({...empForm, departmentId: e.target.value, subDepartment: ""})} required>
-                      <option value="">-- Select Department --</option>
-                      {departments.filter(d => !d.parentId).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-semibold mb-1 block">Sub Department</label>
-                    <select className="w-full h-10 border rounded-md px-3 text-sm bg-white" value={empForm.subDepartment} onChange={e => setEmpForm({...empForm, subDepartment: e.target.value})} disabled={!empForm.departmentId}>
-                      <option value="">-- Select Sub Department --</option>
-                      {departments.filter(d => d.parentId === empForm.departmentId).map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-semibold mb-1 block">Contact Number</label>
-                    <Input value={empForm.contactNumber} onChange={e => {
-                      const val = e.target.value;
-                      if (!val.startsWith("+91 ")) {
-                        setEmpForm({...empForm, contactNumber: "+91 "});
-                      } else {
-                        setEmpForm({...empForm, contactNumber: val});
-                      }
-                    }} />
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-semibold mb-1 block">Gender</label>
-                    <select className="w-full h-10 border rounded-md px-3 text-sm bg-white" value={empForm.gender} onChange={e => setEmpForm({...empForm, gender: e.target.value})}>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  
-                  <div><label className="text-sm font-semibold mb-1 block">Location</label><Input value={empForm.location} onChange={e => setEmpForm({...empForm, location: e.target.value})} /></div>
-                  
-                  <div>
-                    <label className="text-sm font-semibold mb-1 block">Employment Type</label>
-                    <select className="w-full h-10 border rounded-md px-3 text-sm bg-white" value={empForm.employmentType} onChange={e => setEmpForm({...empForm, employmentType: e.target.value})}>
-                      <option value="Fulltime">Fulltime</option>
-                      <option value="Parttime">Parttime</option>
-                      <option value="Contract based">Contract based</option>
-                    </select>
-                  </div>
-                  
-                  <div><label className="text-sm font-semibold mb-1 block">Shift</label><Input value={empForm.shift} onChange={e => setEmpForm({...empForm, shift: e.target.value})} /></div>
-                  
-                  <div>
-                    <label className="text-sm font-semibold mb-1 block">Monthly Salary</label>
-                    <div className="relative">
-                      <Input type="number" className="pr-8" value={empForm.monthlySalary || ""} onChange={e => setEmpForm({...empForm, monthlySalary: Number(e.target.value)})} />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-semibold pointer-events-none">₹</span>
-                    </div>
-                  </div>
+                <div className="space-y-4">
+                  {employeeRequests.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500">No pending employee registration requests.</div>
+                  ) : (
+                    employeeRequests.map((req: any) => (
+                      <div key={req._id} className="p-4 border rounded-xl bg-slate-50 relative">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+                          <div><strong className="text-sm">Name:</strong> {req.name}</div>
+                          <div><strong className="text-sm">Email:</strong> {req.email}</div>
+                          <div><strong className="text-sm">Phone:</strong> {req.contactNumber}</div>
+                          <div><strong className="text-sm">Department:</strong> {req.departmentName} {req.subDepartment ? `(${req.subDepartment})` : ''}</div>
+                          <div><strong className="text-sm">Gender:</strong> {req.gender}</div>
+                          <div><strong className="text-sm">Location:</strong> {req.location}</div>
+                          <div><strong className="text-sm">Employment Type:</strong> {req.employmentType}</div>
+                          <div><strong className="text-sm">Status:</strong> 
+                            <span className={`ml-2 px-2 py-1 text-xs font-bold rounded ${req.accountStatus === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>
+                              {req.accountStatus}
+                            </span>
+                          </div>
+                        </div>
 
-                  <div className="md:col-span-3"><Button type="submit" className="w-full h-12" disabled={loading}>Hire Employee</Button></div>
-                </form>
+                        {req.accountStatus === 'Pending' && activeReqId !== req._id && (
+                          <div className="flex gap-2 justify-end">
+                            <Button variant="outline" className="text-rose-600 border-rose-200 hover:bg-rose-50" onClick={() => handleDenyReq(req._id)} disabled={loading}>
+                              Deny
+                            </Button>
+                            <Button onClick={() => setActiveReqId(req._id)} className="bg-emerald-600 hover:bg-emerald-700">
+                              Approve...
+                            </Button>
+                          </div>
+                        )}
+
+                        {activeReqId === req._id && (
+                          <div className="mt-4 p-4 bg-white border border-emerald-100 rounded-lg shadow-sm">
+                            <h4 className="font-bold text-sm text-emerald-800 mb-3">Assign Employee Details</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                              <div>
+                                <label className="text-xs font-semibold block mb-1">Employee ID</label>
+                                <Input value={allowForm.employeeId} onChange={e => setAllowForm({...allowForm, employeeId: e.target.value})} placeholder="e.g. EMP-101" />
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold block mb-1">Shift</label>
+                                <Input value={allowForm.shift} onChange={e => setAllowForm({...allowForm, shift: e.target.value})} placeholder="e.g. Day, Night" />
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold block mb-1">Monthly Salary</label>
+                                <div className="relative">
+                                  <Input type="number" value={allowForm.monthlySalary || ""} onChange={e => setAllowForm({...allowForm, monthlySalary: Number(e.target.value)})} placeholder="0" className="pr-8" />
+                                  <IndianRupee className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 justify-end">
+                              <Button variant="ghost" onClick={() => setActiveReqId("")}>Cancel</Button>
+                              <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleAllowReq(req._id)} disabled={loading}>
+                                Confirm Approval
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -266,18 +269,18 @@ export default function HRDashboard() {
               <CardContent className="overflow-auto">
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                    <tr><th>ID</th><th>Name</th><th>Dept</th><th>Status</th><th className="text-right">Actions</th></tr>
+                    <tr><th>ID</th><th>Name</th><th>Dept</th><th>Sub-Dept</th><th>Status</th><th className="text-right">Actions</th></tr>
                   </thead>
                   <tbody>
                     {employees.map(emp => (
                       <tr key={emp._id} className="border-b">
-                        <td className="py-3">{emp.employeeId}</td><td className="font-medium">{emp.name}</td><td>{emp.departmentName}</td>
+                        <td className="py-3">{emp.employeeId}</td><td className="font-medium">{emp.name}</td><td>{emp.departmentName}</td><td>{emp.subDepartment || "-"}</td>
                         <td><span className={`px-2 py-1 rounded-full text-xs ${emp.accountStatus === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{emp.accountStatus}</span></td>
                         <td className="text-right space-x-2">
                           <Button size="sm" variant={emp.accountStatus === 'Active' ? 'outline' : 'default'} onClick={() => updateEmpStatus(emp._id, emp.accountStatus === 'Active' ? 'Inactive' : 'Active')}>
                             {emp.accountStatus === 'Active' ? 'Deactivate' : 'Activate'}
                           </Button>
-                          <Button size="sm" variant="secondary" onClick={() => resetEmpPassword(emp._id)}><RefreshCcw className="w-4 h-4" /></Button>
+
                           <Button size="sm" variant="destructive" onClick={() => deleteEmployee(emp._id)}>Delete</Button>
                         </td>
                       </tr>

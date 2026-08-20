@@ -9,6 +9,10 @@ export interface IUser extends Document {
   role: string;
   status: string;
   avatarUrl?: string;
+  departmentId?: mongoose.Types.ObjectId;
+  subDepartment?: string;
+  phoneNumber?: string;
+  monthlySalary?: number;
   resetOtp?: string;
   resetOtpExpires?: Date;
   lastOtpSentAt?: Date;
@@ -27,6 +31,10 @@ const UserSchema: Schema = new Schema(
     role: { type: String, default: "ds_engineer" },
     status: { type: String, default: "approved" },
     avatarUrl: { type: String },
+    departmentId: { type: Schema.Types.ObjectId, ref: "Department" },
+    subDepartment: { type: String },
+    phoneNumber: { type: String },
+    monthlySalary: { type: Number },
     resetOtp: { type: String },
     resetOtpExpires: { type: Date },
     lastOtpSentAt: { type: Date },

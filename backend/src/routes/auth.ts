@@ -39,7 +39,9 @@ function formatUser(user: any) {
     role: user.role,
     status: user.status,
     avatarUrl: user.avatarUrl,
-    createdAt: user.createdAt.toISOString(),
+    hrId: user.hrId,
+    monthlySalary: user.monthlySalary,
+    createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
   };
 }
 
@@ -274,7 +276,7 @@ router.post("/auth/forgot-password/request-otp", async (req, res) => {
   }
   const input = parsed.data.identifier.trim();
   const user = await User.findOne({
-    $or: [{ email: input.toLowerCase() }, { mobile: input }, { mobile: { $regex: input } }],
+    $or: [{ email: input.toLowerCase() }, { hrId: input }, { mobile: input }, { mobile: { $regex: input } }],
   });
 
   if (!user) {

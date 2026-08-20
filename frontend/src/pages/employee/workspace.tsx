@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Home, BarChart2, Package, User, LogOut, Camera, Send, Clock, Target, Gift } from "lucide-react";
+import { Home, BarChart2, Package, User, LogOut, Camera, Send, Clock, Target, Gift, ClipboardList, CheckCircle2, XCircle, Check, HelpCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { RoleBasedWorkspace } from "@/components/workspace/RoleWorkspaces";
+import { EmployeeHelpModal } from "@/components/workspace/EmployeeHelpModal";
+import { api } from "@/lib/api-extra";
 
 // Fetchers
 const fetcher = (url: string) => fetch(url).then(r => r.json());
@@ -17,6 +20,7 @@ export default function EmployeeWorkspace() {
   const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState("home");
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const [loginTime] = useState(new Date());
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
 
@@ -47,9 +51,20 @@ export default function EmployeeWorkspace() {
 
   const queryClient = useQueryClient();
 
-  // Sale form state
-  const [sellForm, setSellForm] = useState({ productId: "", quantity: 1, customerName: "", customerPhone: "", customerEmail: "", customerAddress: "", proofImageUrl: "" });
+  const updateTaskStatusMutation = useMutation({
+    mutationFn: (data: { taskId: string; status: string }) => api.updateTaskStatus(data.taskId, data.status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["emp-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["emp-performance"] });
+      toast({ title: "Task status updated" });
+    },
+    onError: (err: any) => {
+      toast({ variant: "destructive", title: "Error", description: err.message || "Failed to update task" });
+    }
+  });
+
   const [feedbackForm, setFeedbackForm] = useState({ customerName: "", feedback: "", rating: 5 });
+  const [proofImageUrl, setProofImageUrl] = useState("");
 
   // Camera state
   const [cameraActive, setCameraActive] = useState(false);
@@ -60,27 +75,7 @@ export default function EmployeeWorkspace() {
   // Avatar upload state
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSell = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!sellForm.proofImageUrl) {
-      toast({ variant: "destructive", title: "Proof Required", description: "Please capture the bill proof using camera." });
-      return;
-    }
-    
-    try {
-      const res = await fetch("/api/employee/sell", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...sellForm, taskId: tasks?.[0]?._id })
-      });
-      if (!res.ok) throw new Error((await res.json()).error || "Sale failed");
-      toast({ title: "Sale Recorded Successfully" });
-      setSellForm({ productId: "", quantity: 1, customerName: "", customerPhone: "", customerEmail: "", customerAddress: "", proofImageUrl: "" });
-      queryClient.invalidateQueries({ queryKey: ["emp-products"] });
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err.message });
-    }
-  };
+
 
   // Camera functions
   const openCamera = useCallback(async () => {
@@ -109,9 +104,9 @@ export default function EmployeeWorkspace() {
     if (!ctx) return;
     ctx.drawImage(video, 0, 0);
     const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-    setSellForm(prev => ({ ...prev, proofImageUrl: dataUrl }));
+    setProofImageUrl(dataUrl);
     stopCamera();
-    toast({ title: "Bill Captured", description: "Proof photo saved successfully." });
+    toast({ title: "Proof Captured", description: "Proof photo saved successfully." });
   }, [toast]);
 
   const stopCamera = useCallback(() => {
@@ -168,9 +163,14 @@ export default function EmployeeWorkspace() {
       
       {/* Top Header */}
       <div className="bg-white px-4 py-3 shadow-sm flex justify-between items-center sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">DS</div>
-          <span className="font-bold text-slate-800">Workspace</span>
+        <div className="flex items-center gap-3">
+          <button onClick={() => setShowHelpModal(true)} className="w-8 h-8 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors">
+            <HelpCircle className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">DS</div>
+            <span className="font-bold text-slate-800">Workspace</span>
+          </div>
         </div>
         <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full text-sm font-medium text-slate-700">
           <Clock className="w-4 h-4 text-blue-600" /> {elapsedTime}
@@ -205,82 +205,24 @@ export default function EmployeeWorkspace() {
             </Card>
 
             <Card className={!tasks || tasks.length === 0 ? "opacity-60 pointer-events-none relative" : ""}>
-              <CardHeader className="pb-3"><CardTitle className="text-base">Product Selling Workspace</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="text-base">Role-Specific Workspace</CardTitle></CardHeader>
               <CardContent>
                 {(!tasks || tasks.length === 0) && (
                   <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-xl z-10 flex flex-col items-center justify-center">
                     <Target className="w-8 h-8 text-slate-400 mb-2" />
                     <p className="text-sm font-bold text-slate-500">No Task Assigned</p>
-                    <p className="text-xs text-slate-400">Product selling is available only when a task is active.</p>
+                    <p className="text-xs text-slate-400">Workspace data entry is available only when a task is active.</p>
                   </div>
                 )}
-                <form onSubmit={handleSell} className="space-y-4">
-                  <div>
-                    <label className="text-xs font-semibold mb-1 block">Select Product</label>
-                    <select 
-                      className="w-full text-sm border p-2 rounded" 
-                      value={sellForm.productId} 
-                      onChange={e => setSellForm({...sellForm, productId: e.target.value})}
-                      required
-                    >
-                      <option value="">-- Choose Product --</option>
-                      {products?.map((p: any) => (
-                        <option key={p._id} value={p._id}>{p.name} (Stock: {p.stock} | {p.price}₹)</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold mb-1 block">Quantity</label>
-                    <Input type="number" min="1" value={sellForm.quantity} onChange={e => setSellForm({...sellForm, quantity: Number(e.target.value)})} required />
-                  </div>
-
-                  {/* Expanded Customer Details */}
-                  <div className="border rounded-lg p-3 space-y-3 bg-slate-50/50">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Customer Details</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs font-semibold mb-1 block">Name</label>
-                        <Input placeholder="Customer name" value={sellForm.customerName} onChange={e => setSellForm({...sellForm, customerName: e.target.value})} required />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold mb-1 block">Phone</label>
-                        <Input type="tel" placeholder="+91 XXXXX" value={sellForm.customerPhone} onChange={e => setSellForm({...sellForm, customerPhone: e.target.value})} required />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold mb-1 block">Email (optional)</label>
-                      <Input type="email" placeholder="customer@email.com" value={sellForm.customerEmail} onChange={e => setSellForm({...sellForm, customerEmail: e.target.value})} />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold mb-1 block">Address (optional)</label>
-                      <Input placeholder="Customer address" value={sellForm.customerAddress} onChange={e => setSellForm({...sellForm, customerAddress: e.target.value})} />
-                    </div>
-                  </div>
-                  
-                  {/* Camera Capture Area */}
-                  <div 
-                    className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:bg-slate-50 transition-colors" 
-                    onClick={() => { if (!sellForm.proofImageUrl) openCamera(); }}
-                  >
-                    {sellForm.proofImageUrl ? (
-                      <div className="space-y-2">
-                        <div className="text-green-600 font-bold flex items-center justify-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500"/> Bill Proof Captured</div>
-                        {sellForm.proofImageUrl.startsWith("data:") && (
-                          <img src={sellForm.proofImageUrl} alt="Bill proof" className="w-full max-h-32 object-contain rounded" />
-                        )}
-                        <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSellForm(prev => ({...prev, proofImageUrl: ""})); }}>Retake</Button>
-                      </div>
-                    ) : (
-                      <div className="text-slate-500 flex flex-col items-center gap-1">
-                        <Camera className="w-6 h-6 mb-1"/>
-                        <span className="text-sm font-semibold">Tap to Open Camera & Capture Bill</span>
-                        <span className="text-xs">Required for sale</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <Button type="submit" className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-base font-bold">Complete Sale</Button>
-                </form>
+                
+                <RoleBasedWorkspace 
+                  profile={profile} 
+                  tasks={tasks} 
+                  products={products} 
+                  openCamera={openCamera}
+                  proofImageUrl={proofImageUrl}
+                  setProofImageUrl={setProofImageUrl}
+                />
               </CardContent>
             </Card>
           </div>
@@ -382,6 +324,93 @@ export default function EmployeeWorkspace() {
           </div>
         )}
 
+
+
+        {/* --- TASKS TAB --- */}
+        {activeTab === "tasks" && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div>
+              <h2 className="text-xl font-bold text-slate-800">My Tasks</h2>
+              <p className="text-sm text-slate-500">Manage and track your assigned work.</p>
+            </div>
+            
+            {/* Pending Tasks */}
+            {tasks?.filter((t: any) => t.status === "pending").length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-slate-700 uppercase">Action Required</h3>
+                {tasks?.filter((t: any) => t.status === "pending").map((task: any) => (
+                  <Card key={task._id} className="border-l-4 border-l-yellow-400">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-semibold">{task.title}</h4>
+                          <p className="text-xs text-slate-500 line-clamp-2 mt-1">{task.description}</p>
+                        </div>
+                        <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-bold">Pending</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => updateTaskStatusMutation.mutate({ taskId: task._id, status: "accepted" })} disabled={updateTaskStatusMutation.isPending}>Accept</Button>
+                        <Button size="sm" variant="outline" className="flex-1 text-red-600 border-red-200 hover:bg-red-50" onClick={() => updateTaskStatusMutation.mutate({ taskId: task._id, status: "rejected" })} disabled={updateTaskStatusMutation.isPending}>Reject</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Active/Accepted Tasks */}
+            {tasks?.filter((t: any) => t.status === "accepted").length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-slate-700 uppercase">In Progress</h3>
+                {tasks?.filter((t: any) => t.status === "accepted").map((task: any) => (
+                  <Card key={task._id} className="border-l-4 border-l-blue-500">
+                    <CardContent className="p-4 space-y-3">
+                      <div>
+                        <h4 className="font-semibold">{task.title}</h4>
+                        <p className="text-xs text-slate-500 mt-1">{task.description}</p>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-slate-500">
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3"/> Started: {new Date(task.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => updateTaskStatusMutation.mutate({ taskId: task._id, status: "completed" })} disabled={updateTaskStatusMutation.isPending}>
+                        <Check className="w-4 h-4 mr-2" /> Mark as Completed
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Task History */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-slate-700 uppercase">Task History</h3>
+              {tasks?.filter((t: any) => t.status === "completed" || t.status === "rejected").length === 0 ? (
+                <p className="text-sm text-slate-500 italic">No historical tasks.</p>
+              ) : (
+                <div className="space-y-2">
+                  {tasks?.filter((t: any) => t.status === "completed" || t.status === "rejected").map((task: any) => (
+                    <div key={task._id} className="bg-white border rounded-xl p-3 shadow-sm text-sm">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-medium">{task.title}</span>
+                        {task.status === "completed" ? (
+                          <span className="flex items-center text-xs font-bold text-green-600"><CheckCircle2 className="w-3 h-3 mr-1"/> Completed</span>
+                        ) : (
+                          <span className="flex items-center text-xs font-bold text-red-500"><XCircle className="w-3 h-3 mr-1"/> Rejected</span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-500 space-y-1">
+                        <p><strong>Start Date:</strong> {new Date(task.createdAt).toLocaleString()}</p>
+                        {task.dueDate && <p><strong>End Date (Due):</strong> {new Date(task.dueDate).toLocaleString()}</p>}
+                        {task.completedAt && <p className="text-green-600 font-medium"><strong>Completed:</strong> {new Date(task.completedAt).toLocaleString()}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* --- PROFILE TAB --- */}
         {activeTab === "profile" && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -455,6 +484,7 @@ export default function EmployeeWorkspace() {
           { id: "home", icon: Home, label: "Home" },
           { id: "performance", icon: BarChart2, label: "Performance" },
           { id: "products", icon: Package, label: "Products" },
+          { id: "tasks", icon: ClipboardList, label: "Tasks" },
           { id: "profile", icon: User, label: "Profile" }
         ].map(item => (
           <button
@@ -467,6 +497,8 @@ export default function EmployeeWorkspace() {
           </button>
         ))}
       </div>
+
+      <EmployeeHelpModal open={showHelpModal} onOpenChange={setShowHelpModal} />
     </div>
   );
 }

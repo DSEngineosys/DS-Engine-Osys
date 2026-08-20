@@ -7,6 +7,7 @@ import CustomerFeedback from "../models/customer-feedback.model";
 import DailyCollection from "../models/daily-collection.model";
 import Setting from "../models/setting.model";
 import Department from "../models/department.model";
+import EmployeeActivity from "../models/employee-activity.model";
 
 const router = Router();
 
@@ -49,6 +50,28 @@ router.get("/employee/tasks", requireEmployee, async (req: any, res: any) => {
   const session = req.session as any;
   const tasks = await Task.find({ employeeId: session.userId }).sort({ createdAt: -1 });
   res.json(tasks);
+});
+
+// Update task status (accept, reject, complete)
+router.patch("/employee/tasks/:id/status", requireEmployee, async (req: any, res: any) => {
+  const session = req.session as any;
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!["accepted", "rejected", "completed"].includes(status)) {
+    return res.status(400).json({ error: "Invalid status" });
+  }
+
+  const task = await Task.findOne({ _id: id, employeeId: session.userId });
+  if (!task) return res.status(404).json({ error: "Task not found" });
+
+  task.status = status;
+  if (status === "completed") {
+    task.completedAt = new Date();
+  }
+
+  await task.save();
+  res.json({ message: "Task status updated", task });
 });
 
 // Active products visible to employee
@@ -167,6 +190,30 @@ router.post("/employee/sell", requireEmployee, async (req: any, res: any) => {
   });
 
   res.json({ message: "Sale recorded successfully", saleAmount, remainingStock: product.stock });
+});
+
+// Dynamic role-based employee activity submission
+router.post("/employee/activity", requireEmployee, async (req: any, res: any) => {
+  const session = req.session as any;
+  const { activityType, payload } = req.body;
+  if (!activityType || !payload) {
+    return res.status(400).json({ error: "Missing activityType or payload" });
+  }
+
+  const emp = await Employee.findById(session.userId);
+  if (!emp) return res.status(404).json({ error: "Employee not found" });
+
+  const dept = await Department.findById(emp.departmentId);
+
+  const activity = await EmployeeActivity.create({
+    employeeId: emp._id,
+    departmentName: dept?.name || "Unknown",
+    subDepartment: emp.subDepartment || "None",
+    activityType,
+    payload,
+  });
+
+  res.status(201).json({ message: "Activity submitted successfully", activity });
 });
 
 export default router;

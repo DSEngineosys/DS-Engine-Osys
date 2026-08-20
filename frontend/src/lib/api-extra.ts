@@ -69,6 +69,8 @@ export interface CurrentUserExtended {
   role: string;
   status: RegistrationStatus;
   avatarUrl: string | null;
+  hrId?: string;
+  monthlySalary?: number;
   createdAt: string;
 }
 
@@ -140,6 +142,12 @@ export const api = {
   },
   getSettings() {
     return request<Record<string, string>>("/api/settings");
+  },
+  updateTaskStatus(taskId: string, status: string) {
+    return request<any>(`/api/employee/tasks/${taskId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
   },
   updateSetting(key: string, value: string) {
     return request<any>(`/api/settings/${key}`, {
@@ -213,6 +221,83 @@ export const api = {
     return request<{ message: string; bonus: any }>(`/api/bonuses/${id}/claim`, {
       method: "POST",
       body: JSON.stringify({ employeeId }),
+    });
+  },
+  
+  // HR Registration & Recovery
+  hrRegisterRequest(body: { name: string; email: string; mobile: string; departmentId: string; subDepartment?: string }) {
+    return request<{ message: string }>("/api/hr/register-request", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+  hrRegistrationStatus(email: string) {
+    return request<RegistrationStatusResponse>(`/api/hr/registration-status?email=${encodeURIComponent(email)}`);
+  },
+  hrSetPassword(body: { email: string; password: string }) {
+    return request<{ message: string }>("/api/hr/set-password", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+  
+  // Employee Registration & Recovery
+  employeeRegisterRequest(body: { name: string; email: string; contactNumber: string; department: string; subDepartment?: string; gender?: string; location?: string; employmentType?: string }) {
+    return request<{ message: string }>("/api/employee/register-request", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+  employeeRegistrationStatus(email: string) {
+    return request<RegistrationStatusResponse>(`/api/employee/registration-status?email=${encodeURIComponent(email)}`);
+  },
+  employeeSetPassword(body: { email: string; password: string }) {
+    return request<{ message: string }>("/api/employee/set-password", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  // Admin HR Recruitment Management
+  hrRecruitmentRequests() {
+    return request<any[]>("/api/admin/hr-recruitment-requests");
+  },
+  allowHRRecruitment(id: string, body: { hrId: string; monthlySalary: number }) {
+    return request<{ message: string }>(`/api/admin/hr-recruitment-requests/${id}/allow`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+  denyHRRecruitment(id: string) {
+    return request<{ message: string }>(`/api/admin/hr-recruitment-requests/${id}/deny`, {
+      method: "POST",
+    });
+  },
+  deleteHRRecruitment(id: string) {
+    return request<{ message: string }>(`/api/admin/hr-recruitment-requests/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  // HR Employee Recruitment Management
+  hrEmployeeRequests() {
+    return request<any[]>("/api/hr/employee-requests");
+  },
+  hrAllowEmployee(id: string, body: { employeeId: string; shift: string; monthlySalary: number }) {
+    return request<{ message: string }>(`/api/hr/employee-requests/${id}/allow`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+  hrDenyEmployee(id: string) {
+    return request<{ message: string }>(`/api/hr/employee-requests/${id}/deny`, {
+      method: "POST",
+    });
+  },
+  submitEmployeeActivity(body: { activityType: string; payload: any }) {
+    return request<{ message: string; activity: any }>("/api/employee/activity", {
+      method: "POST",
+      body: JSON.stringify(body),
     });
   },
 };

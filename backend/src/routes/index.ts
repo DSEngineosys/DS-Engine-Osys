@@ -13,6 +13,8 @@ import notificationsRouter from "./notifications";
 import bonusesRouter from "./bonuses";
 import hrRouter from "./hr";
 import employeeWorkspaceRouter from "./employee-workspace";
+import employeeRegistrationRouter from "./employee-registration";
+import hrRegistrationRouter from "./hr-registration";
 
 const router: IRouter = Router();
 
@@ -30,5 +32,7 @@ router.use(notificationsRouter);
 router.use(bonusesRouter);
 router.use(hrRouter);
 router.use(employeeWorkspaceRouter);
+router.use(employeeRegistrationRouter);
+router.use(hrRegistrationRouter);
 
 export default router;

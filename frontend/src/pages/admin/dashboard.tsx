@@ -35,10 +35,10 @@ import {
   RegistrationRequest,
 } from "@/lib/api-extra";
 import { useAdmin } from "@/lib/admin";
-import { Gift, Timer } from "lucide-react";
+import { Gift, Timer, IndianRupee } from "lucide-react";
 import { CountdownTimer } from "@/components/countdown-timer";
 
-const SLIDES = ["DS Engineer Details", "Company Improvement Progress", "Branding & Security", "Communication Hub", "BONUS"] as const;
+const SLIDES = ["DS Engineer Details", "Company Improvement Progress", "Branding & Security", "Communication Hub", "BONUS", "HR Recruitment"] as const;
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
@@ -46,8 +46,11 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const [requests, setRequests] = useState<RegistrationRequest[] | null>(null);
   const [stats, setStats] = useState<AdminDashboardData | null>(null);
+  const [hrRequests, setHrRequests] = useState<any[]>([]);
   const [slide, setSlide] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [hrAllowForm, setHrAllowForm] = useState({ hrId: "", monthlySalary: 0 });
+  const [activeHrReqId, setActiveHrReqId] = useState("");
 
   useEffect(() => {
     if (!isLoading && !admin) {
@@ -57,9 +60,14 @@ export default function AdminDashboard() {
 
   async function refreshData() {
     try {
-      const [reqs, dash] = await Promise.all([api.registrationRequests(), api.adminDashboard()]);
+      const [reqs, dash, hrReqs] = await Promise.all([
+        api.registrationRequests(), 
+        api.adminDashboard(),
+        api.hrRecruitmentRequests()
+      ]);
       setRequests(reqs);
       setStats(dash);
+      setHrRequests(hrReqs);
     } catch (err) {
       toast({
         variant: "destructive",
@@ -117,6 +125,53 @@ export default function AdminDashboard() {
       await refreshData();
     } catch (err) {
       toast({ variant: "destructive", title: "Delete failed" });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleAllowHrReq(id: string) {
+    if (!hrAllowForm.hrId || !hrAllowForm.monthlySalary) {
+      toast({ variant: "destructive", title: "Error", description: "Please provide HR ID and Salary" });
+      return;
+    }
+    setBusyId(id);
+    try {
+      await api.allowHRRecruitment(id, hrAllowForm);
+      toast({ title: "HR Approved", description: "HR access granted." });
+      setHrAllowForm({ hrId: "", monthlySalary: 0 });
+      setActiveHrReqId("");
+      await refreshData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Failed", description: err.message });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleDenyHrReq(id: string) {
+    if (!confirm("Deny this HR registration request?")) return;
+    setBusyId(id);
+    try {
+      await api.denyHRRecruitment(id);
+      toast({ title: "HR Denied" });
+      await refreshData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Failed", description: err.message });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleDeleteHrReq(id: string) {
+    if (!confirm("Are you sure you want to permanently delete this HR registration request?")) return;
+    setBusyId(id);
+    try {
+      await api.deleteHRRecruitment(id);
+      toast({ title: "HR Request Deleted" });
+      await refreshData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Delete failed", description: err.message });
     } finally {
       setBusyId(null);
     }
@@ -404,8 +459,133 @@ export default function AdminDashboard() {
               <BrandingSettings />
             ) : slide === 3 ? (
               <CommunicationHub />
-            ) : (
+            ) : slide === 4 ? (
               <BonusManagement />
+            ) : (
+              <motion.div
+                key="hr-recruitment"
+                initial={{ x: 30, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -30, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-primary" /> HR Recruitment Management
+                    </CardTitle>
+                    <CardDescription>
+                      Approve or deny HR registration requests. Approved HRs can manage employees for their assigned department.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {hrRequests.length === 0 ? (
+                      <div className="text-center py-10 text-muted-foreground text-sm">
+                        No HR registration requests pending.
+                      </div>
+                    ) : (
+                      <div className="grid gap-3">
+                        {hrRequests.map((r) => (
+                          <div
+                            key={r.id}
+                            className="flex flex-col md:flex-row md:items-start gap-3 md:gap-4 border rounded-xl p-4 bg-white hover:border-primary/40 transition-colors"
+                          >
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center text-purple-700 font-bold shrink-0">
+                              {r.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <p className="font-semibold truncate text-lg">{r.name}</p>
+                                <StatusBadge status={r.status} />
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-600 mb-3">
+                                <div><strong className="font-semibold text-slate-800">Email:</strong> {r.email}</div>
+                                <div><strong className="font-semibold text-slate-800">Mobile:</strong> {r.mobile}</div>
+                                <div><strong className="font-semibold text-slate-800">Department:</strong> {r.departmentName}</div>
+                                <div><strong className="font-semibold text-slate-800">Sub-Dept:</strong> {r.subDepartment || "-"}</div>
+                              </div>
+                              
+                              <div className="flex justify-end gap-2 mt-2">
+                                {r.status === "pending" && activeHrReqId !== r.id && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => setActiveHrReqId(r.id)}
+                                      disabled={busyId === r.id}
+                                      className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                                    >
+                                      Approve HR...
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleDenyHrReq(r.id)}
+                                      disabled={busyId === r.id}
+                                      className="border-rose-200 text-rose-600 hover:bg-rose-50"
+                                    >
+                                      Deny
+                                    </Button>
+                                  </>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDeleteHrReq(r.id)}
+                                  disabled={busyId === r.id}
+                                  className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                              
+                              {activeHrReqId === r.id && (
+                                <div className="mt-4 p-4 bg-slate-50 border rounded-xl">
+                                  <h4 className="font-semibold text-sm mb-3 text-slate-800">Finalize HR Details</h4>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                    <div className="space-y-1">
+                                      <Label className="text-xs">Assign HR-ID</Label>
+                                      <Input 
+                                        value={hrAllowForm.hrId} 
+                                        onChange={e => setHrAllowForm({...hrAllowForm, hrId: e.target.value})} 
+                                        placeholder="e.g. HR-1001" 
+                                        className="h-9"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-xs">Monthly Salary</Label>
+                                      <div className="relative">
+                                        <Input 
+                                          type="number"
+                                          value={hrAllowForm.monthlySalary || ""} 
+                                          onChange={e => setHrAllowForm({...hrAllowForm, monthlySalary: Number(e.target.value)})} 
+                                          placeholder="0" 
+                                          className="h-9 pr-8"
+                                        />
+                                        <IndianRupee className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-end gap-2">
+                                    <Button size="sm" variant="ghost" onClick={() => setActiveHrReqId("")}>Cancel</Button>
+                                    <Button 
+                                      size="sm" 
+                                      className="bg-emerald-600 hover:bg-emerald-700" 
+                                      onClick={() => handleAllowHrReq(r.id)}
+                                      disabled={busyId === r.id}
+                                    >
+                                      Confirm & Approve
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
             )}
           </AnimatePresence>
         </section>

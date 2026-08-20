@@ -145,6 +145,83 @@ router.delete("/admin/registration-requests/:id", requireAdmin, async (req, res)
   res.json({ message: "DS Engineer deleted permanently", id });
 });
 
+router.get("/admin/hr-recruitment-requests", requireAdmin, async (_req, res) => {
+  const rows = await User.find({ role: "hr" }).populate("departmentId").sort({ createdAt: -1 });
+  res.json(rows.map((r: any) => ({
+    id: r._id,
+    name: r.name,
+    email: r.email,
+    mobile: r.mobile,
+    departmentName: r.departmentId?.name || "Unknown",
+    subDepartment: r.subDepartment,
+    status: r.status,
+    hrId: r.hrId,
+    monthlySalary: r.monthlySalary,
+    createdAt: r.createdAt.toISOString()
+  })));
+});
+
+router.post("/admin/hr-recruitment-requests/:id/allow", requireAdmin, async (req, res) => {
+  const id = req.params.id as string;
+  const { hrId, monthlySalary } = req.body;
+  if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (!hrId || !monthlySalary) { res.status(400).json({ error: "hrId and monthlySalary are required" }); return; }
+  
+  const updated = await User.findByIdAndUpdate(id, { status: "approved", hrId, monthlySalary }, { new: true });
+  if (!updated) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  try {
+    await sendEmail(
+      updated.email,
+      "HR Registration Approved - DS Engineosys",
+      `Congratulations ${updated.name}! Your HR registration request has been APPROVED. Your HR-ID is ${hrId}. You can now proceed to set your password and access the platform.`
+    );
+  } catch (err) {
+    console.error("Non-critical: Failed to notify HR of approval", err);
+  }
+
+  res.json({ message: "HR approved", id: updated._id, status: updated.status });
+});
+
+router.post("/admin/hr-recruitment-requests/:id/deny", requireAdmin, async (req, res) => {
+  const id = req.params.id as string;
+  if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  
+  const updated = await User.findByIdAndUpdate(id, { status: "denied" }, { new: true });
+  if (!updated) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  try {
+    await sendEmail(
+      updated.email,
+      "HR Registration Denied - DS Engineosys",
+      `Hello ${updated.name}, your HR registration request has been DENIED by the Admin.`
+    );
+  } catch (err) {
+    console.error("Non-critical: Failed to notify HR of denial", err);
+  }
+
+  res.json({ message: "HR denied", id: updated._id, status: updated.status });
+});
+
+router.delete("/admin/hr-recruitment-requests/:id", requireAdmin, async (req, res) => {
+  const id = req.params.id as string;
+  if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  
+  const deleted = await User.findOneAndDelete({ _id: id, role: "hr" });
+  if (!deleted) {
+    res.status(404).json({ error: "HR request not found" });
+    return;
+  }
+
+  res.json({ message: "HR request deleted successfully", id: deleted._id });
+});
+
 router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
   const totalEngineers = await User.countDocuments({ role: "ds_engineer" });
   const approved = await User.countDocuments({ role: "ds_engineer", status: "approved" });
