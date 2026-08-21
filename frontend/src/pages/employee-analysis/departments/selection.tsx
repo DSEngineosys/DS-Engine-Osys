@@ -39,7 +39,7 @@ export default function DepartmentSelection() {
           {isLoading ? (
             [1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)
           ) : (
-            departments?.map((dept) => {
+            departments?.filter(dept => ["Production Department", "Marketing Department", "HR Department"].includes(dept.name)).map((dept) => {
               const Icon = getIcon(dept.name);
               const colorClass = getColor(dept.name);
               return (

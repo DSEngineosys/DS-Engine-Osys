@@ -142,6 +142,28 @@ export default function PerformanceAnalytics() {
           </div>
         </header>
 
+        {/* Top Tab Bar */}
+        <div className="flex bg-white rounded-2xl border border-slate-100 p-1 shadow-sm overflow-x-auto">
+          <button 
+            onClick={() => setActiveTab("workspace")}
+            className={`flex-1 py-3 px-4 text-sm font-bold rounded-xl transition-colors whitespace-nowrap ${activeTab === 'workspace' ? 'bg-primary text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+          >
+            Workspace
+          </button>
+          <button 
+            onClick={() => setActiveTab("task-status")}
+            className={`flex-1 py-3 px-4 text-sm font-bold rounded-xl transition-colors whitespace-nowrap ${activeTab === 'task-status' ? 'bg-primary text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+          >
+            Task Status
+          </button>
+          <button 
+            onClick={() => setActiveTab("current-work")}
+            className={`flex-1 py-3 px-4 text-sm font-bold rounded-xl transition-colors whitespace-nowrap ${activeTab === 'current-work' ? 'bg-primary text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+          >
+            Current Work
+          </button>
+        </div>
+
         {activeTab === "workspace" && (
           <div className="grid grid-cols-1 gap-6">
             <div className="space-y-6">
@@ -337,29 +359,7 @@ export default function PerformanceAnalytics() {
         )}
       </div>
 
-      {/* Bottom Tab Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-40 md:pl-64 transition-all">
-        <div className="max-w-4xl mx-auto flex">
-          <button 
-            onClick={() => setActiveTab("workspace")}
-            className={`flex-1 py-5 text-sm font-bold flex flex-col items-center gap-1 transition-colors ${activeTab === 'workspace' ? 'text-primary border-t-2 border-primary' : 'text-slate-400 hover:text-slate-600 border-t-2 border-transparent'}`}
-          >
-            Workspace
-          </button>
-          <button 
-            onClick={() => setActiveTab("task-status")}
-            className={`flex-1 py-5 text-sm font-bold flex flex-col items-center gap-1 transition-colors ${activeTab === 'task-status' ? 'text-primary border-t-2 border-primary' : 'text-slate-400 hover:text-slate-600 border-t-2 border-transparent'}`}
-          >
-            Task Status
-          </button>
-          <button 
-            onClick={() => setActiveTab("current-work")}
-            className={`flex-1 py-5 text-sm font-bold flex flex-col items-center gap-1 transition-colors ${activeTab === 'current-work' ? 'text-primary border-t-2 border-primary' : 'text-slate-400 hover:text-slate-600 border-t-2 border-transparent'}`}
-          >
-            Current Work
-          </button>
-        </div>
-      </div>
+
     </FlipchartLayout>
   );
 }

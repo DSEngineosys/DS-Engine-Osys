@@ -26,7 +26,7 @@ export default function DepartmentsList() {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {departments?.map(dept => (
+            {departments?.filter(dept => ["Production Department", "Marketing Department", "HR Department"].includes(dept.name)).map(dept => (
               <Link key={dept.id} href={`/employee-analysis/departments/${dept.id}`}>
                 <Card className="h-full hover:shadow-md transition-all cursor-pointer group">
                   <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
