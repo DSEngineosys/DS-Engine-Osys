@@ -12,6 +12,7 @@ const createTaskSchema = z.object({
   employeeId: z.string(),
   status: z.enum(["pending", "in_progress", "completed", "failed"]),
   priority: z.enum(["low", "medium", "high", "critical"]),
+  quantity: z.number().optional().nullable(),
   dueDate: z.string().nullable().optional(),
 });
 
@@ -20,6 +21,7 @@ const updateTaskSchema = z.object({
   description: z.string().nullable().optional(),
   status: z.enum(["pending", "in_progress", "completed", "failed"]).optional(),
   priority: z.enum(["low", "medium", "high", "critical"]).optional(),
+  quantity: z.number().optional().nullable(),
   dueDate: z.string().nullable().optional(),
 });
 
@@ -33,6 +35,7 @@ async function enrichTask(task: any) {
     employeeName: emp?.name ?? "Unknown",
     status: task.status,
     priority: task.priority,
+    quantity: task.quantity,
     dueDate: task.dueDate,
     completedAt: task.completedAt?.toISOString() ?? null,
     createdAt: task.createdAt.toISOString(),

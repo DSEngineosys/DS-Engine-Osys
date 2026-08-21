@@ -6,6 +6,7 @@ export interface ITask extends Document {
   employeeId: mongoose.Types.ObjectId;
   status: string;
   priority: string;
+  quantity?: number;
   dueDate?: Date;
   completedAt?: Date;
   createdAt: Date;
@@ -19,6 +20,7 @@ const TaskSchema: Schema = new Schema(
     employeeId: { type: Schema.Types.ObjectId, ref: "Employee", required: true },
     status: { type: String, required: true, default: "pending" },
     priority: { type: String, required: true, default: "medium" },
+    quantity: { type: Number },
     dueDate: { type: Date },
     completedAt: { type: Date },
   },

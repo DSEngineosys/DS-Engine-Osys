@@ -302,7 +302,7 @@ export const api = {
   },
 
   // Tasks
-  assignTask(body: { title: string; description?: string; employeeId: string; status: string; priority: string; dueDate?: string }) {
+  assignTask(body: { title: string; description?: string; employeeId: string; status: string; priority: string; dueDate?: string; quantity?: number }) {
     return request<any>("/api/tasks", {
       method: "POST",
       body: JSON.stringify(body),

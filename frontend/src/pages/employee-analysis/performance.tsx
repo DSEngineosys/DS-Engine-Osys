@@ -46,7 +46,7 @@ export default function PerformanceAnalytics() {
   const [loadingTasks, setLoadingTasks] = useState(false);
   
   // New Task Form
-  const [taskForm, setTaskForm] = useState({ title: "", description: "", dueDate: "", priority: "medium" });
+  const [taskForm, setTaskForm] = useState({ title: "", description: "", dueDate: "", priority: "medium", quantity: "" });
   const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
@@ -97,10 +97,11 @@ export default function PerformanceAnalytics() {
         description: taskForm.description,
         dueDate: taskForm.dueDate,
         priority: taskForm.priority,
+        quantity: taskForm.quantity ? Number(taskForm.quantity) : undefined,
         status: "pending"
       });
       toast({ title: "Task Assigned", description: "The task was successfully assigned to the employee." });
-      setTaskForm({ title: "", description: "", dueDate: "", priority: "medium" });
+      setTaskForm({ title: "", description: "", dueDate: "", priority: "medium", quantity: "" });
       fetchEmployeeAndTasks(); // Refresh tasks
     } catch (err: any) {
       toast({ variant: "destructive", title: "Assignment Failed", description: err.message });
@@ -278,6 +279,13 @@ export default function PerformanceAnalytics() {
                         value={taskForm.description}
                         onChange={e => setTaskForm({...taskForm, description: e.target.value})}
                         className="bg-slate-50 border-slate-100 rounded-xl resize-none h-24"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Quantity (Optional)"
+                        value={taskForm.quantity}
+                        onChange={e => setTaskForm({...taskForm, quantity: e.target.value})}
+                        className="bg-slate-50 border-slate-100 h-12 rounded-xl"
                       />
                       <div className="grid grid-cols-2 gap-4">
                         <Input 

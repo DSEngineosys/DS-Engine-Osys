@@ -14,7 +14,71 @@ import { api } from "@/lib/api-extra";
 // Fetchers
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
-export default function EmployeeWorkspace() {
+import React from "react";
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
+  constructor(props: {children: React.ReactNode}) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 text-red-500 font-mono">
+          <h1 className="text-2xl font-bold mb-4">React Error</h1>
+          <pre className="bg-red-50 p-4 rounded-xl whitespace-pre-wrap">{this.state.error?.stack || this.state.error?.message}</pre>
+        </div>
+      );
+    }
+    return this.props.children; 
+  }
+}
+
+function TaskCountdown({ dueDate }: { dueDate: string }) {
+  const [timeLeft, setTimeLeft] = useState<string>("");
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const difference = new Date(dueDate).getTime() - new Date().getTime();
+      
+      if (difference <= 0) {
+        return "Time over";
+      }
+
+      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((difference / 1000 / 60) % 60);
+      const seconds = Math.floor((difference / 1000) % 60);
+      
+      let res = "";
+      if (days > 0) res += `${days}d `;
+      res += `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      return res;
+    };
+
+    setTimeLeft(calculateTimeLeft());
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [dueDate]);
+
+  return (
+    <span className="bg-red-50 border border-red-100 text-red-600 px-2 py-1 rounded flex items-center gap-1.5 font-mono font-bold">
+      <Clock className="w-3.5 h-3.5"/> 
+      {timeLeft}
+    </span>
+  );
+}
+
+export default function EmployeeWorkspaceWrapper() {
+  return <ErrorBoundary><EmployeeWorkspace /></ErrorBoundary>;
+}
+
+function EmployeeWorkspace() {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -23,6 +87,7 @@ export default function EmployeeWorkspace() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [loginTime] = useState(new Date());
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -179,24 +244,62 @@ export default function EmployeeWorkspace() {
 
       <div className="p-4 max-w-lg mx-auto">
         {/* --- HOME TAB --- */}
-        {activeTab === "home" && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+        {activeTab === "home" && (() => {
+          const activeOrPendingTasks = (Array.isArray(tasks) ? tasks : []).filter((t: any) => ["in_progress", "accepted", "pending"].includes(t.status));
+          const displayTask = activeOrPendingTasks.find((t: any) => t._id === selectedTaskId) || activeOrPendingTasks[0];
+          const isWorkspaceLocked = !displayTask || displayTask.status === "pending";
+
+          return (
+            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="text-center py-4">
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">{company?.companyName || "Company"}</h2>
               <p className="text-sm text-slate-500">Employee Workspace</p>
             </div>
 
+            {/* Task Selector */}
+            {activeOrPendingTasks.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 snap-x">
+                {activeOrPendingTasks.map((t: any) => (
+                  <button
+                    key={t._id}
+                    onClick={() => setSelectedTaskId(t._id)}
+                    className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold snap-start transition-colors border ${
+                      (selectedTaskId === t._id) || (!selectedTaskId && displayTask?._id === t._id)
+                        ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200" 
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    {t.title}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <Card className="border-blue-100 shadow-blue-100/50">
-              <CardHeader className="bg-blue-50/50 pb-3"><CardTitle className="text-base flex items-center gap-2"><Target className="w-4 h-4 text-blue-600"/> Current Assigned Task</CardTitle></CardHeader>
+              <CardHeader className="bg-blue-50/50 pb-3"><CardTitle className="text-base flex items-center gap-2"><Target className="w-4 h-4 text-blue-600"/> Selected Assigned Task</CardTitle></CardHeader>
               <CardContent className="pt-4">
-                {tasks && tasks.length > 0 ? (
-                  <div>
-                    <h3 className="font-bold">{tasks[0].title}</h3>
-                    <p className="text-sm text-slate-600 my-2">{tasks[0].description}</p>
-                    <div className="flex justify-between items-center text-xs font-medium">
-                      <span className="bg-slate-100 px-2 py-1 rounded">Due: {new Date(tasks[0].dueDate).toLocaleDateString()}</span>
-                      <span className={`px-2 py-1 rounded ${tasks[0].status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>{tasks[0].status}</span>
+                {displayTask ? (
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="font-bold">{displayTask.title}</h3>
+                      <p className="text-sm text-slate-600 my-1">{displayTask.description}</p>
+                      {displayTask.quantity && <p className="text-xs font-bold text-slate-500">Quantity: {displayTask.quantity}</p>}
                     </div>
+                    <div className="flex justify-between items-center text-xs font-medium">
+                      {displayTask.dueDate ? (
+                        <TaskCountdown dueDate={displayTask.dueDate} />
+                      ) : (
+                        <span className="bg-slate-100 px-2 py-1 rounded">No Deadline</span>
+                      )}
+                      <span className={`px-2 py-1 rounded uppercase tracking-wider ${displayTask.status === 'completed' ? 'bg-green-100 text-green-700' : displayTask.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{displayTask.status.replace("_", " ")}</span>
+                    </div>
+                    
+                    {displayTask.status === "pending" && (
+                      <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
+                        <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => updateTaskStatusMutation.mutate({ taskId: displayTask._id, status: "accepted" })} disabled={updateTaskStatusMutation.isPending}>Accept Task</Button>
+                        <Button size="sm" variant="outline" className="flex-1 text-red-600 border-red-200 hover:bg-red-50" onClick={() => updateTaskStatusMutation.mutate({ taskId: displayTask._id, status: "rejected" })} disabled={updateTaskStatusMutation.isPending}>Reject Task</Button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <p className="text-sm text-slate-500 text-center py-2">No active tasks assigned.</p>
@@ -204,20 +307,20 @@ export default function EmployeeWorkspace() {
               </CardContent>
             </Card>
 
-            <Card className={!tasks || tasks.length === 0 ? "opacity-60 pointer-events-none relative" : ""}>
+            <Card className={isWorkspaceLocked ? "opacity-60 pointer-events-none relative" : ""}>
               <CardHeader className="pb-3"><CardTitle className="text-base">Role-Specific Workspace</CardTitle></CardHeader>
               <CardContent>
-                {(!tasks || tasks.length === 0) && (
+                {isWorkspaceLocked && (
                   <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-xl z-10 flex flex-col items-center justify-center">
                     <Target className="w-8 h-8 text-slate-400 mb-2" />
-                    <p className="text-sm font-bold text-slate-500">No Task Assigned</p>
-                    <p className="text-xs text-slate-400">Workspace data entry is available only when a task is active.</p>
+                    <p className="text-sm font-bold text-slate-500">{displayTask?.status === "pending" ? "Accept Task to Unlock" : "No Task Assigned"}</p>
+                    <p className="text-xs text-slate-400 mt-1 px-6 text-center">{displayTask?.status === "pending" ? "You must accept the selected task above to unlock data entry." : "Workspace data entry is available only when a task is active."}</p>
                   </div>
                 )}
                 
                 <RoleBasedWorkspace 
                   profile={profile} 
-                  tasks={tasks} 
+                  tasks={displayTask ? [displayTask] : []} 
                   products={products} 
                   openCamera={openCamera}
                   proofImageUrl={proofImageUrl}
@@ -226,7 +329,7 @@ export default function EmployeeWorkspace() {
               </CardContent>
             </Card>
           </div>
-        )}
+        )})()}
 
         {/* --- PERFORMANCE TAB --- */}
         {activeTab === "performance" && (
@@ -335,10 +438,10 @@ export default function EmployeeWorkspace() {
             </div>
             
             {/* Pending Tasks */}
-            {tasks?.filter((t: any) => t.status === "pending").length > 0 && (
+            {(Array.isArray(tasks) ? tasks : []).filter((t: any) => t.status === "pending").length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-slate-700 uppercase">Action Required</h3>
-                {tasks?.filter((t: any) => t.status === "pending").map((task: any) => (
+                {(Array.isArray(tasks) ? tasks : []).filter((t: any) => t.status === "pending").map((task: any) => (
                   <Card key={task._id} className="border-l-4 border-l-yellow-400">
                     <CardContent className="p-4 space-y-3">
                       <div className="flex justify-between items-start">
@@ -359,10 +462,10 @@ export default function EmployeeWorkspace() {
             )}
 
             {/* Active/Accepted Tasks */}
-            {tasks?.filter((t: any) => t.status === "accepted").length > 0 && (
+            {(Array.isArray(tasks) ? tasks : []).filter((t: any) => t.status === "accepted").length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-slate-700 uppercase">In Progress</h3>
-                {tasks?.filter((t: any) => t.status === "accepted").map((task: any) => (
+                {(Array.isArray(tasks) ? tasks : []).filter((t: any) => t.status === "accepted").map((task: any) => (
                   <Card key={task._id} className="border-l-4 border-l-blue-500">
                     <CardContent className="p-4 space-y-3">
                       <div>
@@ -372,9 +475,6 @@ export default function EmployeeWorkspace() {
                       <div className="flex justify-between items-center text-xs text-slate-500">
                         <span className="flex items-center gap-1"><Clock className="w-3 h-3"/> Started: {new Date(task.createdAt).toLocaleDateString()}</span>
                       </div>
-                      <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => updateTaskStatusMutation.mutate({ taskId: task._id, status: "completed" })} disabled={updateTaskStatusMutation.isPending}>
-                        <Check className="w-4 h-4 mr-2" /> Mark as Completed
-                      </Button>
                     </CardContent>
                   </Card>
                 ))}
@@ -384,11 +484,11 @@ export default function EmployeeWorkspace() {
             {/* Task History */}
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-slate-700 uppercase">Task History</h3>
-              {tasks?.filter((t: any) => t.status === "completed" || t.status === "rejected").length === 0 ? (
+              {(Array.isArray(tasks) ? tasks : []).filter((t: any) => t.status === "completed" || t.status === "rejected").length === 0 ? (
                 <p className="text-sm text-slate-500 italic">No historical tasks.</p>
               ) : (
                 <div className="space-y-2">
-                  {tasks?.filter((t: any) => t.status === "completed" || t.status === "rejected").map((task: any) => (
+                  {(Array.isArray(tasks) ? tasks : []).filter((t: any) => t.status === "completed" || t.status === "rejected").map((task: any) => (
                     <div key={task._id} className="bg-white border rounded-xl p-3 shadow-sm text-sm">
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-medium">{task.title}</span>
