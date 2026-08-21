@@ -300,4 +300,25 @@ export const api = {
       body: JSON.stringify(body),
     });
   },
+
+  // Tasks
+  assignTask(body: { title: string; description?: string; employeeId: string; status: string; priority: string; dueDate?: string }) {
+    return request<any>("/api/tasks", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+  getEmployeeTasks(employeeId: string, status?: string) {
+    let url = `/api/tasks?employeeId=${employeeId}`;
+    if (status) url += `&status=${status}`;
+    return request<any[]>(url);
+  },
+
+  // ML Prediction
+  predictPerformance(employeeId: string, data?: { loginHour?: number }) {
+    return request<any>(`/api/ml/predict-performance/${employeeId}`, {
+      method: "POST",
+      body: JSON.stringify(data || {}),
+    });
+  },
 };

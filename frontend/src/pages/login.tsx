@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { PublicLayout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, KeyRound, CheckCircle2, Phone, ShieldCheck, ArrowLeft, MessageSquare } from "lucide-react";
+import { Loader2, Eye, EyeOff, KeyRound, CheckCircle2, Phone, ShieldCheck, ArrowLeft, MessageSquare, UserPlus } from "lucide-react";
 import { api } from "@/lib/api-extra";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCountdown } from "@/hooks/use-countdown";
@@ -242,6 +242,20 @@ export default function Login() {
                 />
               </div>
 
+              {/* Forgot Password – right-aligned, below password field */}
+              <div className="flex justify-end -mt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotModal(true);
+                    setForgotStep("request");
+                  }}
+                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                >
+                  <KeyRound className="w-3 h-3" /> Forgot Password?
+                </button>
+              </div>
+
               <Button
                 type="submit"
                 className="w-full h-12 text-base font-bold shadow-md"
@@ -260,18 +274,12 @@ export default function Login() {
             </form>
           </Form>
 
-          {/* Forgot Password Link at bottom */}
+          {/* New User? Register */}
           <div className="pt-4 border-t border-slate-100 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setShowForgotModal(true);
-                setForgotStep("request");
-              }}
-              className="text-xs font-bold text-primary hover:underline flex items-center justify-center gap-1.5 mx-auto"
-            >
-              <KeyRound className="w-3.5 h-3.5" /> Forgot Password?
-            </button>
+            <span className="text-sm text-slate-500">New User? </span>
+            <Link href="/register" className="text-sm font-bold text-primary hover:underline inline-flex items-center gap-1">
+              <UserPlus className="w-4 h-4" /> Register
+            </Link>
           </div>
         </div>
       </div>

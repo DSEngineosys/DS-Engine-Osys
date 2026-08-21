@@ -183,7 +183,16 @@ router.get("/hr/employee-requests", requireHR, async (req: any, res: any) => {
   const hrUser = await User.findById(session.userId);
   if (!hrUser || !hrUser.departmentId) return res.status(403).json({ error: "Forbidden", message: "HR not associated with a department" });
 
-  const requests = await Employee.find({ accountStatus: { $in: ["Pending", "Denied"] }, departmentId: hrUser.departmentId }).sort({ createdAt: -1 });
+  // Build query: always filter by department; if the HR has a sub-department, also filter by it
+  const query: any = {
+    accountStatus: { $in: ["Pending", "Denied"] },
+    departmentId: hrUser.departmentId,
+  };
+  if (hrUser.subDepartment) {
+    query.subDepartment = hrUser.subDepartment;
+  }
+
+  const requests = await Employee.find(query).sort({ createdAt: -1 });
   const enriched = await Promise.all(
     requests.map(async (emp: any) => {
       const dept = await Department.findById(emp.departmentId);
@@ -220,6 +229,10 @@ router.post("/hr/employee-requests/:id/allow", requireHR, async (req: any, res: 
   
   if (hrUser && emp.departmentId.toString() !== hrUser.departmentId?.toString()) {
     return res.status(403).json({ error: "Forbidden", message: "Employee is not in your department" });
+  }
+  // Also check sub-department scope if HR has one assigned
+  if (hrUser && hrUser.subDepartment && emp.subDepartment && emp.subDepartment !== hrUser.subDepartment) {
+    return res.status(403).json({ error: "Forbidden", message: "Employee is not in your sub-department" });
   }
 
   // Check for duplicate employeeId
@@ -259,6 +272,10 @@ router.post("/hr/employee-requests/:id/deny", requireHR, async (req: any, res: a
   
   if (hrUser && emp.departmentId.toString() !== hrUser.departmentId?.toString()) {
     return res.status(403).json({ error: "Forbidden", message: "Employee is not in your department" });
+  }
+  // Also check sub-department scope if HR has one assigned
+  if (hrUser && hrUser.subDepartment && emp.subDepartment && emp.subDepartment !== hrUser.subDepartment) {
+    return res.status(403).json({ error: "Forbidden", message: "Employee is not in your sub-department" });
   }
 
   emp.accountStatus = "Denied";

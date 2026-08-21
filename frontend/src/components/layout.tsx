@@ -242,9 +242,6 @@ export function PublicLayout({ children }: { children: ReactNode }) {
               Admin Login
             </Button>
           </Link>
-          <Link href="/register">
-            <Button size="sm">Register</Button>
-          </Link>
         </nav>
       </header>
       <main className="flex-1">

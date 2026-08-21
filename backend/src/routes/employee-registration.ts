@@ -58,8 +58,27 @@ router.post("/employee/register-request", async (req, res) => {
       return;
   }
 
-  // Find the HR for this department to send email
-  const hrUser = await User.findOne({ role: "hr", departmentId: department, status: "approved" });
+  // Find the HR responsible for this specific department + sub-department.
+  // First try exact match (department + subDepartment).
+  // Fall back to department-only HR if no sub-department-specific HR exists.
+  let hrUser = subDepartment
+    ? await User.findOne({ role: "hr", departmentId: department, subDepartment, status: "approved" })
+    : null;
+
+  if (!hrUser) {
+    hrUser = await User.findOne({ role: "hr", departmentId: department, status: "approved" });
+  }
+
+  // 🔒 BLOCK: If no HR is appointed for this department/sub-department, registration is not allowed.
+  if (!hrUser) {
+    const label = subDepartment ? `${deptDoc.name} → ${subDepartment}` : deptDoc.name;
+    res.status(422).json({
+      error: "No HR appointed",
+      message: `No HR representative has been appointed for ${label} yet. Registration is not available until an HR is assigned. Please contact the Administrator.`,
+    });
+    return;
+  }
+
 
   const emp = await Employee.create({
     name,

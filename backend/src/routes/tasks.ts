@@ -62,10 +62,22 @@ router.post("/tasks", async (req, res) => {
     res.status(400).json({ error: "Invalid input", message: parsed.error.message });
     return;
   }
+  const employeeIdObj = new mongoose.Types.ObjectId(parsed.data.employeeId);
+
+  // Check the task limit (max 3 pending or in_progress tasks)
+  const activeTaskCount = await Task.countDocuments({
+    employeeId: employeeIdObj,
+    status: { $in: ["pending", "in_progress"] }
+  });
+
+  if (activeTaskCount >= 3) {
+    res.status(400).json({ error: "Task limit reached", message: "Employee already has 3 active tasks." });
+    return;
+  }
   
   const taskData = {
     ...parsed.data,
-    employeeId: new mongoose.Types.ObjectId(parsed.data.employeeId),
+    employeeId: employeeIdObj,
     dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : undefined,
     description: parsed.data.description ?? undefined,
   };

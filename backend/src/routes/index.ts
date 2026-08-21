@@ -15,6 +15,7 @@ import hrRouter from "./hr";
 import employeeWorkspaceRouter from "./employee-workspace";
 import employeeRegistrationRouter from "./employee-registration";
 import hrRegistrationRouter from "./hr-registration";
+import mlPredictionRouter from "./ml-prediction";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(hrRouter);
 router.use(employeeWorkspaceRouter);
 router.use(employeeRegistrationRouter);
 router.use(hrRegistrationRouter);
+router.use(mlPredictionRouter);
 
 export default router;
