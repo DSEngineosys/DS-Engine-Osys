@@ -143,7 +143,7 @@ export default function PerformanceAnalytics() {
         </header>
 
         {activeTab === "workspace" && (
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <div className="space-y-6">
               <Card className="rounded-[2.5rem] border-slate-100 shadow-xl overflow-hidden bg-white">
                 <CardHeader className="pb-2 border-b border-slate-50">
