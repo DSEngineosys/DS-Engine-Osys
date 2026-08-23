@@ -26,6 +26,12 @@ const updateEmpSchema = z.object({
 
 async function enrichEmployee(emp: any) {
   const dept = await Department.findById(emp.departmentId);
+  let subDepartmentName = "";
+  if (emp.subDepartmentId && mongoose.Types.ObjectId.isValid(emp.subDepartmentId)) {
+    const SubDepartment = (await import("../models/sub-department.model")).default;
+    const subDept = await SubDepartment.findById(emp.subDepartmentId);
+    if (subDept) subDepartmentName = subDept.name;
+  }
   return {
     id: emp._id,
     name: emp.name,
@@ -33,6 +39,8 @@ async function enrichEmployee(emp: any) {
     employeeId: emp.employeeId,
     departmentId: emp.departmentId,
     departmentName: dept?.name ?? "Unknown",
+    subDepartmentId: emp.subDepartmentId,
+    subDepartmentName,
     designation: emp.designation,
     joiningDate: emp.joiningDate,
     status: emp.status,
@@ -43,11 +51,15 @@ async function enrichEmployee(emp: any) {
 
 router.get("/employees", async (req, res) => {
   const departmentId = req.query.departmentId as string | undefined;
+  const subDepartmentId = req.query.subDepartmentId as string | undefined;
   const search = req.query.search as string | undefined;
 
   let query: any = {};
   if (departmentId && mongoose.Types.ObjectId.isValid(departmentId)) {
     query.departmentId = new mongoose.Types.ObjectId(departmentId);
+  }
+  if (subDepartmentId && mongoose.Types.ObjectId.isValid(subDepartmentId)) {
+    query.subDepartmentId = new mongoose.Types.ObjectId(subDepartmentId);
   }
   if (search) {
     query.name = { $regex: search, $options: "i" };
