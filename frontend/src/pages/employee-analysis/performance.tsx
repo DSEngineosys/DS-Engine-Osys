@@ -247,7 +247,7 @@ export default function PerformanceAnalytics() {
                         <div className={`text-4xl font-black mb-2 ${predictionResult.futurePerformanceClassification === 'High' ? 'text-green-400' : predictionResult.futurePerformanceClassification === 'Medium' ? 'text-yellow-400' : 'text-red-400'}`}>
                           {predictionResult.futurePerformanceClassification}
                         </div>
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Future<br/>Classification</span>
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Future<br/>Performance</span>
                       </div>
                     </div>
                   )}
