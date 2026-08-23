@@ -213,6 +213,39 @@ router.post("/employee/activity", requireEmployee, async (req: any, res: any) =>
     payload,
   });
 
+  // If a taskId was provided, mark the task as completed automatically
+  if (payload.taskId) {
+    await Task.findByIdAndUpdate(payload.taskId, {
+      status: "completed",
+      completedAt: new Date()
+    });
+  }
+
+  // If ISR is submitting a meeting for SSO, email all SSO employees
+  if (activityType === "ISR Meeting & Tasks" && payload.meetingDetails) {
+    try {
+      const { sendEmail } = await import("../lib/email.js");
+      const ssoEmployees = await Employee.find({ 
+        subDepartment: { $regex: new RegExp("^sso$", "i") },
+        status: "active" 
+      });
+      
+      const emailPromises = ssoEmployees.map(ssoEmp => {
+        return sendEmail(
+          ssoEmp.email,
+          `New Meeting Scheduled by ISR: ${emp.name}`,
+          `Hello ${ssoEmp.name},\n\nA new meeting has been scheduled by ${emp.name}.\n\nDetails: ${payload.meetingDetails}\n\nPlease check your workspace for more details.`,
+          `<p>Hello ${ssoEmp.name},</p><p>A new meeting has been scheduled by <strong>${emp.name}</strong>.</p><p><strong>Details:</strong><br/>${payload.meetingDetails}</p><p>Please check your workspace for more details.</p>`
+        );
+      });
+      
+      await Promise.allSettled(emailPromises);
+      console.log(`Sent meeting email to ${ssoEmployees.length} SSO employees.`);
+    } catch (err) {
+      console.error("Failed to send ISR meeting emails:", err);
+    }
+  }
+
   res.status(201).json({ message: "Activity submitted successfully", activity });
 });
 

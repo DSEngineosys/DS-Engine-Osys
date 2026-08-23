@@ -83,6 +83,7 @@ router.post("/tasks", async (req, res) => {
     employeeId: employeeIdObj,
     dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : undefined,
     description: parsed.data.description ?? undefined,
+    quantity: parsed.data.quantity ?? undefined,
   };
 
   const task = await Task.create(taskData);

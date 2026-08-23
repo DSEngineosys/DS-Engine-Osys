@@ -61,7 +61,7 @@ export function RoleBasedWorkspace({ profile, tasks, products, openCamera, proof
   );
 
   // Production Department Workspaces
-  if (dept === "production") {
+  if (dept.includes("production")) {
     if (subDept === "labour team") {
       return (
         <form onSubmit={e => handleSubmit(e, "Labour Task")} className="space-y-4">
@@ -105,7 +105,7 @@ export function RoleBasedWorkspace({ profile, tasks, products, openCamera, proof
   }
 
   // Marketing Department Workspaces
-  if (dept === "marketing") {
+  if (dept.includes("marketing")) {
     if (subDept === "isr") {
       return (
         <form onSubmit={e => handleSubmit(e, "ISR Meeting & Tasks")} className="space-y-4">
