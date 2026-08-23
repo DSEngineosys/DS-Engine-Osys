@@ -279,7 +279,7 @@ export default function EmployeeRegister() {
                           <SelectValue placeholder="Select Department" />
                         </SelectTrigger>
                         <SelectContent>
-                          {departments.filter((d) => !d.parentId).map((d: any) => (
+                          {departments.map((d: any) => (
                             <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                           ))}
                         </SelectContent>

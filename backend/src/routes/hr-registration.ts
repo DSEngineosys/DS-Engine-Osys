@@ -32,12 +32,18 @@ router.post("/hr/register-request", async (req, res) => {
     return;
   }
 
-  // Enforce one HR per department
-  const existingHR = await HR.findOne({ role: "hr", departmentId, status: { $in: ["approved", "pending"] } });
+  // Enforce one HR per department+sub-department combination
+  const existingHRQuery: any = { role: "hr", departmentId, status: { $in: ["approved", "pending"] } };
+  if (subDepartmentId && subDepartmentId !== "none") {
+    existingHRQuery.subDepartmentId = subDepartmentId;
+  } else {
+    existingHRQuery.$or = [{ subDepartmentId: { $exists: false } }, { subDepartmentId: null }];
+  }
+  const existingHR = await HR.findOne(existingHRQuery);
   if (existingHR) {
     res.status(400).json({
-      error: "Department already has HR",
-      message: "This department already has a registered or pending HR representative.",
+      error: "HR already exists",
+      message: "An HR representative is already registered or pending for this department/sub-department.",
     });
     return;
   }
@@ -71,7 +77,9 @@ router.post("/hr/register-request", async (req, res) => {
     email,
     mobile,
     departmentId: new mongoose.Types.ObjectId(departmentId),
-    subDepartmentId,
+    subDepartmentId: (subDepartmentId && subDepartmentId !== "none" && mongoose.Types.ObjectId.isValid(subDepartmentId))
+      ? new mongoose.Types.ObjectId(subDepartmentId)
+      : undefined,
     password: "",
     role: "hr",
     status: "pending",

@@ -68,7 +68,10 @@ router.post("/employee/register-request", async (req, res) => {
   }
 
   if (!hrUser) {
-    hrUser = await HR.findOne({ role: "hr", departmentId: department, subDepartmentId: { $in: [null, undefined] }, status: "approved" });
+    hrUser = await HR.findOne({ role: "hr", departmentId: department, subDepartmentId: { $exists: false }, status: "approved" } as any);
+    if (!hrUser) {
+      hrUser = await HR.findOne({ role: "hr", departmentId: department, subDepartmentId: null, status: "approved" } as any);
+    }
   }
 
   // 🔒 BLOCK: If no HR is appointed for this department/sub-department, registration is not allowed.
