@@ -126,7 +126,7 @@ router.post("/employee/register-request", async (req, res) => {
   try {
     await sendEmail(
       email,
-      "Registration Request Received - DS Engineosys",
+      "Registration Request Received",
       `Hello ${name}, your employee registration request has been submitted to your Department HR. You will receive an update once reviewed.`,
       `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
         <h2 style="color: #1e293b;">Registration Request Received</h2>

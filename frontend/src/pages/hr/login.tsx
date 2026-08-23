@@ -42,7 +42,7 @@ export default function HRLogin() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email: hrId, password }),
+        body: JSON.stringify({ email: hrId, password, role: "hr" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Login failed");
@@ -255,17 +255,17 @@ export default function HRLogin() {
                     </div>
                     <h3 className="text-xl font-black text-slate-900">Forgot Password</h3>
                     <p className="text-xs text-slate-500 font-medium">
-                      Enter your HR ID or Mobile number to receive an SMS verification OTP.
+                      Enter your Email-id or Mobile number to receive an SMS verification OTP.
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="forgot-identifier">HR ID or Mobile</Label>
+                    <Label htmlFor="forgot-identifier">Email-id or Mobile</Label>
                     <Input
                       id="forgot-identifier"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder="e.g. EMP1001HR or 9876543210"
+                      placeholder="e.g. hr@example.com or 9876543210"
                       required
                     />
                   </div>

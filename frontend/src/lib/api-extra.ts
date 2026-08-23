@@ -225,7 +225,7 @@ export const api = {
   },
   
   // HR Registration & Recovery
-  hrRegisterRequest(body: { name: string; email: string; mobile: string; departmentId: string; subDepartment?: string }) {
+  hrRegisterRequest(body: { name: string; email: string; mobile: string; departmentId: string; subDepartmentId: string }) {
     return request<{ message: string }>("/api/hr/register-request", {
       method: "POST",
       body: JSON.stringify(body),

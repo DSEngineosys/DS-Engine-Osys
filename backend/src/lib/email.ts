@@ -74,7 +74,7 @@ export async function sendEmail(to: string, subject: string, text: string, html?
   }
 
   const mailOptions = {
-    from: `"DS Engineosys" <${smtpUser}>`,
+    from: `"Company Portal" <${smtpUser}>`,
     to,
     subject,
     text,

@@ -14,7 +14,7 @@ const hrRegisterRequestSchema = z.object({
   email: z.string().email(),
   mobile: z.string().min(6),
   departmentId: z.string().min(1),
-  subDepartmentId: z.string().optional(),
+  subDepartmentId: z.string().min(1),
 });
 
 router.post("/hr/register-request", async (req, res) => {
@@ -113,7 +113,7 @@ router.post("/hr/register-request", async (req, res) => {
     // Send acknowledgment email
     await sendEmail(
       email,
-      "Registration Request Received - DS Engineosys",
+      "Registration Request Received",
       `Hello ${name}, your HR registration request has been submitted to the Admin. You will receive an update once reviewed.`,
       `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
         <h2 style="color: #1e293b;">Registration Request Received</h2>

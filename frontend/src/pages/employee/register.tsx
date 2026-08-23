@@ -57,7 +57,7 @@ export default function EmployeeRegister() {
   }, []);
 
   const selectedDeptObj = departments.find((d) => d.id === department);
-  const availableSubDepts = departments.filter((d) => d.parentId === department);
+  const availableSubDepts = selectedDeptObj?.subDepartments || [];
 
   // Resume an in-progress request from a previous visit.
   useEffect(() => {
@@ -289,7 +289,7 @@ export default function EmployeeRegister() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">None</SelectItem>
-                          {availableSubDepts.map((sd: any) => (
+                          {availableSubDepts.map((sd: { id: string; name: string }) => (
                             <SelectItem key={sd.id} value={sd.id}>{sd.name}</SelectItem>
                           ))}
                         </SelectContent>

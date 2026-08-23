@@ -26,11 +26,39 @@ const setPasswordSchema = z.object({
 const loginSchema = z.object({
   email: z.string(),
   password: z.string(),
+  role: z.string().optional(),
 });
 
 const avatarSchema = z.object({
   avatarUrl: z.string().min(1).max(2_500_000),
 });
+
+
+async function findUserForAuth(input: string, role?: string) {
+  let user;
+  
+  if (!role || role === "employee") {
+    user = await Employee.findOne({ $or: [{ email: input.toLowerCase() }, { employeeId: input }] });
+    if (user) return { user: user as any, model: Employee, isEmployee: true };
+  }
+  
+  if (!role || role === "ds_engineer") {
+    user = await DSEngineer.findOne({ email: input.toLowerCase() });
+    if (user) return { user: user as any, model: DSEngineer, isEmployee: false };
+  }
+  
+  if (!role || role === "hr") {
+    user = await HR.findOne({ $or: [{ email: input.toLowerCase() }, { hrId: input }] });
+    if (user) return { user: user as any, model: HR, isEmployee: false };
+  }
+  
+  if (!role || role === "admin") {
+    user = await Admin.findOne({ email: input.toLowerCase() });
+    if (user) return { user: user as any, model: Admin, isEmployee: false };
+  }
+  
+  return null;
+}
 
 function formatUser(user: any) {
   return {
@@ -144,12 +172,12 @@ router.post("/auth/register-request", async (req, res) => {
     try {
       await sendEmail(
         email,
-        "Registration Request Received - DS Engineosys",
+        "Registration Request Received",
         `Hello ${name}, your DS Engineer registration request has been submitted to the Admin. You will receive an update once reviewed.`,
         `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="color: #1e293b;">Registration Request Received</h2>
           <p style="color: #475569;">Hello <strong>${name}</strong>,</p>
-          <p style="color: #475569;">Your request for access to the DS Engineosys platform has been sent to the System Administrator for review.</p>
+          <p style="color: #475569;">Your request for access to our platform has been sent to the System Administrator for review.</p>
           <p style="color: #475569;">You will receive an email as soon as your access is approved.</p>
         </div>`
       );
@@ -220,26 +248,13 @@ router.post("/auth/login", async (req, res) => {
     res.status(400).json({ error: "Invalid input", message: parsed.error.message });
     return;
   }
-  const { email, password } = parsed.data;
+  const { email, password, role } = parsed.data;
   
-  // First check User collection (DS Engineers, HR, Admin)
-  let user = null;
-  let isEmployee = false;
+  const found = await findUserForAuth(email, role);
+  const user = found?.user;
+  const isEmployee = found?.isEmployee;
 
-  // If not found, check Employee collection
-  user = await Employee.findOne({ email });
   if (!user) {
-    user = await DSEngineer.findOne({ email });
-  }
-  if (!user) {
-    user = await HR.findOne({ email });
-  }
-  if (!user) {
-    user = await Admin.findOne({ email });
-  }
-  isEmployee = !!(await Employee.findOne({ email }));
-
-  if (!user || !user.password || user.password !== password) {
     res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
     return;
   }
@@ -259,6 +274,12 @@ router.post("/auth/login", async (req, res) => {
       res.status(403).json({ error: "Inactive", message: "Your account is inactive." });
       return;
     }
+  }
+
+  console.log("LOGIN DEBUG - User:", user.email, "Input Pass:", password, "DB Pass:", user.password);
+  if (!user.password || user.password !== password) {
+    res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
+    return;
   }
 
   const session = req.session as unknown as Record<string, unknown>;
@@ -284,17 +305,17 @@ router.post("/auth/forgot-password/request-otp", async (req, res) => {
     return;
   }
   const input = parsed.data.identifier.trim();
-  const user = await Admin.findOne({
-    $or: [{ email: input.toLowerCase() }, { hrId: input }, { mobile: input }, { mobile: { $regex: input } }],
-  });
-
-  if (!user) {
+  const found = await findUserForAuth(input);
+  if (!found) {
     res.status(404).json({
       error: "User not found",
-      message: "No registered DS Engineer found with provided email or mobile number.",
+      message: "No registered account found with provided email or ID.",
     });
     return;
   }
+  const { user } = found;
+
+
 
   // Generate 6-digit OTP & expiration (60 seconds)
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -312,7 +333,7 @@ router.post("/auth/forgot-password/request-otp", async (req, res) => {
   // Send OTP SMS to mobile
   if (user.mobile) {
     try {
-      await sendSms(user.mobile, `[DS Engineosys] Your password reset authorization OTP code is: ${otp}`, otp);
+      await sendSms(user.mobile, `Your password reset authorization OTP code is: ${otp}`, otp);
       smsSuccess = true;
     } catch (smsErr) {
       console.error("[OTP SMS Error] Failed to dispatch SMS:", smsErr);
@@ -323,13 +344,13 @@ router.post("/auth/forgot-password/request-otp", async (req, res) => {
   try {
     await sendEmail(
       user.email,
-      "Password Reset Verification Code - DS Engineosys",
+      "Password Reset Verification Code",
       `Your OTP code for resetting your password is: ${otp}. It will expire in 60 seconds.`,
       `
       <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px;">
         <h2 style="color: #0f172a; margin-bottom: 8px;">Password Reset Authorization</h2>
         <p style="color: #475569; font-size: 14px;">Hello <strong>${user.name}</strong>,</p>
-        <p style="color: #475569; font-size: 14px;">You requested a password reset authorization code for your DS Engineosys account.</p>
+        <p style="color: #475569; font-size: 14px;">You requested a password reset authorization code for your account.</p>
         <div style="background-color: #f8fafc; padding: 20px; border-radius: 12px; text-align: center; margin: 24px 0; border: 1px dashed #cbd5e1;">
           <span style="font-family: monospace; font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #ec4899;">${otp}</span>
         </div>
@@ -368,7 +389,8 @@ router.post("/auth/forgot-password/verify-otp", async (req, res) => {
     return;
   }
   const { email, otp } = parsed.data;
-  const user = await Admin.findOne({ email });
+  const found = await findUserForAuth(email);
+  const user = found?.user;
 
   if (!user || !user.resetOtp || user.resetOtp.trim() !== otp.trim()) {
     res.status(400).json({ error: "Invalid OTP", message: "The OTP entered does not match the verification code sent." });
@@ -396,7 +418,8 @@ router.post("/auth/forgot-password/reset", async (req, res) => {
   }
 
   const { email, password } = parsed.data;
-  const user = await Admin.findOne({ email });
+  const found = await findUserForAuth(email);
+  const user = found?.user;
 
   if (!user) {
     res.status(404).json({ error: "User not found" });

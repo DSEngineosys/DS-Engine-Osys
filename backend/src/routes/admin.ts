@@ -101,7 +101,7 @@ router.post("/admin/registration-requests/:id/allow", requireAdmin, async (req, 
   try {
     await sendEmail(
       updated.email,
-      "Registration Approved - DS Engineosys",
+      "Registration Approved",
       `Congratulations ${updated.name}! Your registration request has been APPROVED by the Admin. You can now proceed to set your password and access the platform.`
     );
   } catch (err) {
@@ -125,7 +125,7 @@ router.post("/admin/registration-requests/:id/deny", requireAdmin, async (req, r
   try {
     await sendEmail(
       updated.email,
-      "Registration Denied - DS Engineosys",
+      "Registration Denied",
       `Hello ${updated.name}, your registration request has been DENIED by the Admin. Please contact support if you believe this is an error.`
     );
   } catch (err) {
@@ -178,7 +178,7 @@ router.post("/admin/hr-recruitment-requests/:id/allow", requireAdmin, async (req
   try {
     await sendEmail(
       updated.email,
-      "HR Registration Approved - DS Engineosys",
+      "HR Registration Approved",
       `Congratulations ${updated.name}! Your HR registration request has been APPROVED. Your HR-ID is ${hrId}. You can now proceed to set your password and access the platform.`
     );
   } catch (err) {
@@ -201,7 +201,7 @@ router.post("/admin/hr-recruitment-requests/:id/deny", requireAdmin, async (req,
   try {
     await sendEmail(
       updated.email,
-      "HR Registration Denied - DS Engineosys",
+      "HR Registration Denied",
       `Hello ${updated.name}, your HR registration request has been DENIED by the Admin.`
     );
   } catch (err) {

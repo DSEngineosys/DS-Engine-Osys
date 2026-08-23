@@ -1,5 +1,6 @@
 import { Router } from "express";
 import Department from "../models/department.model";
+import SubDepartment from "../models/sub-department.model";
 import Employee from "../models/employee.model";
 import mongoose from "mongoose";
 import { z } from "zod";
@@ -18,11 +19,13 @@ async function getDepartmentWithCount(id: string) {
   if (!dept) return null;
   
   const empCount = await Employee.countDocuments({ departmentId: id });
+  const subDepts = await SubDepartment.find({ departmentId: id });
   return { 
     id: dept._id,
     name: dept.name,
     description: dept.description,
-    employeeCount: empCount 
+    employeeCount: empCount,
+    subDepartments: subDepts.map(sd => ({ id: sd._id, name: sd.name }))
   };
 }
 
@@ -30,11 +33,13 @@ router.get("/departments", async (req, res) => {
   const depts = await Department.find();
   const result = await Promise.all(depts.map(async (d) => {
     const empCount = await Employee.countDocuments({ departmentId: d._id });
+    const subDepts = await SubDepartment.find({ departmentId: d._id });
     return { 
       id: d._id,
       name: d.name,
       description: d.description,
-      employeeCount: empCount 
+      employeeCount: empCount,
+      subDepartments: subDepts.map(sd => ({ id: sd._id, name: sd.name }))
     };
   }));
   res.json(result);

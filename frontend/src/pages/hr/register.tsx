@@ -53,7 +53,7 @@ export default function HRRegister() {
   }, []);
 
   const selectedDeptObj = departments.find((d) => d.id === departmentId);
-  const availableSubDepts = departments.filter((d) => d.parentId === departmentId);
+  const availableSubDepts = selectedDeptObj?.subDepartments || [];
 
   // Resume an in-progress request from a previous visit.
   useEffect(() => {
@@ -102,8 +102,8 @@ export default function HRRegister() {
 
   async function handleRequest(e: React.FormEvent) {
     e.preventDefault();
-    if (!departmentId) {
-      toast({ variant: "destructive", title: "Error", description: "Please select a department" });
+    if (!departmentId || !subDepartment || subDepartment === "none") {
+      toast({ variant: "destructive", title: "Error", description: "Please select a department and a sub-department" });
       return;
     }
     const selectedSubDeptName = availableSubDepts.find((sd) => sd.id === subDepartment)?.name || "";
@@ -114,7 +114,7 @@ export default function HRRegister() {
         email,
         mobile: `${countryCode}${mobile}`,
         departmentId,
-        subDepartment: selectedSubDeptName,
+        subDepartmentId: subDepartment,
       });
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ email, name }));
       setStage("waiting");
@@ -303,13 +303,13 @@ export default function HRRegister() {
 
                   {availableSubDepts.length > 0 && (
                     <div className="space-y-2">
-                      <Label className="text-slate-700 font-semibold ml-1">Sub Department (Optional)</Label>
+                      <Label className="text-slate-700 font-semibold ml-1">Sub Department</Label>
                       <Select value={subDepartment} onValueChange={setSubDepartment} disabled={submitting}>
                         <SelectTrigger className="w-full rounded-xl h-12 bg-slate-50/50 border-slate-200">
                           <SelectValue placeholder="Select Sub Department" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
+                          <SelectItem value="none" disabled>Select Sub Department</SelectItem>
                           {availableSubDepts.map((sd: any) => (
                             <SelectItem key={sd.id} value={sd.id}>{sd.name}</SelectItem>
                           ))}

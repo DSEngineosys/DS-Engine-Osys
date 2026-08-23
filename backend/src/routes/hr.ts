@@ -282,7 +282,7 @@ router.post("/hr/employee-requests/:id/allow", requireHR, async (req: any, res: 
   try {
     await sendEmail(
       emp.email,
-      "Employee Registration Approved - DS Engineosys",
+      "Employee Registration Approved",
       `Congratulations ${emp.name}! Your employee registration has been APPROVED by your Department HR.\n\nYour EMP-ID is ${generatedEmployeeId}.\nShift Assigned: ${shift}\nMonthly Salary: ${monthlySalary} INR\n\nYou can now proceed to set your password and access the platform.`,
       `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
@@ -329,7 +329,7 @@ router.post("/hr/employee-requests/:id/deny", requireHR, async (req: any, res: a
   try {
     await sendEmail(
       emp.email,
-      "Employee Registration Denied - DS Engineosys",
+      "Employee Registration Denied",
       `Hello ${emp.name}, your employee registration request has been DENIED by your Department HR.`
     );
   } catch (err) {

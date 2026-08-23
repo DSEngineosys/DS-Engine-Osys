@@ -133,7 +133,7 @@ router.post("/employee/feedback", requireEmployee, async (req: any, res: any) =>
 // Company name from settings
 router.get("/employee/company", async (_req: any, res: any) => {
   const setting = await Setting.findOne({ key: "companyName" });
-  res.json({ companyName: setting?.value || "DS Engineosys" });
+  res.json({ companyName: setting?.value || "Company Portal" });
 });
 
 // Update employee profile photo

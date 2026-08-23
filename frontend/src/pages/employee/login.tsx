@@ -33,7 +33,7 @@ export default function EmployeeLogin() {
   }, []);
 
   const selectedDeptObj = departments.find((d) => d.id === department);
-  const availableSubDepts = departments.filter((d) => d.parentId === department);
+  const availableSubDepts = selectedDeptObj?.subDepartments || [];
 
   // Forgot password modal state
   const [showForgotModal, setShowForgotModal] = useState(false);
