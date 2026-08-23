@@ -27,6 +27,8 @@ const loginSchema = z.object({
   email: z.string(),
   password: z.string(),
   role: z.string().optional(),
+  departmentId: z.string().optional(),
+  subDepartmentId: z.string().optional(),
 });
 
 const avatarSchema = z.object({
@@ -248,7 +250,7 @@ router.post("/auth/login", async (req, res) => {
     res.status(400).json({ error: "Invalid input", message: parsed.error.message });
     return;
   }
-  const { email, password, role } = parsed.data;
+  const { email, password, role, departmentId, subDepartmentId } = parsed.data;
   
   const found = await findUserForAuth(email, role);
   const user = found?.user;
@@ -272,6 +274,21 @@ router.post("/auth/login", async (req, res) => {
     // Check employee account status
     if ((user as any).accountStatus === "Inactive") {
       res.status(403).json({ error: "Inactive", message: "Your account is inactive." });
+      return;
+    }
+
+    // Verify department and sub-department for employee login
+    const emp = user as any;
+    if (departmentId && String(emp.departmentId) !== departmentId) {
+      res.status(401).json({ error: "Unauthorized", message: "Invalid department for this employee ID." });
+      return;
+    }
+    if (subDepartmentId && String(emp.subDepartmentId) !== subDepartmentId) {
+      res.status(401).json({ error: "Unauthorized", message: "Invalid sub-department for this employee ID." });
+      return;
+    }
+    if (!subDepartmentId && emp.subDepartmentId) {
+      res.status(401).json({ error: "Unauthorized", message: "Sub-department is required for this employee." });
       return;
     }
   }

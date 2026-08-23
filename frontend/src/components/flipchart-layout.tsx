@@ -21,7 +21,7 @@ interface FlipchartLayoutProps {
 }
 
 export function FlipchartLayout({ children, activePhase, onPhaseChange }: FlipchartLayoutProps) {
-  const { user, logout } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const [settings, setSettings] = useState<any>({});
 
@@ -30,6 +30,20 @@ export function FlipchartLayout({ children, activePhase, onPhaseChange }: Flipch
       .then(setSettings)
       .catch(err => console.error("Failed to load settings:", err));
   }, []);
+
+  // Wait for the session check to complete before deciding to redirect.
+  // Without this guard, on page refresh user is null for a brief moment
+  // while /api/auth/me is still in-flight, which causes a false logout.
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-200 via-pink-50 to-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          <p className="text-sm text-slate-500 font-bold">Verifying session…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     window.location.href = "/login";

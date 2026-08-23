@@ -18,8 +18,22 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export function AuthenticatedLayout({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const [location] = useLocation();
+
+  // While the session is being verified (e.g. on page refresh), show a loading state.
+  // Without this, user starts as null and the check below would redirect to /login
+  // before the /api/auth/me response has even returned.
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-100/30 via-white to-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          <p className="text-sm text-muted-foreground font-medium">Verifying session…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     window.location.href = "/login";

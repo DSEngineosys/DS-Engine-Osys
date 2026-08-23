@@ -79,7 +79,7 @@ export default function EmployeeWorkspaceWrapper() {
 }
 
 function EmployeeWorkspace() {
-  const { user, logout } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   
@@ -90,10 +90,13 @@ function EmployeeWorkspace() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) {
+    // Only redirect if the session check has finished (not loading) and no user is found
+    if (!isLoading && !user) {
       setLocation("/employee/login");
     }
-  }, [user, setLocation]);
+  }, [user, isLoading, setLocation]);
+
+
 
   // Login timer
   useEffect(() => {
@@ -221,7 +224,16 @@ function EmployeeWorkspace() {
     }
   };
 
-  if (!user || !profile) return <div className="min-h-screen bg-slate-50 flex justify-center items-center">Loading Workspace...</div>;
+  if (isLoading || !user || !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          <p className="text-sm text-slate-500 font-bold">Loading Workspace...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24 font-sans relative">
