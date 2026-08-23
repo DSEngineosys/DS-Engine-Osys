@@ -167,22 +167,22 @@ export const api = {
   markNotificationRead(id: string) {
     return request<any>(`/api/notifications/${id}/read`, { method: "POST" });
   },
-  forgotPasswordRequestOtp(identifier: string) {
+  forgotPasswordRequestOtp(identifier: string, role?: string) {
     return request<{ message: string; mobile: string; maskedMobile: string; email: string; name: string }>(
       "/api/auth/forgot-password/request-otp",
       {
         method: "POST",
-        body: JSON.stringify({ identifier }),
+        body: JSON.stringify({ identifier, role }),
       }
     );
   },
-  forgotPasswordVerifyOtp(body: { email: string; otp: string }) {
+  forgotPasswordVerifyOtp(body: { email: string; otp: string; role?: string }) {
     return request<{ message: string; email: string }>("/api/auth/forgot-password/verify-otp", {
       method: "POST",
       body: JSON.stringify(body),
     });
   },
-  forgotPasswordReset(body: { email: string; password: string }) {
+  forgotPasswordReset(body: { email: string; password: string; role?: string }) {
     return request<{ message: string; email: string }>("/api/auth/forgot-password/reset", {
       method: "POST",
       body: JSON.stringify(body),

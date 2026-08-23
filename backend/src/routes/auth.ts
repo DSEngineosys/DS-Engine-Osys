@@ -298,6 +298,7 @@ router.post("/auth/login", async (req, res) => {
 router.post("/auth/forgot-password/request-otp", async (req, res) => {
   const schema = z.object({
     identifier: z.string().min(1),
+    role: z.string().optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
@@ -305,7 +306,8 @@ router.post("/auth/forgot-password/request-otp", async (req, res) => {
     return;
   }
   const input = parsed.data.identifier.trim();
-  const found = await findUserForAuth(input);
+  const role = parsed.data.role;
+  const found = await findUserForAuth(input, role);
   if (!found) {
     res.status(404).json({
       error: "User not found",
@@ -382,14 +384,15 @@ router.post("/auth/forgot-password/verify-otp", async (req, res) => {
   const schema = z.object({
     email: z.string().email(),
     otp: z.string().min(4),
+    role: z.string().optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid input", message: "Email and OTP are required" });
     return;
   }
-  const { email, otp } = parsed.data;
-  const found = await findUserForAuth(email);
+  const { email, otp, role } = parsed.data;
+  const found = await findUserForAuth(email, role);
   const user = found?.user;
 
   if (!user || !user.resetOtp || user.resetOtp.trim() !== otp.trim()) {
@@ -410,6 +413,7 @@ router.post("/auth/forgot-password/reset", async (req, res) => {
   const schema = z.object({
     email: z.string().email(),
     password: z.string().min(6),
+    role: z.string().optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
@@ -417,8 +421,8 @@ router.post("/auth/forgot-password/reset", async (req, res) => {
     return;
   }
 
-  const { email, password } = parsed.data;
-  const found = await findUserForAuth(email);
+  const { email, password, role } = parsed.data;
+  const found = await findUserForAuth(email, role);
   const user = found?.user;
 
   if (!user) {

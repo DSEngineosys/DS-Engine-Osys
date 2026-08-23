@@ -85,7 +85,7 @@ export default function EmployeeLogin() {
       // but wait... the forgot password logic in auth.ts handles both User and Employee models
       // if it searches them or just User model?
       // Actually auth.ts /forgot-password/request-otp looks for both User and Employee.
-      const res = await api.forgotPasswordRequestOtp(identifier);
+      const res = await api.forgotPasswordRequestOtp(identifier, "employee");
       setForgotData(res);
       setForgotStep("otp");
       setOtpExpiryDate(new Date(Date.now() + 60 * 1000));
@@ -112,6 +112,7 @@ export default function EmployeeLogin() {
       await api.forgotPasswordVerifyOtp({
         email: forgotData.email,
         otp: userEnteredOtp.trim(),
+        role: "employee",
       });
       setForgotStep("verified");
       setTimeout(() => {
@@ -161,6 +162,7 @@ export default function EmployeeLogin() {
       await api.forgotPasswordReset({
         email: forgotData!.email,
         password: newPassword,
+        role: "employee",
       });
       toast({
         title: "Password Created Successfully!",

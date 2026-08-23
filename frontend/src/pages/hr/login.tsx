@@ -62,7 +62,7 @@ export default function HRLogin() {
     setBusy(true);
     try {
       // Re-using the same forgot-password request OTP since HR are in User model
-      const res = await api.forgotPasswordRequestOtp(identifier);
+      const res = await api.forgotPasswordRequestOtp(identifier, "hr");
       setForgotData(res);
       setForgotStep("otp");
       setOtpExpiryDate(new Date(Date.now() + 60 * 1000));
@@ -89,6 +89,7 @@ export default function HRLogin() {
       await api.forgotPasswordVerifyOtp({
         email: forgotData.email,
         otp: userEnteredOtp.trim(),
+        role: "hr",
       });
       setForgotStep("verified");
       setTimeout(() => {
@@ -138,6 +139,7 @@ export default function HRLogin() {
       await api.forgotPasswordReset({
         email: forgotData!.email,
         password: newPassword,
+        role: "hr",
       });
       toast({
         title: "Password Created Successfully!",

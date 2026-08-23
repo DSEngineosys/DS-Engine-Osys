@@ -76,7 +76,7 @@ export default function Login() {
     if (!identifier.trim()) return;
     setBusy(true);
     try {
-      const res = await api.forgotPasswordRequestOtp(identifier);
+      const res = await api.forgotPasswordRequestOtp(identifier, "ds_engineer");
       setForgotData(res);
       setForgotStep("otp");
       setOtpExpiryDate(new Date(Date.now() + 60 * 1000));
@@ -103,6 +103,7 @@ export default function Login() {
       await api.forgotPasswordVerifyOtp({
         email: forgotData.email,
         otp: userEnteredOtp.trim(),
+        role: "ds_engineer",
       });
       setForgotStep("verified");
       setTimeout(() => {
@@ -152,6 +153,7 @@ export default function Login() {
       await api.forgotPasswordReset({
         email: forgotData!.email,
         password: newPassword,
+        role: "ds_engineer",
       });
       toast({
         title: "Password Created Successfully!",
