@@ -5,7 +5,7 @@ export interface IEmployee extends Document {
   email: string;
   employeeId: string;
   departmentId: mongoose.Types.ObjectId;
-  subDepartment?: string;
+  subDepartmentId?: mongoose.Types.ObjectId;
   designation: string;
   joiningDate: Date;
   status: string;
@@ -29,7 +29,7 @@ const EmployeeSchema: Schema = new Schema(
     email: { type: String, required: true, unique: true },
     employeeId: { type: String, required: true, unique: true },
     departmentId: { type: Schema.Types.ObjectId, ref: "Department", required: true },
-    subDepartment: { type: String },
+    subDepartmentId: { type: Schema.Types.ObjectId, ref: "SubDepartment" },
     designation: { type: String, required: true },
     joiningDate: { type: Date, required: true },
     status: { type: String, required: true, default: "active" },

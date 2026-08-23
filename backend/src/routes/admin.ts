@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { sendEmail } from "../lib/email";
 import User from "../models/user.model";
+import HR from "../models/hr.model";
+import DSEngineer from "../models/ds-engineer.model";
 import Employee from "../models/employee.model";
 import Product from "../models/product.model";
 import Task from "../models/task.model";
@@ -74,7 +76,7 @@ router.get("/admin/me", (req, res) => {
 });
 
 router.get("/admin/registration-requests", requireAdmin, async (_req, res) => {
-  const rows = await User.find({ role: "ds_engineer" }).sort({ createdAt: -1 });
+  const rows = await DSEngineer.find().sort({ createdAt: -1 });
   res.json(rows.map((r: any) => ({
     id: r._id,
     name: r.name,
@@ -89,7 +91,7 @@ router.post("/admin/registration-requests/:id/allow", requireAdmin, async (req, 
   const id = req.params.id as string;
   if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   
-  const updated = await User.findByIdAndUpdate(id, { status: "approved" }, { new: true });
+  const updated = await DSEngineer.findByIdAndUpdate(id, { status: "approved" }, { new: true });
   if (!updated) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -113,7 +115,7 @@ router.post("/admin/registration-requests/:id/deny", requireAdmin, async (req, r
   const id = req.params.id as string;
   if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   
-  const updated = await User.findByIdAndUpdate(id, { status: "denied" }, { new: true });
+  const updated = await DSEngineer.findByIdAndUpdate(id, { status: "denied" }, { new: true });
   if (!updated) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -137,7 +139,7 @@ router.delete("/admin/registration-requests/:id", requireAdmin, async (req, res)
   const id = req.params.id as string;
   if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   
-  const deleted = await User.findByIdAndDelete(id);
+  const deleted = await DSEngineer.findByIdAndDelete(id);
   if (!deleted) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -146,14 +148,14 @@ router.delete("/admin/registration-requests/:id", requireAdmin, async (req, res)
 });
 
 router.get("/admin/hr-recruitment-requests", requireAdmin, async (_req, res) => {
-  const rows = await User.find({ role: "hr" }).populate("departmentId").sort({ createdAt: -1 });
+  const rows = await HR.find().populate("departmentId").populate("subDepartmentId").sort({ createdAt: -1 });
   res.json(rows.map((r: any) => ({
     id: r._id,
     name: r.name,
     email: r.email,
     mobile: r.mobile,
     departmentName: r.departmentId?.name || "Unknown",
-    subDepartment: r.subDepartment,
+    subDepartment: r.subDepartmentId?.name || "Unknown",
     status: r.status,
     hrId: r.hrId,
     monthlySalary: r.monthlySalary,
@@ -167,7 +169,7 @@ router.post("/admin/hr-recruitment-requests/:id/allow", requireAdmin, async (req
   if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   if (!hrId || !monthlySalary) { res.status(400).json({ error: "hrId and monthlySalary are required" }); return; }
   
-  const updated = await User.findByIdAndUpdate(id, { status: "approved", hrId, monthlySalary }, { new: true });
+  const updated = await HR.findByIdAndUpdate(id, { status: "approved", hrId, monthlySalary }, { new: true });
   if (!updated) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -190,7 +192,7 @@ router.post("/admin/hr-recruitment-requests/:id/deny", requireAdmin, async (req,
   const id = req.params.id as string;
   if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   
-  const updated = await User.findByIdAndUpdate(id, { status: "denied" }, { new: true });
+  const updated = await HR.findByIdAndUpdate(id, { status: "denied" }, { new: true });
   if (!updated) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -213,7 +215,7 @@ router.delete("/admin/hr-recruitment-requests/:id", requireAdmin, async (req, re
   const id = req.params.id as string;
   if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   
-  const deleted = await User.findOneAndDelete({ _id: id, role: "hr" });
+  const deleted = await HR.findByIdAndDelete(id);
   if (!deleted) {
     res.status(404).json({ error: "HR request not found" });
     return;
@@ -223,10 +225,10 @@ router.delete("/admin/hr-recruitment-requests/:id", requireAdmin, async (req, re
 });
 
 router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
-  const totalEngineers = await User.countDocuments({ role: "ds_engineer" });
-  const approved = await User.countDocuments({ role: "ds_engineer", status: "approved" });
-  const pending = await User.countDocuments({ role: "ds_engineer", status: "pending" });
-  const denied = await User.countDocuments({ role: "ds_engineer", status: "denied" });
+  const totalEngineers = await DSEngineer.countDocuments();
+  const approved = await DSEngineer.countDocuments({ status: "approved" });
+  const pending = await DSEngineer.countDocuments({ status: "pending" });
+  const denied = await DSEngineer.countDocuments({ status: "denied" });
 
   const employeeCount = await Employee.countDocuments();
   const productCount = await Product.countDocuments();

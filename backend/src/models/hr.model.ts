@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Document } from "mongoose";
 
-export interface IUser extends Document {
+export interface IHR extends Document {
   name: string;
   email: string;
   mobile: string;
@@ -8,31 +8,31 @@ export interface IUser extends Document {
   role: string;
   status: string;
   avatarUrl?: string;
+  departmentId?: mongoose.Types.ObjectId;
+  subDepartmentId?: mongoose.Types.ObjectId;
   phoneNumber?: string;
-  resetOtp?: string;
-  resetOtpExpires?: Date;
-  lastOtpSentAt?: Date;
+  monthlySalary?: number;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const UserSchema: Schema = new Schema(
+const HRSchema: Schema = new Schema(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     mobile: { type: String },
     password: { type: String, default: "" },
-    role: { type: String, default: "admin" },
+    role: { type: String, default: "hr" },
     status: { type: String, default: "approved" },
     avatarUrl: { type: String },
+    departmentId: { type: Schema.Types.ObjectId, ref: "Department" },
+    subDepartmentId: { type: Schema.Types.ObjectId, ref: "SubDepartment" },
     phoneNumber: { type: String },
-    resetOtp: { type: String },
-    resetOtpExpires: { type: Date },
-    lastOtpSentAt: { type: Date },
+    monthlySalary: { type: Number },
   },
   {
     timestamps: true,
   }
 );
 
-export default mongoose.model<IUser>("User", UserSchema);
+export default mongoose.model<IHR>("HR", HRSchema);

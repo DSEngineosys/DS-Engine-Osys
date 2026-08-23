@@ -222,7 +222,7 @@ router.post("/hr/employee-requests/:id/allow", requireHR, async (req: any, res: 
   if (!shift || !monthlySalary) return res.status(400).json({ error: "shift and monthlySalary are required" });
 
   const session = req.session as any;
-  const hrUser = await User.findById(session.userId);
+  const hrUser = await HR.findById(session.userId);
   
   const emp = await Employee.findById(id);
   if (!emp) return res.status(404).json({ error: "Not found" });
@@ -232,7 +232,7 @@ router.post("/hr/employee-requests/:id/allow", requireHR, async (req: any, res: 
   if (hrUser && emp.departmentId.toString() !== hrUser.departmentId?.toString()) {
     return res.status(403).json({ error: "Forbidden", message: "Employee is not in your department" });
   }
-  if (hrUser && hrUser.subDepartment && emp.subDepartment && emp.subDepartment !== hrUser.subDepartment) {
+  if (hrUser && hrUser.subDepartmentId && emp.subDepartmentId && emp.subDepartmentId.toString() !== hrUser.subDepartmentId.toString()) {
     return res.status(403).json({ error: "Forbidden", message: "Employee is not in your sub-department" });
   }
 

@@ -85,7 +85,7 @@ router.post("/employee/register-request", async (req, res) => {
     email,
     employeeId: `PENDING-${Date.now()}`, // Temporary ID until HR approves
     departmentId: new mongoose.Types.ObjectId(department),
-    subDepartment,
+    subDepartmentId,
     designation: "Employee",
     joiningDate: new Date(),
     status: "inactive",
