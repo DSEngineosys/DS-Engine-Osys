@@ -2,7 +2,7 @@ import { Router } from "express";
 import Employee from "../models/employee.model";
 import Setting from "../models/setting.model";
 import Department from "../models/department.model";
-import User from "../models/user.model";
+import Admin from "../models/admin.model";
 import { sendEmail } from "../lib/email";
 import { z } from "zod";
 import mongoose from "mongoose";
@@ -13,7 +13,7 @@ const employeeRegisterRequestSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   department: z.string().min(1),
-  subDepartment: z.string().optional(),
+  subDepartmentId: z.string().optional(),
   contactNumber: z.string().min(1),
   gender: z.string().optional(),
   location: z.string().optional(),
@@ -26,7 +26,7 @@ router.post("/employee/register-request", async (req, res) => {
     res.status(400).json({ error: "Invalid input", message: parsed.error.message });
     return;
   }
-  const { name, email, department, subDepartment, contactNumber, gender, location, employmentType } = parsed.data;
+  const { name, email, department, subDepartmentId: subDepartmentId, contactNumber, gender, location, employmentType } = parsed.data;
 
   const existing = await Employee.findOne({ email });
 
@@ -59,19 +59,19 @@ router.post("/employee/register-request", async (req, res) => {
   }
 
   // Find the HR responsible for this specific department + sub-department.
-  // First try exact match (department + subDepartment).
+  // First try exact match (department + subDepartmentId).
   // Fall back to department-only HR if no sub-department-specific HR exists.
-  let hrUser = subDepartment
-    ? await User.findOne({ role: "hr", departmentId: department, subDepartment, status: "approved" })
+  let hrUser = subDepartmentId
+    ? await Admin.findOne({ role: "hr", departmentId: department, subDepartmentId: subDepartmentId, status: "approved" })
     : null;
 
   if (!hrUser) {
-    hrUser = await User.findOne({ role: "hr", departmentId: department, status: "approved" });
+    hrUser = await Admin.findOne({ role: "hr", departmentId: department, status: "approved" });
   }
 
   // 🔒 BLOCK: If no HR is appointed for this department/sub-department, registration is not allowed.
   if (!hrUser) {
-    const label = subDepartment ? `${deptDoc.name} → ${subDepartment}` : deptDoc.name;
+    const label = subDepartmentId ? `${deptDoc.name} → ${subDepartmentId}` : deptDoc.name;
     res.status(422).json({
       error: "No HR appointed",
       message: `No HR representative has been appointed for ${label} yet. Registration is not available until an HR is assigned. Please contact the Administrator.`,
@@ -109,7 +109,7 @@ router.post("/employee/register-request", async (req, res) => {
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="color: #1e293b; margin-bottom: 16px;">New Registration Request</h2>
           <p style="color: #475569; font-size: 16px; line-height: 24px;">
-            A new Employee registration request has been received from <strong>${name}</strong> (${email}) for ${deptDoc.name} ${subDepartment ? '- ' + subDepartment : ''}.
+            A new Employee registration request has been received from <strong>${name}</strong> (${email}) for ${deptDoc.name} ${subDepartmentId ? '- ' + subDepartmentId : ''}.
           </p>
           <p style="color: #94a3b8; font-size: 12px;">
             You can manage this request from the <a href="${baseUrl}/hr/dashboard" style="color: #3b82f6;">HR Dashboard</a> under the Employee Recruitment tab.

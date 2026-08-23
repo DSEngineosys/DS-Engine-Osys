@@ -8,7 +8,7 @@ import Department from "../models/department.model";
 import { sendEmail } from "../lib/email";
 import { z } from "zod";
 import mongoose from "mongoose";
-import User from "../models/user.model";
+import HR from "../models/hr.model";
 import nodemailer from "nodemailer";
 
 const router = Router();
@@ -180,7 +180,7 @@ const hireEmployeeSchema = z.object({
 
 router.get("/hr/employee-requests", requireHR, async (req: any, res: any) => {
   const session = req.session as any;
-  const hrUser = await User.findById(session.userId);
+  const hrUser = await HR.findById(session.userId);
   if (!hrUser || !hrUser.departmentId) return res.status(403).json({ error: "Forbidden", message: "HR not associated with a department" });
 
   // Build query: always filter by department; if the HR has a sub-department, also filter by it
@@ -188,8 +188,8 @@ router.get("/hr/employee-requests", requireHR, async (req: any, res: any) => {
     accountStatus: { $in: ["Pending", "Denied"] },
     departmentId: hrUser.departmentId,
   };
-  if (hrUser.subDepartment) {
-    query.subDepartment = hrUser.subDepartment;
+  if (hrUser.subDepartmentId) {
+    query.subDepartment = hrUser.subDepartmentId;
   }
 
   const requests = await Employee.find(query).sort({ createdAt: -1 });
@@ -202,7 +202,7 @@ router.get("/hr/employee-requests", requireHR, async (req: any, res: any) => {
         name: emp.name,
         email: emp.email,
         departmentName: dept?.name ?? "Unknown",
-        subDepartment: emp.subDepartment,
+        subDepartment: emp.subDepartmentId,
         contactNumber: emp.contactNumber,
         gender: emp.gender,
         location: emp.location,
@@ -238,12 +238,12 @@ router.post("/hr/employee-requests/:id/allow", requireHR, async (req: any, res: 
 
   // Generate Employee ID
   let deptSymbol = "X";
-  const deptName = (dept?.name || "").toLowerCase();
+  const deptName = (dept?.name || "") as any;
   if (deptName.includes("production")) deptSymbol = "P";
   else if (deptName.includes("marketing")) deptSymbol = "M";
 
   let subDeptSymbol = "X";
-  const subDeptName = (emp.subDepartment || "").toLowerCase();
+  const subDeptName = (emp.subDepartmentId || "") as any;
   if (subDeptName === "labour team") subDeptSymbol = "L";
   else if (subDeptName === "packaging team") subDeptSymbol = "P";
   else if (subDeptName === "machine operator") subDeptSymbol = "M";
@@ -310,7 +310,7 @@ router.post("/hr/employee-requests/:id/deny", requireHR, async (req: any, res: a
   if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "Invalid ID" });
 
   const session = req.session as any;
-  const hrUser = await User.findById(session.userId);
+  const hrUser = await HR.findById(session.userId);
 
   const emp = await Employee.findById(id);
   if (!emp) return res.status(404).json({ error: "Not found" });
@@ -319,7 +319,7 @@ router.post("/hr/employee-requests/:id/deny", requireHR, async (req: any, res: a
     return res.status(403).json({ error: "Forbidden", message: "Employee is not in your department" });
   }
   // Also check sub-department scope if HR has one assigned
-  if (hrUser && hrUser.subDepartment && emp.subDepartment && emp.subDepartment !== hrUser.subDepartment) {
+  if (hrUser && hrUser.subDepartmentId && emp.subDepartmentId && emp.subDepartmentId !== hrUser.subDepartmentId) {
     return res.status(403).json({ error: "Forbidden", message: "Employee is not in your sub-department" });
   }
 
@@ -387,7 +387,7 @@ router.get("/hr/employees", async (_req: any, res: any) => {
         name: emp.name,
         email: emp.email,
         departmentName: dept?.name ?? "Unknown",
-        subDepartment: emp.subDepartment,
+        subDepartment: emp.subDepartmentId,
         designation: emp.designation,
         contactNumber: emp.contactNumber,
         gender: emp.gender,
@@ -411,7 +411,7 @@ router.put("/hr/employees/:id/status", async (req: any, res: any) => {
   }
   const updated = await Employee.findByIdAndUpdate(id, { accountStatus }, { new: true });
   if (!updated) return res.status(404).json({ error: "Employee not found" });
-  res.json({ message: `Employee ${accountStatus.toLowerCase()}d`, employee: updated });
+  res.json({ message: `Employee ${accountStatus as any}d`, employee: updated });
 });
 
 router.delete("/hr/employees/:id", async (req: any, res: any) => {

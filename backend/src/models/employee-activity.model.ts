@@ -3,7 +3,7 @@ import mongoose, { Schema, type Document } from "mongoose";
 export interface IEmployeeActivity extends Document {
   employeeId: mongoose.Types.ObjectId;
   departmentName: string;
-  subDepartment: string;
+  subDepartmentId: mongoose.Types.ObjectId;
   activityType: string;
   payload: any;
   status: string;
@@ -15,7 +15,7 @@ const EmployeeActivitySchema: Schema = new Schema(
   {
     employeeId: { type: Schema.Types.ObjectId, ref: "Employee", required: true },
     departmentName: { type: String, required: true },
-    subDepartment: { type: String, required: true },
+    subDepartmentId: { type: Schema.Types.ObjectId, ref: "SubDepartment", required: true },
     activityType: { type: String, required: true }, // e.g., "Labour Task", "Packaging", "Meeting", "Sales"
     payload: { type: Schema.Types.Mixed, required: true }, // JSON object for dynamic fields
     status: { type: String, default: "submitted" },

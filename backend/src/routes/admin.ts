@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { sendEmail } from "../lib/email";
-import User from "../models/user.model";
+import Admin from "../models/admin.model";
 import HR from "../models/hr.model";
 import DSEngineer from "../models/ds-engineer.model";
 import Employee from "../models/employee.model";

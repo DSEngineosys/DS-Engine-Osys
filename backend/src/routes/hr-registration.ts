@@ -1,5 +1,6 @@
 import { Router } from "express";
-import User from "../models/user.model";
+import Admin from "../models/admin.model";
+import HR from "../models/hr.model";
 import Department from "../models/department.model";
 import Notification from "../models/notification.model";
 import { sendEmail } from "../lib/email";
@@ -13,7 +14,7 @@ const hrRegisterRequestSchema = z.object({
   email: z.string().email(),
   mobile: z.string().min(6),
   departmentId: z.string().min(1),
-  subDepartment: z.string().optional(),
+  subDepartmentId: z.string().optional(),
 });
 
 router.post("/hr/register-request", async (req, res) => {
@@ -22,7 +23,7 @@ router.post("/hr/register-request", async (req, res) => {
     res.status(400).json({ error: "Invalid input", message: parsed.error.message });
     return;
   }
-  const { name, email, mobile, departmentId, subDepartment } = parsed.data;
+  const { name, email, mobile, departmentId, subDepartmentId } = parsed.data;
 
   // Check if department exists
   const dept = await Department.findById(departmentId);
@@ -32,7 +33,7 @@ router.post("/hr/register-request", async (req, res) => {
   }
 
   // Enforce one HR per department
-  const existingHR = await User.findOne({ role: "hr", departmentId, status: { $in: ["approved", "pending"] } });
+  const existingHR = await HR.findOne({ role: "hr", departmentId, status: { $in: ["approved", "pending"] } });
   if (existingHR) {
     res.status(400).json({
       error: "Department already has HR",
@@ -41,7 +42,7 @@ router.post("/hr/register-request", async (req, res) => {
     return;
   }
 
-  const existing = await User.findOne({ email });
+  const existing = await HR.findOne({ email });
 
   if (existing) {
     if (existing.status === "denied") {
@@ -65,12 +66,12 @@ router.post("/hr/register-request", async (req, res) => {
     return;
   }
 
-  const user = await User.create({
+  const user = await (HR as any).create({
     name,
     email,
     mobile,
     departmentId: new mongoose.Types.ObjectId(departmentId),
-    subDepartment,
+    subDepartmentId,
     password: "",
     role: "hr",
     status: "pending",
@@ -137,7 +138,7 @@ router.get("/hr/registration-status", async (req, res) => {
     res.status(400).json({ error: "Missing email", message: "email query is required" });
     return;
   }
-  const user = await User.findOne({ email, role: "hr" });
+  const user = await HR.findOne({ email, role: "hr" });
   if (!user) {
     res.status(404).json({ error: "Not found", message: "No registration found" });
     return;
@@ -162,7 +163,7 @@ router.post("/hr/set-password", async (req, res) => {
     return;
   }
   const { email, password } = parsed.data;
-  const user = await User.findOne({ email, role: "hr" });
+  const user = await HR.findOne({ email, role: "hr" });
   if (!user) {
     res.status(404).json({ error: "Not found", message: "No registration found" });
     return;

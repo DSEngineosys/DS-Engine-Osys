@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { logger } from "./logger";
 
-import User from "../models/user.model";
+import Admin from "../models/admin.model";
 
 export async function connectToDatabase() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -25,10 +25,10 @@ export async function connectToDatabase() {
 
 async function seedAdmin() {
   const adminEmail = "admin@admin.com";
-  const adminExists = await User.findOne({ email: adminEmail });
+  const adminExists = await Admin.findOne({ email: adminEmail });
   
   if (!adminExists) {
-    await User.create({
+    await Admin.create({
       name: "System Admin",
       email: adminEmail,
       password: "admin", // User should change this after first login

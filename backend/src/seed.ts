@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import * as dotenv from "dotenv";
 import path from "path";
-import User from "./models/user.model";
+import Admin from "./models/admin.model";
 import HR from "./models/hr.model";
 import DSEngineer from "./models/ds-engineer.model";
 import Department from "./models/department.model";
@@ -33,7 +33,7 @@ async function seed() {
 
     // Clear existing data
     await Promise.all([
-      User.deleteMany({}),
+      Admin.deleteMany({}),
       HR.deleteMany({}),
       DSEngineer.deleteMany({}),
       Department.deleteMany({}),
@@ -53,7 +53,7 @@ async function seed() {
     ]);
 
     // 1. Create Admin
-    await User.create({
+    await Admin.create({
       name: "Admin User",
       email: "admin@admin.com",
       password: "admin",

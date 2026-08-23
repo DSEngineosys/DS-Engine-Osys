@@ -1,5 +1,7 @@
 import { Router } from "express";
-import User from "../models/user.model";
+import Admin from "../models/admin.model";
+import HR from "../models/hr.model";
+import DSEngineer from "../models/ds-engineer.model";
 import Setting from "../models/setting.model";
 import Notification from "../models/notification.model";
 import Employee from "../models/employee.model";
@@ -36,7 +38,7 @@ function formatUser(user: any) {
     name: user.name,
     email: user.email,
     mobile: user.mobile,
-    role: user.role,
+    role: (user as any).role,
     status: user.status,
     avatarUrl: user.avatarUrl,
     hrId: user.hrId,
@@ -62,7 +64,7 @@ router.post("/auth/register-request", async (req, res) => {
     return;
   }
 
-  const existing = await User.findOne({ email });
+  const existing = await DSEngineer.findOne({ email });
 
   if (existing) {
     const user = existing;
@@ -87,7 +89,7 @@ router.post("/auth/register-request", async (req, res) => {
     return;
   }
 
-  const user = await User.create({
+  const user = await DSEngineer.create({
     name,
     email,
     mobile,
@@ -171,7 +173,7 @@ router.get("/auth/registration-status", async (req, res) => {
     res.status(400).json({ error: "Missing email", message: "email query is required" });
     return;
   }
-  const user = await User.findOne({ email });
+  const user = await DSEngineer.findOne({ email });
   if (!user) {
     res.status(404).json({ error: "Not found", message: "No registration found" });
     return;
@@ -192,7 +194,7 @@ router.post("/auth/set-password", async (req, res) => {
     return;
   }
   const { email, password } = parsed.data;
-  const user = await User.findOne({ email });
+  const user = await DSEngineer.findOne({ email });
   if (!user) {
     res.status(404).json({ error: "Not found", message: "No registration found" });
     return;
@@ -221,14 +223,21 @@ router.post("/auth/login", async (req, res) => {
   const { email, password } = parsed.data;
   
   // First check User collection (DS Engineers, HR, Admin)
-  let user = await User.findOne({ $or: [{ email }, { hrId: email }] });
+  let user = null;
   let isEmployee = false;
 
   // If not found, check Employee collection
+  user = await Employee.findOne({ email });
   if (!user) {
-    user = await Employee.findOne({ employeeId: email });
-    isEmployee = !!user;
+    user = await DSEngineer.findOne({ email });
   }
+  if (!user) {
+    user = await HR.findOne({ email });
+  }
+  if (!user) {
+    user = await Admin.findOne({ email });
+  }
+  isEmployee = !!(await Employee.findOne({ email }));
 
   if (!user || !user.password || user.password !== password) {
     res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
@@ -254,7 +263,7 @@ router.post("/auth/login", async (req, res) => {
 
   const session = req.session as unknown as Record<string, unknown>;
   session.userId = user._id;
-  session.role = isEmployee ? "employee" : user.role;
+  session.role = isEmployee ? "employee" : (user as any).role;
 
   res.json({ 
     user: isEmployee ? { 
@@ -275,7 +284,7 @@ router.post("/auth/forgot-password/request-otp", async (req, res) => {
     return;
   }
   const input = parsed.data.identifier.trim();
-  const user = await User.findOne({
+  const user = await Admin.findOne({
     $or: [{ email: input.toLowerCase() }, { hrId: input }, { mobile: input }, { mobile: { $regex: input } }],
   });
 
@@ -359,7 +368,7 @@ router.post("/auth/forgot-password/verify-otp", async (req, res) => {
     return;
   }
   const { email, otp } = parsed.data;
-  const user = await User.findOne({ email });
+  const user = await Admin.findOne({ email });
 
   if (!user || !user.resetOtp || user.resetOtp.trim() !== otp.trim()) {
     res.status(400).json({ error: "Invalid OTP", message: "The OTP entered does not match the verification code sent." });
@@ -387,7 +396,7 @@ router.post("/auth/forgot-password/reset", async (req, res) => {
   }
 
   const { email, password } = parsed.data;
-  const user = await User.findOne({ email });
+  const user = await Admin.findOne({ email });
 
   if (!user) {
     res.status(404).json({ error: "User not found" });
@@ -425,7 +434,9 @@ router.get("/auth/me", async (req, res) => {
     return;
   }
 
-  const user = await User.findById(session.userId);
+  let user = await DSEngineer.findById(session.userId);
+  if (!user) user = await HR.findById(session.userId);
+  if (!user) user = await Admin.findById(session.userId);
   if (!user) {
     res.status(401).json({ error: "Unauthorized", message: "User not found" });
     return;
@@ -444,11 +455,9 @@ router.post("/auth/avatar", async (req, res) => {
     res.status(400).json({ error: "Invalid input", message: parsed.error.message });
     return;
   }
-  const updated = await User.findByIdAndUpdate(
-    session.userId,
-    { avatarUrl: parsed.data.avatarUrl },
-    { new: true }
-  );
+  let updated = await DSEngineer.findByIdAndUpdate(session.userId, { avatarUrl: parsed.data.avatarUrl }, { new: true });
+  if (!updated) updated = await HR.findByIdAndUpdate(session.userId, { avatarUrl: parsed.data.avatarUrl }, { new: true });
+  if (!updated) updated = await Admin.findByIdAndUpdate(session.userId, { avatarUrl: parsed.data.avatarUrl }, { new: true });
   res.json({ user: formatUser(updated!), message: "Profile photo updated" });
 });
 
@@ -467,11 +476,9 @@ router.put("/auth/profile", async (req, res) => {
     res.status(400).json({ error: "Invalid input", message: parsed.error.message });
     return;
   }
-  const updated = await User.findByIdAndUpdate(
-    session.userId,
-    { name: parsed.data.name, mobile: parsed.data.mobile },
-    { new: true }
-  );
+  let updated = await DSEngineer.findByIdAndUpdate(session.userId, { name: parsed.data.name, mobile: parsed.data.mobile }, { new: true });
+  if (!updated) updated = await HR.findByIdAndUpdate(session.userId, { name: parsed.data.name, mobile: parsed.data.mobile }, { new: true });
+  if (!updated) updated = await Admin.findByIdAndUpdate(session.userId, { name: parsed.data.name, mobile: parsed.data.mobile }, { new: true });
   res.json({ user: formatUser(updated!), message: "Profile updated successfully" });
 });
 

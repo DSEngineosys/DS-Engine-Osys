@@ -31,7 +31,7 @@ router.get("/employee/me", requireEmployee, async (req: any, res: any) => {
     name: emp.name,
     email: emp.email,
     departmentName: dept?.name ?? "Unknown",
-    subDepartment: emp.subDepartment,
+    subDepartmentId: emp.subDepartmentId,
     designation: emp.designation,
     contactNumber: emp.contactNumber,
     gender: emp.gender,
@@ -208,7 +208,7 @@ router.post("/employee/activity", requireEmployee, async (req: any, res: any) =>
   const activity = await EmployeeActivity.create({
     employeeId: emp._id,
     departmentName: dept?.name || "Unknown",
-    subDepartment: emp.subDepartment || "None",
+    subDepartmentId: emp.subDepartmentId || "None",
     activityType,
     payload,
   });
@@ -226,7 +226,7 @@ router.post("/employee/activity", requireEmployee, async (req: any, res: any) =>
     try {
       const { sendEmail } = await import("../lib/email.js");
       const ssoEmployees = await Employee.find({ 
-        subDepartment: { $regex: new RegExp("^sso$", "i") },
+        subDepartmentId: { $regex: new RegExp("^sso$", "i") },
         status: "active" 
       });
       
