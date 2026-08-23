@@ -64,7 +64,7 @@ async function seed() {
     // 2. Create Departments
     const prodDept = await Department.create({ name: "Production Department", description: "Manufacturing" });
     const marketDept = await Department.create({ name: "Marketing Department", description: "Sales" });
-    const hrDept = await Department.create({ name: "HR Department", description: "Talent acquisition" });
+    const itDept = await Department.create({ name: "IT Department", description: "Information Technology" });
 
     // 3. Create Sub-Departments
     const sdLabour = await SubDepartment.create({ name: "Labour Team", departmentId: prodDept._id });
@@ -82,7 +82,7 @@ async function seed() {
       password: "GENHR@100",
       role: "hr",
       status: "approved",
-      departmentId: hrDept._id,
+      departmentId: itDept._id,
     });
 
     // 5. Create DS Engineers in DSEngineer Collection
