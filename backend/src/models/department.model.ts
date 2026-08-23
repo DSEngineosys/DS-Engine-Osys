@@ -2,7 +2,6 @@ import mongoose, { Schema, type Document } from "mongoose";
 
 export interface IDepartment extends Document {
   name: string;
-  parentId?: mongoose.Types.ObjectId;
   description?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -11,7 +10,6 @@ export interface IDepartment extends Document {
 const DepartmentSchema: Schema = new Schema(
   {
     name: { type: String, required: true },
-    parentId: { type: Schema.Types.ObjectId, ref: "Department" },
     description: { type: String },
   },
   {

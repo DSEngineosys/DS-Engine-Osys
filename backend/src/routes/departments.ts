@@ -8,7 +8,6 @@ const router = Router();
 
 const createDeptSchema = z.object({
   name: z.string().min(1),
-  parentId: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
 });
 
@@ -22,7 +21,6 @@ async function getDepartmentWithCount(id: string) {
   return { 
     id: dept._id,
     name: dept.name,
-    parentId: dept.parentId,
     description: dept.description,
     employeeCount: empCount 
   };
@@ -35,7 +33,6 @@ router.get("/departments", async (req, res) => {
     return { 
       id: d._id,
       name: d.name,
-      parentId: d.parentId,
       description: d.description,
       employeeCount: empCount 
     };
@@ -54,16 +51,11 @@ router.post("/departments", async (req, res) => {
     name: parsed.data.name,
     description: parsed.data.description ?? null,
   };
-  
-  if (parsed.data.parentId) {
-    deptData.parentId = new mongoose.Types.ObjectId(parsed.data.parentId);
-  }
 
   const dept = await Department.create(deptData);
   res.status(201).json({ 
     id: dept._id,
     name: dept.name,
-    parentId: dept.parentId,
     description: dept.description,
     employeeCount: 0 
   });
