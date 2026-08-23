@@ -50,7 +50,7 @@ export default function Login() {
 
   function onSubmit(values: z.infer<typeof loginSchema>) {
     loginMutation.mutate(
-      { data: { ...values, role: "ds_engineer" } },
+      { data: { ...values, role: "ds_engineer" } as any },
       {
         onSuccess: () => {
           toast({

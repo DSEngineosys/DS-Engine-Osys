@@ -46,6 +46,7 @@ export default function EmployeeRegister() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [statusName, setStatusName] = useState<string>("");
+  const [hrError, setHrError] = useState<string>("");
 
   const [departments, setDepartments] = useState<any[]>([]);
 
@@ -110,15 +111,16 @@ export default function EmployeeRegister() {
       toast({ variant: "destructive", title: "Error", description: "Please select a department" });
       return;
     }
-    const selectedSubDeptName = availableSubDepts.find((sd) => sd.id === subDepartment)?.name || "";
+    const selectedSubDeptName = availableSubDepts.find((sd: any) => sd.id === subDepartment)?.name || "";
     setSubmitting(true);
+    setHrError("");
     try {
       await api.employeeRegisterRequest({
         name,
         email,
         contactNumber: `${countryCode}${contactNumber}`,
         department,
-        subDepartment: selectedSubDeptName,
+        subDepartmentId: subDepartment,
         gender,
         location: locationStr,
         employmentType
@@ -136,6 +138,9 @@ export default function EmployeeRegister() {
         title: "Request failed",
         description: err instanceof Error ? err.message : "Could not send request.",
       });
+      if (err instanceof Error && err.message.includes("No HR representative")) {
+        setHrError(err.message);
+      }
     } finally {
       setSubmitting(false);
     }

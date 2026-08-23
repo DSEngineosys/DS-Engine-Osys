@@ -10,6 +10,9 @@ export interface IHR extends Document {
   avatarUrl?: string;
   departmentId?: mongoose.Types.ObjectId;
   subDepartmentId?: mongoose.Types.ObjectId;
+  hrId?: string;
+  resetOtp?: string;
+  resetOtpExpires?: Date;
   phoneNumber?: string;
   monthlySalary?: number;
   createdAt: Date;
@@ -27,6 +30,9 @@ const HRSchema: Schema = new Schema(
     avatarUrl: { type: String },
     departmentId: { type: Schema.Types.ObjectId, ref: "Department" },
     subDepartmentId: { type: Schema.Types.ObjectId, ref: "SubDepartment" },
+    hrId: { type: String, sparse: true, unique: true },
+    resetOtp: { type: String },
+    resetOtpExpires: { type: Date },
     phoneNumber: { type: String },
     monthlySalary: { type: Number },
   },

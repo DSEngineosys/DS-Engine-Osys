@@ -106,7 +106,7 @@ export default function HRRegister() {
       toast({ variant: "destructive", title: "Error", description: "Please select a department and a sub-department" });
       return;
     }
-    const selectedSubDeptName = availableSubDepts.find((sd) => sd.id === subDepartment)?.name || "";
+    const selectedSubDeptName = availableSubDepts.find((sd: any) => sd.id === subDepartment)?.name || "";
     setSubmitting(true);
     try {
       await api.hrRegisterRequest({

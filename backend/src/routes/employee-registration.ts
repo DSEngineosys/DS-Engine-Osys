@@ -3,6 +3,7 @@ import Employee from "../models/employee.model";
 import Setting from "../models/setting.model";
 import Department from "../models/department.model";
 import Admin from "../models/admin.model";
+import HR from "../models/hr.model";
 import { sendEmail } from "../lib/email";
 import { z } from "zod";
 import mongoose from "mongoose";
@@ -61,17 +62,25 @@ router.post("/employee/register-request", async (req, res) => {
   // Find the HR responsible for this specific department + sub-department.
   // First try exact match (department + subDepartmentId).
   // Fall back to department-only HR if no sub-department-specific HR exists.
-  let hrUser = subDepartmentId
-    ? await Admin.findOne({ role: "hr", departmentId: department, subDepartmentId: subDepartmentId, status: "approved" })
-    : null;
+  let hrUser = null;
+  if (subDepartmentId && subDepartmentId !== "none") {
+    hrUser = await HR.findOne({ role: "hr", departmentId: department, subDepartmentId: subDepartmentId, status: "approved" });
+  }
 
   if (!hrUser) {
-    hrUser = await Admin.findOne({ role: "hr", departmentId: department, status: "approved" });
+    hrUser = await HR.findOne({ role: "hr", departmentId: department, subDepartmentId: { $in: [null, undefined] }, status: "approved" });
   }
 
   // 🔒 BLOCK: If no HR is appointed for this department/sub-department, registration is not allowed.
   if (!hrUser) {
-    const label = subDepartmentId ? `${deptDoc.name} → ${subDepartmentId}` : deptDoc.name;
+    let subDeptName = "";
+    if (subDepartmentId && subDepartmentId !== "none") {
+      try {
+        const subDeptDoc = await mongoose.model("SubDepartment").findById(subDepartmentId);
+        if (subDeptDoc) subDeptName = subDeptDoc.name;
+      } catch (e) {}
+    }
+    const label = subDeptName ? `${deptDoc.name} → ${subDeptName}` : deptDoc.name;
     res.status(422).json({
       error: "No HR appointed",
       message: `No HR representative has been appointed for ${label} yet. Registration is not available until an HR is assigned. Please contact the Administrator.`,
@@ -85,7 +94,7 @@ router.post("/employee/register-request", async (req, res) => {
     email,
     employeeId: `PENDING-${Date.now()}`, // Temporary ID until HR approves
     departmentId: new mongoose.Types.ObjectId(department),
-    subDepartmentId,
+    subDepartmentId: (!subDepartmentId || subDepartmentId === "none") ? undefined : subDepartmentId,
     designation: "Employee",
     joiningDate: new Date(),
     status: "inactive",

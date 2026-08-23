@@ -10,6 +10,8 @@ export interface IDSEngineer extends Document {
   avatarUrl?: string;
   departmentId?: mongoose.Types.ObjectId;
   subDepartmentId?: mongoose.Types.ObjectId;
+  resetOtp?: string;
+  resetOtpExpires?: Date;
   phoneNumber?: string;
   monthlySalary?: number;
   performanceScore?: number;
@@ -28,6 +30,8 @@ const DSEngineerSchema: Schema = new Schema(
     avatarUrl: { type: String },
     departmentId: { type: Schema.Types.ObjectId, ref: "Department" },
     subDepartmentId: { type: Schema.Types.ObjectId, ref: "SubDepartment" },
+    resetOtp: { type: String },
+    resetOtpExpires: { type: Date },
     phoneNumber: { type: String },
     monthlySalary: { type: Number },
     performanceScore: { type: Number, default: 0 },

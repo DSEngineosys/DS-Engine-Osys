@@ -17,6 +17,8 @@ export interface IEmployee extends Document {
   shift?: string;
   monthlySalary?: number;
   password?: string;
+  resetOtp?: string;
+  resetOtpExpires?: Date;
   performanceScore?: number;
   avatarUrl?: string;
   createdAt: Date;
@@ -41,6 +43,8 @@ const EmployeeSchema: Schema = new Schema(
     shift: { type: String },
     monthlySalary: { type: Number },
     password: { type: String, default: "" },
+    resetOtp: { type: String },
+    resetOtpExpires: { type: Date },
     performanceScore: { type: Number, default: 0 },
     avatarUrl: { type: String },
   },

@@ -242,7 +242,7 @@ export const api = {
   },
   
   // Employee Registration & Recovery
-  employeeRegisterRequest(body: { name: string; email: string; contactNumber: string; department: string; subDepartment?: string; gender?: string; location?: string; employmentType?: string }) {
+  employeeRegisterRequest(body: { name: string; email: string; contactNumber: string; department: string; subDepartmentId?: string; gender?: string; location?: string; employmentType?: string }) {
     return request<{ message: string }>("/api/employee/register-request", {
       method: "POST",
       body: JSON.stringify(body),

@@ -5,6 +5,7 @@ import HelpRequest from "../models/help-request.model";
 import CustomerFeedback from "../models/customer-feedback.model";
 import Setting from "../models/setting.model";
 import Department from "../models/department.model";
+import SubDepartment from "../models/sub-department.model";
 import { sendEmail } from "../lib/email";
 import { z } from "zod";
 import mongoose from "mongoose";
@@ -189,20 +190,29 @@ router.get("/hr/employee-requests", requireHR, async (req: any, res: any) => {
     departmentId: hrUser.departmentId,
   };
   if (hrUser.subDepartmentId) {
-    query.subDepartment = hrUser.subDepartmentId;
+    query.subDepartmentId = hrUser.subDepartmentId;
   }
 
   const requests = await Employee.find(query).sort({ createdAt: -1 });
   const enriched = await Promise.all(
     requests.map(async (emp: any) => {
       const dept = await Department.findById(emp.departmentId);
+      let subDeptName = "";
+      if (emp.subDepartmentId && mongoose.Types.ObjectId.isValid(emp.subDepartmentId)) {
+        try {
+          const subDeptDoc = await SubDepartment.findById(emp.subDepartmentId);
+          if (subDeptDoc) subDeptName = subDeptDoc.name;
+        } catch (err) {
+          console.error("Invalid subDepartmentId:", emp.subDepartmentId);
+        }
+      }
       return {
         _id: emp._id,
         employeeId: emp.employeeId,
         name: emp.name,
         email: emp.email,
         departmentName: dept?.name ?? "Unknown",
-        subDepartment: emp.subDepartmentId,
+        subDepartment: subDeptName,
         contactNumber: emp.contactNumber,
         gender: emp.gender,
         location: emp.location,
@@ -238,22 +248,25 @@ router.post("/hr/employee-requests/:id/allow", requireHR, async (req: any, res: 
 
   // Generate Employee ID
   let deptSymbol = "X";
-  const deptName = (dept?.name || "") as any;
+  const deptName = (dept?.name || "").toLowerCase();
   if (deptName.includes("production")) deptSymbol = "P";
   else if (deptName.includes("marketing")) deptSymbol = "M";
 
   let subDeptSymbol = "X";
-  const subDeptName = (emp.subDepartmentId || "") as any;
-  if (subDeptName === "labour team") subDeptSymbol = "L";
-  else if (subDeptName === "packaging team") subDeptSymbol = "P";
-  else if (subDeptName === "machine operator") subDeptSymbol = "M";
-  else if (subDeptName === "isr") subDeptSymbol = "I";
-  else if (subDeptName === "sso") subDeptSymbol = "S"; // Note: S for SSO? Wait, user said SO="S", TSO="T", what about SSO? I will use S for SSO too or maybe 'S' for SSO and 'O' for SO. Wait, user said: "TSO="T", SO="S""
-  // Let me look at the user request carefully: "SUB-DEPARTMENT: ISR="I", TSO="T", SO="S""
-  // They didn't mention SSO symbol. Let's use 'O' for SSO or 'S' for SSO. Let's just use first letter of SSO -> S, SO -> S. It's fine.
-  else if (subDeptName.includes("sso")) subDeptSymbol = "S";
-  else if (subDeptName.includes("so")) subDeptSymbol = "S";
-  else if (subDeptName.includes("tso")) subDeptSymbol = "T";
+  let subDeptName = "";
+  if (emp.subDepartmentId) {
+    const subDeptDoc = await SubDepartment.findById(emp.subDepartmentId);
+    if (subDeptDoc) {
+      subDeptName = subDeptDoc.name.toLowerCase();
+    }
+  }
+
+  if (subDeptName.includes("labour")) subDeptSymbol = "L";
+  else if (subDeptName.includes("packaging")) subDeptSymbol = "P";
+  else if (subDeptName.includes("machine")) subDeptSymbol = "M";
+  else if (subDeptName.includes("isr")) subDeptSymbol = "I";
+  else if (subDeptName === "tso" || subDeptName.includes("tso")) subDeptSymbol = "T";
+  else if (subDeptName === "so" || subDeptName.includes("so") || subDeptName.includes("sso")) subDeptSymbol = "S";
 
   const prefix = `EMP${deptSymbol}${subDeptSymbol}`;
 
@@ -376,18 +389,35 @@ router.post("/hr/employees", async (req: any, res: any) => {
   }
 });
 
-router.get("/hr/employees", async (_req: any, res: any) => {
-  const employees = await Employee.find().sort({ createdAt: -1 });
+router.get("/hr/employees", requireHR, async (req: any, res: any) => {
+  const session = req.session as any;
+  const hrUser = await HR.findById(session.userId);
+  if (!hrUser) return res.status(403).json({ error: "Forbidden", message: "HR not found" });
+
+  const query: any = { accountStatus: { $in: ["Active", "Inactive"] } };
+  if (hrUser.departmentId) query.departmentId = hrUser.departmentId;
+  if (hrUser.subDepartmentId) query.subDepartmentId = hrUser.subDepartmentId;
+
+  const employees = await Employee.find(query).sort({ createdAt: -1 });
   const enriched = await Promise.all(
     employees.map(async (emp: any) => {
       const dept = await Department.findById(emp.departmentId);
+      let subDeptName = "";
+      if (emp.subDepartmentId && mongoose.Types.ObjectId.isValid(emp.subDepartmentId)) {
+        try {
+          const subDeptDoc = await SubDepartment.findById(emp.subDepartmentId);
+          if (subDeptDoc) subDeptName = subDeptDoc.name;
+        } catch (err) {
+          console.error("Invalid subDepartmentId:", emp.subDepartmentId);
+        }
+      }
       return {
         _id: emp._id,
         employeeId: emp.employeeId,
         name: emp.name,
         email: emp.email,
         departmentName: dept?.name ?? "Unknown",
-        subDepartment: emp.subDepartmentId,
+        subDepartment: subDeptName,
         designation: emp.designation,
         contactNumber: emp.contactNumber,
         gender: emp.gender,
