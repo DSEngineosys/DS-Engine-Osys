@@ -62,15 +62,17 @@ router.post("/employee/register-request", async (req, res) => {
   // Find the HR responsible for this specific department + sub-department.
   // First try exact match (department + subDepartmentId).
   // Fall back to department-only HR if no sub-department-specific HR exists.
+  const deptObjId = new mongoose.Types.ObjectId(department);
   let hrUser = null;
-  if (subDepartmentId && subDepartmentId !== "none") {
-    hrUser = await HR.findOne({ role: "hr", departmentId: department, subDepartmentId: subDepartmentId, status: "approved" });
+  if (subDepartmentId && subDepartmentId !== "none" && mongoose.Types.ObjectId.isValid(subDepartmentId)) {
+    const subDeptObjId = new mongoose.Types.ObjectId(subDepartmentId);
+    hrUser = await HR.findOne({ role: "hr", departmentId: deptObjId, subDepartmentId: subDeptObjId, status: "approved" } as any);
   }
 
   if (!hrUser) {
-    hrUser = await HR.findOne({ role: "hr", departmentId: department, subDepartmentId: { $exists: false }, status: "approved" } as any);
+    hrUser = await HR.findOne({ role: "hr", departmentId: deptObjId, subDepartmentId: { $exists: false }, status: "approved" } as any);
     if (!hrUser) {
-      hrUser = await HR.findOne({ role: "hr", departmentId: department, subDepartmentId: null, status: "approved" } as any);
+      hrUser = await HR.findOne({ role: "hr", departmentId: deptObjId, subDepartmentId: null, status: "approved" } as any);
     }
   }
 
