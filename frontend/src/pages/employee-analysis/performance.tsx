@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { FlipchartLayout } from "@/components/flipchart-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Target, TrendingUp, Zap, Calendar, PlayCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Target, TrendingUp, Zap, Calendar, PlayCircle, Loader2, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -215,17 +215,45 @@ export default function PerformanceAnalytics() {
                 <CardContent className="p-8 flex flex-col items-center justify-center text-center space-y-6">
                   {!predictionResult ? (
                     <>
-                      <div className="w-24 h-24 rounded-full bg-indigo-100 flex items-center justify-center mb-2">
-                        <PlayCircle className="w-10 h-10 text-indigo-600" />
+                      <style dangerouslySetInnerHTML={{__html: `
+                        @keyframes flowLiquid {
+                          0% { stroke-dashoffset: 100; }
+                          100% { stroke-dashoffset: 0; }
+                        }
+                        @keyframes blinkWhite {
+                          0%, 100% { filter: drop-shadow(0 0 0 rgba(255,255,255,0)); color: #6366f1; }
+                          50% { filter: drop-shadow(0 0 15px rgba(255,255,255,0.8)); color: #ffffff; }
+                        }
+                        .animate-liquid {
+                          stroke-dasharray: 20 100;
+                          animation: flowLiquid 2s linear infinite;
+                        }
+                        .animate-brain-blink {
+                          animation: blinkWhite 2s ease-in-out infinite;
+                        }
+                      `}} />
+                      <div className="relative w-32 h-32 mb-4 flex items-center justify-center p-4">
+                        {/* Custom Animated Brain Chip SVG */}
+                        <svg className="absolute inset-0 w-full h-full p-2" viewBox="0 0 100 100" fill="none" stroke="#3b82f6" strokeWidth="2">
+                          {/* Traces / Wires */}
+                          <path className="animate-liquid" d="M10 20 L30 20 L30 30" />
+                          <path className="animate-liquid" d="M10 50 L30 50" />
+                          <path className="animate-liquid" d="M10 80 L30 80 L30 70" />
+                          <path className="animate-liquid" d="M90 20 L70 20 L70 30" />
+                          <path className="animate-liquid" d="M90 50 L70 50" />
+                          <path className="animate-liquid" d="M90 80 L70 80 L70 70" />
+                          <path className="animate-liquid" d="M50 10 L50 30" />
+                          <path className="animate-liquid" d="M50 90 L50 70" />
+                          {/* CPU Body */}
+                          <rect x="30" y="30" width="40" height="40" rx="4" stroke="#4f46e5" strokeWidth="3" fill="transparent" />
+                        </svg>
+                        <Brain className="w-12 h-12 relative z-10 animate-brain-blink text-indigo-500" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold text-slate-800">ML Prediction Engine</h3>
-                        <p className="text-slate-500 mt-2 text-sm max-w-xs mx-auto">
-                          Run the Naive Bayes algorithm on the employee's historical and current data to predict efficiency.
-                        </p>
+                        <h3 className="text-xl font-bold text-slate-800">Employee Performance Analysis</h3>
                       </div>
-                      <Button onClick={handlePredict} disabled={predicting} size="lg" className="rounded-full w-full max-w-xs h-14 text-base font-bold shadow-lg shadow-indigo-200">
-                        {predicting ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Processing Data...</> : "Run Prediction"}
+                      <Button onClick={handlePredict} disabled={predicting} size="lg" className="rounded-full w-full max-w-xs h-14 text-base font-bold shadow-lg shadow-indigo-200 mt-4">
+                        {predicting ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Processing Data...</> : "Measure"}
                       </Button>
                     </>
                   ) : (

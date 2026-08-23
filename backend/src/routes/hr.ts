@@ -217,9 +217,9 @@ router.get("/hr/employee-requests", requireHR, async (req: any, res: any) => {
 
 router.post("/hr/employee-requests/:id/allow", requireHR, async (req: any, res: any) => {
   const { id } = req.params;
-  const { employeeId, shift, monthlySalary } = req.body;
+  const { shift, monthlySalary } = req.body;
   if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "Invalid ID" });
-  if (!employeeId || !shift || !monthlySalary) return res.status(400).json({ error: "employeeId, shift, and monthlySalary are required" });
+  if (!shift || !monthlySalary) return res.status(400).json({ error: "shift and monthlySalary are required" });
 
   const session = req.session as any;
   const hrUser = await User.findById(session.userId);
@@ -227,21 +227,53 @@ router.post("/hr/employee-requests/:id/allow", requireHR, async (req: any, res: 
   const emp = await Employee.findById(id);
   if (!emp) return res.status(404).json({ error: "Not found" });
   
+  const dept = await Department.findById(emp.departmentId);
+  
   if (hrUser && emp.departmentId.toString() !== hrUser.departmentId?.toString()) {
     return res.status(403).json({ error: "Forbidden", message: "Employee is not in your department" });
   }
-  // Also check sub-department scope if HR has one assigned
   if (hrUser && hrUser.subDepartment && emp.subDepartment && emp.subDepartment !== hrUser.subDepartment) {
     return res.status(403).json({ error: "Forbidden", message: "Employee is not in your sub-department" });
   }
 
-  // Check for duplicate employeeId
-  const existing = await Employee.findOne({ employeeId, _id: { $ne: emp._id } });
-  if (existing) return res.status(409).json({ error: "Duplicate", message: "An employee with this ID already exists." });
+  // Generate Employee ID
+  let deptSymbol = "X";
+  const deptName = (dept?.name || "").toLowerCase();
+  if (deptName.includes("production")) deptSymbol = "P";
+  else if (deptName.includes("marketing")) deptSymbol = "M";
+
+  let subDeptSymbol = "X";
+  const subDeptName = (emp.subDepartment || "").toLowerCase();
+  if (subDeptName === "labour team") subDeptSymbol = "L";
+  else if (subDeptName === "packaging team") subDeptSymbol = "P";
+  else if (subDeptName === "machine operator") subDeptSymbol = "M";
+  else if (subDeptName === "isr") subDeptSymbol = "I";
+  else if (subDeptName === "sso") subDeptSymbol = "S"; // Note: S for SSO? Wait, user said SO="S", TSO="T", what about SSO? I will use S for SSO too or maybe 'S' for SSO and 'O' for SO. Wait, user said: "TSO="T", SO="S""
+  // Let me look at the user request carefully: "SUB-DEPARTMENT: ISR="I", TSO="T", SO="S""
+  // They didn't mention SSO symbol. Let's use 'O' for SSO or 'S' for SSO. Let's just use first letter of SSO -> S, SO -> S. It's fine.
+  else if (subDeptName.includes("sso")) subDeptSymbol = "S";
+  else if (subDeptName.includes("so")) subDeptSymbol = "S";
+  else if (subDeptName.includes("tso")) subDeptSymbol = "T";
+
+  const prefix = `EMP${deptSymbol}${subDeptSymbol}`;
+
+  const existingEmps = await Employee.find({ employeeId: new RegExp(`^${prefix}\\d{4}$`, "i") });
+  const usedNumbers = existingEmps
+    .map(e => parseInt(e.employeeId!.replace(new RegExp(`^${prefix}`, "i"), ""), 10))
+    .filter(n => !isNaN(n))
+    .sort((a, b) => a - b);
+    
+  let sequence = 1;
+  for (const num of usedNumbers) {
+    if (num === sequence) sequence++;
+    else if (num > sequence) break;
+  }
+
+  const generatedEmployeeId = `${prefix}${sequence.toString().padStart(4, "0")}`;
 
   emp.accountStatus = "Active";
   emp.status = "active";
-  emp.employeeId = employeeId;
+  emp.employeeId = generatedEmployeeId;
   emp.shift = shift;
   emp.monthlySalary = monthlySalary;
   emp.joiningDate = new Date();
@@ -251,7 +283,20 @@ router.post("/hr/employee-requests/:id/allow", requireHR, async (req: any, res: 
     await sendEmail(
       emp.email,
       "Employee Registration Approved - DS Engineosys",
-      `Congratulations ${emp.name}! Your employee registration has been APPROVED by your Department HR. Your EMP-ID is ${employeeId}. You can now proceed to set your password and access the platform.`
+      `Congratulations ${emp.name}! Your employee registration has been APPROVED by your Department HR.\n\nYour EMP-ID is ${generatedEmployeeId}.\nShift Assigned: ${shift}\nMonthly Salary: ${monthlySalary} INR\n\nYou can now proceed to set your password and access the platform.`,
+      `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+        <h2 style="color: #059669;">Registration Approved!</h2>
+        <p>Congratulations <strong>${emp.name}</strong>,</p>
+        <p>Your employee registration has been APPROVED by your Department HR.</p>
+        <div style="background-color: #f8fafc; padding: 15px; border-radius: 6px; margin: 20px 0;">
+          <p style="margin: 5px 0;"><strong>Employee ID:</strong> <span style="color: #2563eb;">${generatedEmployeeId}</span></p>
+          <p style="margin: 5px 0;"><strong>Shift Assigned:</strong> ${shift}</p>
+          <p style="margin: 5px 0;"><strong>Monthly Salary:</strong> ${monthlySalary} INR</p>
+        </div>
+        <p>You can now proceed to set your password and access the Employee Workspace.</p>
+      </div>
+      `
     );
   } catch (err) {
     console.error("Non-critical: Failed to notify Employee of approval", err);

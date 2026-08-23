@@ -71,7 +71,7 @@ export default function HRDashboard() {
   useEffect(() => { fetchData(); }, []);
 
   const handleAllowReq = async (id: string) => {
-    if (!allowForm.employeeId || !allowForm.shift || !allowForm.monthlySalary) {
+    if (!allowForm.shift || !allowForm.monthlySalary) {
       toast({ variant: "destructive", title: "Error", description: "Please fill in all assignment fields." });
       return;
     }
@@ -232,8 +232,8 @@ export default function HRDashboard() {
                             <h4 className="font-bold text-sm text-emerald-800 mb-3">Assign Employee Details</h4>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                               <div>
-                                <label className="text-xs font-semibold block mb-1">Employee ID</label>
-                                <Input value={allowForm.employeeId} onChange={e => setAllowForm({...allowForm, employeeId: e.target.value})} placeholder="e.g. EMP-101" />
+                                <label className="text-xs font-semibold block mb-1 text-slate-400">Employee ID</label>
+                                <Input disabled value="Auto-generated upon approval" className="bg-slate-50 text-slate-500 italic" />
                               </div>
                               <div>
                                 <label className="text-xs font-semibold block mb-1">Shift</label>
