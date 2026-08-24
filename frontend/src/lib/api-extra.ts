@@ -329,4 +329,7 @@ export const api = {
   getProducts() {
     return request<any[]>("/api/hr/products");
   },
+  getDSTasks(departmentName: string, subDepartmentName: string) {
+    return request<any[]>(`/api/dstasks?departmentName=${encodeURIComponent(departmentName)}&subDepartmentName=${encodeURIComponent(subDepartmentName)}`);
+  },
 };

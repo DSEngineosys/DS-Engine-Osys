@@ -1,10 +1,27 @@
 import { Router } from "express";
 import Task from "../models/task.model";
+import DSTask from "../models/dstask.model";
 import Employee from "../models/employee.model";
 import mongoose from "mongoose";
 import { z } from "zod";
 
 const router = Router();
+
+// Endpoint to get predefined tasks from DSTask collection
+router.get("/dstasks", async (req, res) => {
+  const { departmentName, subDepartmentName } = req.query;
+  
+  const query: any = {};
+  if (departmentName) query.departmentName = departmentName;
+  if (subDepartmentName) query.subDepartmentName = subDepartmentName;
+  
+  try {
+    const tasks = await DSTask.find(query);
+    res.json(tasks);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to fetch DS tasks", message: err.message });
+  }
+});
 
 const createTaskSchema = z.object({
   title: z.string().min(1),
