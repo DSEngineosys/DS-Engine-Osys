@@ -321,4 +321,12 @@ export const api = {
       body: JSON.stringify(data || {}),
     });
   },
+
+  // Added for Dynamic Task Assignment
+  getEmployeeById(id: string) {
+    return request<any>(`/api/employees/${id}`);
+  },
+  getProducts() {
+    return request<any[]>("/api/hr/products");
+  },
 };

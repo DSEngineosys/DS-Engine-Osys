@@ -24,6 +24,7 @@ import {
   PolarRadiusAxis,
   Radar
 } from "recharts";
+import { DynamicTaskSelector } from "./DynamicTaskSelector";
 
 type TabType = "workspace" | "task-status" | "current-work";
 
@@ -44,10 +45,7 @@ export default function PerformanceAnalytics() {
   // Tasks State
   const [tasks, setTasks] = useState<any[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
-  
-  // New Task Form
-  const [taskForm, setTaskForm] = useState({ title: "", description: "", dueDate: "", priority: "medium", quantity: "" });
-  const [assigning, setAssigning] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
 
   useEffect(() => {
     if (!employeeId) {
@@ -61,9 +59,22 @@ export default function PerformanceAnalytics() {
   const fetchEmployeeAndTasks = async () => {
     try {
       setLoadingTasks(true);
-      // Fetch Tasks
+      
+      const fullEmployee = await api.getEmployeeById(employeeId!);
+      setEmployee(fullEmployee);
+
       const fetchedTasks = await api.getEmployeeTasks(employeeId!);
       setTasks(fetchedTasks);
+      
+      // If it's a marketing employee, we might need products
+      if (fullEmployee.departmentName === "Marketing Department") {
+        try {
+          const prods = await api.getProducts();
+          setProducts(prods);
+        } catch (e) {
+          console.error("Failed to fetch products:", e);
+        }
+      }
     } catch (err: any) {
       toast({ variant: "destructive", title: "Error loading data", description: err.message });
     } finally {
@@ -85,30 +96,7 @@ export default function PerformanceAnalytics() {
     }
   };
 
-  const handleAssignTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!taskForm.title) return;
-    
-    setAssigning(true);
-    try {
-      await api.assignTask({
-        employeeId: employeeId!,
-        title: taskForm.title,
-        description: taskForm.description,
-        dueDate: taskForm.dueDate,
-        priority: taskForm.priority,
-        quantity: taskForm.quantity ? Number(taskForm.quantity) : undefined,
-        status: "pending"
-      });
-      toast({ title: "Task Assigned", description: "The task was successfully assigned to the employee." });
-      setTaskForm({ title: "", description: "", dueDate: "", priority: "medium", quantity: "" });
-      fetchEmployeeAndTasks(); // Refresh tasks
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Assignment Failed", description: err.message });
-    } finally {
-      setAssigning(false);
-    }
-  };
+
 
   const completedTasks = tasks.filter(t => t.status === "completed" || t.status === "failed"); // history
   const activeTasks = tasks.filter(t => t.status === "pending" || t.status === "in_progress"); // current
@@ -286,58 +274,15 @@ export default function PerformanceAnalytics() {
               <Card className="rounded-[2.5rem] border-slate-100 shadow-xl overflow-hidden bg-white">
                 <CardHeader className="border-b border-slate-50 bg-slate-50/50">
                   <CardTitle className="text-base font-bold text-slate-800">Assign New Task</CardTitle>
-                  <CardDescription>Max 3 active tasks allowed per employee.</CardDescription>
+                  <CardDescription>Select a predefined task based on the employee's department.</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6">
-                  {activeTasks.length >= 3 ? (
-                    <div className="p-4 bg-amber-50 text-amber-800 rounded-xl border border-amber-100 text-sm font-medium text-center">
-                      Task limit reached. This employee already has 3 active tasks.
-                    </div>
-                  ) : (
-                    <form onSubmit={handleAssignTask} className="space-y-4">
-                      <Input 
-                        placeholder="Task Title" 
-                        value={taskForm.title} 
-                        onChange={e => setTaskForm({...taskForm, title: e.target.value})}
-                        required
-                        className="bg-slate-50 border-slate-100 h-12 rounded-xl"
-                      />
-                      <Textarea 
-                        placeholder="Task details and instructions..." 
-                        value={taskForm.description}
-                        onChange={e => setTaskForm({...taskForm, description: e.target.value})}
-                        className="bg-slate-50 border-slate-100 rounded-xl resize-none h-24"
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Quantity (Optional)"
-                        value={taskForm.quantity}
-                        onChange={e => setTaskForm({...taskForm, quantity: e.target.value})}
-                        className="bg-slate-50 border-slate-100 h-12 rounded-xl"
-                      />
-                      <div className="grid grid-cols-2 gap-4">
-                        <Input 
-                          type="date" 
-                          value={taskForm.dueDate}
-                          onChange={e => setTaskForm({...taskForm, dueDate: e.target.value})}
-                          className="bg-slate-50 border-slate-100 h-12 rounded-xl"
-                        />
-                        <Select value={taskForm.priority} onValueChange={v => setTaskForm({...taskForm, priority: v})}>
-                          <SelectTrigger className="bg-slate-50 border-slate-100 h-12 rounded-xl">
-                            <SelectValue placeholder="Priority" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">Low Priority</SelectItem>
-                            <SelectItem value="medium">Medium Priority</SelectItem>
-                            <SelectItem value="high">High Priority</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <Button type="submit" disabled={assigning} className="w-full h-12 rounded-xl font-bold">
-                        {assigning ? "Assigning..." : "Assign Task"}
-                      </Button>
-                    </form>
-                  )}
+                   <DynamicTaskSelector 
+                     employee={employee} 
+                     products={products} 
+                     onTaskAssigned={fetchEmployeeAndTasks} 
+                     activeTasksCount={activeTasks.length} 
+                   />
                 </CardContent>
               </Card>
             </div>
