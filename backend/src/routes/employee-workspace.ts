@@ -7,6 +7,7 @@ import CustomerFeedback from "../models/customer-feedback.model";
 import DailyCollection from "../models/daily-collection.model";
 import Setting from "../models/setting.model";
 import Department from "../models/department.model";
+import SubDepartment from "../models/sub-department.model";
 import EmployeeActivity from "../models/employee-activity.model";
 
 const router = Router();
@@ -25,13 +26,20 @@ router.get("/employee/me", requireEmployee, async (req: any, res: any) => {
   const emp = await Employee.findById(session.userId);
   if (!emp) return res.status(404).json({ error: "Employee not found" });
   const dept = await Department.findById(emp.departmentId);
+  
+  let subDeptName = "";
+  if (emp.subDepartmentId) {
+    const subDept = await SubDepartment.findById(emp.subDepartmentId);
+    if (subDept) subDeptName = subDept.name;
+  }
+
   res.json({
     _id: emp._id,
     employeeId: emp.employeeId,
     name: emp.name,
     email: emp.email,
     departmentName: dept?.name ?? "Unknown",
-    subDepartmentId: emp.subDepartmentId,
+    subDepartment: subDeptName,
     designation: emp.designation,
     contactNumber: emp.contactNumber,
     gender: emp.gender,

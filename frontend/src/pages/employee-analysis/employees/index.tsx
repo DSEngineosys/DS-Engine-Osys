@@ -27,8 +27,8 @@ export default function EmployeesList() {
   } as any);
 
   // Get context label from first employee (or from API data)
-  const deptName = employees?.[0]?.departmentName;
-  const subDeptName = employees?.[0]?.subDepartmentName;
+  const deptName = (employees?.[0] as any)?.departmentName;
+  const subDeptName = (employees?.[0] as any)?.subDepartmentName;
 
   const contextLabel = subDepartmentId && subDeptName
     ? `${deptName} → ${subDeptName}`
