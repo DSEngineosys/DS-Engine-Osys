@@ -34,30 +34,33 @@ router.post("/ml/predict-performance/:id", async (req: any, res: any) => {
       totalTasksCompleted = 0;
     }
 
-    // Call the external Flask ML service
-    const mlResponse = await fetch(`${FLASK_ML_SERVICE_URL}/api/predict`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        efficiency: totalEfficiency,
-        tasksCompleted: totalTasksCompleted,
-        // Optional: Send loginHour if the client provides it, otherwise Flask simulates it
-        ...(req.body.loginHour ? { loginHour: req.body.loginHour } : {})
-      }),
-    });
+    // Instead of calling the external Flask service (which might not be running),
+    // we use the exact same calculation logic from app.py natively in Node.js.
+    const efficiency = totalEfficiency;
+    const tasksCompleted = totalTasksCompleted;
+    
+    // Simulate login hour (e.g., 8 AM to 10.5 AM) if not provided
+    const loginHour = req.body.loginHour ? Number(req.body.loginHour) : 8.0 + Math.random() * 2.5;
 
-    if (!mlResponse.ok) {
-      throw new Error(`ML Service Error: ${mlResponse.statusText}`);
+    // Weight efficiency heavily, add a bit for tasks, penalize late login slightly
+    const baseScore = efficiency * 0.7 + (Math.min(tasksCompleted, 10) * 3);
+    const timePenalty = Math.max(0, loginHour - 9) * 2;
+    const currentPerf = Math.max(0, Math.min(100, baseScore - timePenalty));
+
+    // Determine classification based on calculated percentage
+    let classification = "High";
+    if (currentPerf <= 30) {
+      classification = "Low";
+    } else if (currentPerf <= 70) {
+      classification = "Medium";
     }
-
-    const predictionData = (await mlResponse.json()) as Record<string, any>;
 
     res.json({
       employeeId: employee._id,
       name: employee.name,
-      ...predictionData
+      currentPerformancePercentage: Number(currentPerf.toFixed(1)),
+      futurePerformanceClassification: classification,
+      simulatedLoginHour: Number(loginHour.toFixed(1))
     });
 
   } catch (error: any) {
