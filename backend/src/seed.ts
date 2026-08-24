@@ -74,6 +74,7 @@ async function seed() {
     const sdISR = await SubDepartment.create({ name: "ISR", departmentId: marketDept._id });
     const sdTSO = await SubDepartment.create({ name: "TSO", departmentId: marketDept._id });
     const sdSO = await SubDepartment.create({ name: "SO", departmentId: marketDept._id });
+    const sdSSO = await SubDepartment.create({ name: "SSO", departmentId: marketDept._id });
 
     // 4. Create HR in HR Collection
     await HR.create({
