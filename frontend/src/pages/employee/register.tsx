@@ -42,6 +42,7 @@ export default function EmployeeRegister() {
   const [locationStr, setLocationStr] = useState("");
   const [employmentType, setEmploymentType] = useState("Fulltime");
   
+  const [jobTitle, setJobTitle] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -60,7 +61,9 @@ export default function EmployeeRegister() {
   const selectedDeptObj = departments.find((d) => d.id === department);
   const availableSubDepts = selectedDeptObj?.subDepartments || [];
 
-  // Resume an in-progress request from a previous visit.
+  useEffect(() => {
+    setJobTitle("");
+  }, [department, subDepartment]);
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return;
@@ -123,7 +126,8 @@ export default function EmployeeRegister() {
         subDepartmentId: subDepartment,
         gender,
         location: locationStr,
-        employmentType
+        employmentType,
+        jobTitle,
       });
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ email, name }));
       setStage("waiting");
@@ -382,6 +386,34 @@ export default function EmployeeRegister() {
                       </Select>
                     </div>
                   </div>
+
+                  {/* Job Title — shown only after department (and optionally sub-dept) is selected */}
+                  {selectedDeptObj && (selectedDeptObj.name === "Production" || selectedDeptObj.name === "Marketing") && (
+                    <div className="space-y-2">
+                      <Label className="text-slate-700 font-semibold ml-1">Job Title</Label>
+                      <Select value={jobTitle} onValueChange={setJobTitle} disabled={submitting}>
+                        <SelectTrigger className="w-full rounded-xl h-12 bg-slate-50/50 border-slate-200">
+                          <SelectValue placeholder="Select Job Title" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {selectedDeptObj.name === "Production" ? (
+                            <>
+                              <SelectItem value="Labour">Labour</SelectItem>
+                              <SelectItem value="Worker">Worker</SelectItem>
+                              <SelectItem value="Machine Operator">Machine Operator</SelectItem>
+                            </>
+                          ) : (
+                            <>
+                              <SelectItem value="SSO">SSO</SelectItem>
+                              <SelectItem value="TSO">TSO</SelectItem>
+                              <SelectItem value="ISR">ISR</SelectItem>
+                              <SelectItem value="SO">SO</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <Button
                     type="submit"

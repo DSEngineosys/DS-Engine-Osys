@@ -244,6 +244,19 @@ export default function PerformanceAnalytics() {
                         {predicting ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Processing Data...</> : "Measure"}
                       </Button>
                     </>
+                  ) : predictionResult.insufficientData ? (
+                    <div className="flex flex-col items-center text-center p-6 bg-amber-50 rounded-3xl border border-amber-100 max-w-md w-full mx-auto">
+                      <div className="w-16 h-16 bg-amber-100 text-amber-500 flex items-center justify-center rounded-2xl mb-4">
+                        <Brain className="w-8 h-8" />
+                      </div>
+                      <h3 className="text-lg font-black text-amber-900 mb-2">Insufficient Data</h3>
+                      <p className="text-sm text-amber-700 leading-relaxed font-medium">
+                        {predictionResult.message}
+                      </p>
+                      <Button onClick={() => setPredictionResult(null)} variant="outline" className="mt-6 border-amber-200 text-amber-700 hover:bg-amber-100">
+                        Acknowledge & Go Back
+                      </Button>
+                    </div>
                   ) : (
                     <div className="w-full grid grid-cols-2 gap-6 animate-in fade-in zoom-in duration-300">
                       <div className="flex flex-col items-center justify-center bg-white p-6 rounded-3xl shadow-sm border border-slate-100">

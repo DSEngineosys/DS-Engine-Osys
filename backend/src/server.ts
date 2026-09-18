@@ -5,7 +5,7 @@ import { connectToDatabase } from "./lib/db";
 import Bonus from "./models/bonus.model";
 import { startDailyCollector } from "./jobs/daily-collector";
 
-const rawPort = process.env["PORT"];
+const rawPort = process.env["PORT"] || "8080";
 
 if (!rawPort) {
   throw new Error(

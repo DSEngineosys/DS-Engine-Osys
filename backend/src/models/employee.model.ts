@@ -12,9 +12,11 @@ export interface IEmployee extends Document {
   accountStatus: string;
   contactNumber?: string;
   gender?: string;
+  jobTitle?: string;
+  shift?: string;
   location?: string;
   employmentType?: string;
-  shift?: string;
+
   monthlySalary?: number;
   password?: string;
   resetOtp?: string;
@@ -38,6 +40,7 @@ const EmployeeSchema: Schema = new Schema(
     accountStatus: { type: String, default: "Active" },
     contactNumber: { type: String },
     gender: { type: String },
+    jobTitle: { type: String },
     location: { type: String },
     employmentType: { type: String, default: "Fulltime" },
     shift: { type: String },

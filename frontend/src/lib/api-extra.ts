@@ -78,7 +78,7 @@ export const api = {
   me() {
     return request<CurrentUserExtended>("/api/auth/me");
   },
-  registerRequest(body: { name: string; email: string; mobile: string; isDsEngineer: boolean }) {
+  registerRequest(body: { name: string; email: string; mobile: string; isDsEngineer: boolean; department?: string; subDepartment?: string; jobTitle?: string }) {
     return request<{ message: string }>("/api/auth/register-request", {
       method: "POST",
       body: JSON.stringify(body),
@@ -242,7 +242,7 @@ export const api = {
   },
   
   // Employee Registration & Recovery
-  employeeRegisterRequest(body: { name: string; email: string; contactNumber: string; department: string; subDepartmentId?: string; gender?: string; location?: string; employmentType?: string }) {
+  employeeRegisterRequest(body: { name: string; email: string; contactNumber: string; department: string; subDepartmentId?: string; gender?: string; location?: string; employmentType?: string; jobTitle?: string }) {
     return request<{ message: string }>("/api/employee/register-request", {
       method: "POST",
       body: JSON.stringify(body),

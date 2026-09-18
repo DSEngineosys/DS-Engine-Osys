@@ -18,7 +18,7 @@ const employeeRegisterRequestSchema = z.object({
   contactNumber: z.string().min(1),
   gender: z.string().optional(),
   location: z.string().optional(),
-  employmentType: z.string().optional(),
+  jobTitle: z.string().optional(),
 });
 
 router.post("/employee/register-request", async (req, res) => {
@@ -27,7 +27,7 @@ router.post("/employee/register-request", async (req, res) => {
     res.status(400).json({ error: "Invalid input", message: parsed.error.message });
     return;
   }
-  const { name, email, department, subDepartmentId: subDepartmentId, contactNumber, gender, location, employmentType } = parsed.data;
+  const { name, email, department, subDepartmentId: subDepartmentId, contactNumber, gender, location, jobTitle } = parsed.data;
 
   const existing = await Employee.findOne({ email });
 
@@ -107,7 +107,7 @@ router.post("/employee/register-request", async (req, res) => {
     contactNumber,
     gender,
     location,
-    employmentType,
+    jobTitle,
     password: "",
   });
 
