@@ -120,13 +120,16 @@ router.post("/ml/predict-performance/:id", async (req: any, res: any) => {
              employeeSnapshots.push(d);
           }
           
-          // Collect training data globally
-          const score = typeof d.performanceScore === 'number' ? d.performanceScore : null;
-          if (score !== null && !isNaN(score)) {
-            // Assign rule-based label for historical training data
+          // Collect training data globally from active present days
+          const score = typeof d.performanceScore === 'number' && d.performanceScore > 0 
+            ? d.performanceScore 
+            : (typeof d.productivityScore === 'number' && d.productivityScore > 0 ? d.productivityScore : null);
+
+          if (score !== null && !isNaN(score) && (d.attendanceStatus === 'Present' || !d.attendanceStatus)) {
+            // Assign benchmark label for historical training data
             let label = "High";
-            if (score <= 30) label = "Low";
-            else if (score <= 70) label = "Medium";
+            if (score < 65) label = "Low";
+            else if (score <= 75) label = "Medium";
             
             X_train.push([score]);
             y_train.push(label);
@@ -160,10 +163,13 @@ router.post("/ml/predict-performance/:id", async (req: any, res: any) => {
     nbModel.train(X_train, y_train);
 
     // ─── Predict for Target Employee ───
-    // Get average of their historical scores to form their current feature set
-    const empScores = employeeSnapshots
-      .map(s => s.performanceScore)
-      .filter(s => typeof s === 'number' && !isNaN(s));
+    // Extract active work day scores for this employee
+    const activeSnapshots = employeeSnapshots.filter(s => s.attendanceStatus === "Present" || (typeof s.performanceScore === "number" && s.performanceScore > 0));
+    const targetSnapshots = activeSnapshots.length > 0 ? activeSnapshots : employeeSnapshots;
+
+    const empScores = targetSnapshots
+      .map(s => (typeof s.performanceScore === 'number' && s.performanceScore > 0 ? s.performanceScore : s.productivityScore))
+      .filter(s => typeof s === 'number' && !isNaN(s) && s > 0);
       
     if (empScores.length === 0) {
         return res.status(200).json({
@@ -180,7 +186,6 @@ router.post("/ml/predict-performance/:id", async (req: any, res: any) => {
     const prediction = nbModel.predict([avgScore]);
     
     // Construct response
-    // For visual representation on frontend, calculate an estimated percentage based on the probabilities
     let currentPerf = avgScore; 
     
     res.json({

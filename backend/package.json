@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed": "tsx src/seed.ts",
     "clear-emp-data": "tsx src/clear-employee-data.ts",
-    "seed-employees": "tsx src/seed-employees.ts"
+    "seed-employees": "tsx src/seed-employees.ts",
+    "seed-daily-perf": "tsx src/seed-daily-performance.ts"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",
