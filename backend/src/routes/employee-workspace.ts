@@ -4,11 +4,11 @@ import Task from "../models/task.model";
 import Product from "../models/product.model";
 import Bonus from "../models/bonus.model";
 import CustomerFeedback from "../models/customer-feedback.model";
-import DailyCollection from "../models/daily-collection.model";
 import Setting from "../models/setting.model";
 import Department from "../models/department.model";
 import SubDepartment from "../models/sub-department.model";
 import EmployeeActivity from "../models/employee-activity.model";
+import ProductPerformance from "../models/product-performance.model";
 
 const router = Router();
 
@@ -178,9 +178,8 @@ router.post("/employee/sell", requireEmployee, async (req: any, res: any) => {
 
   // Save daily collection entry
   const today = new Date().toISOString().split("T")[0];
-  await DailyCollection.create({
+  await ProductPerformance.create({
     date: today,
-    type: "product",
     data: {
       employeeId: session.userId,
       productId,

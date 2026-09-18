@@ -1,6 +1,7 @@
 import Employee from "../models/employee.model";
 import Product from "../models/product.model";
-import DailyCollection from "../models/daily-collection.model";
+import EmployeeDailyPerformance from "../models/employee-daily-performance.model";
+import ProductPerformance from "../models/product-performance.model";
 import Department from "../models/department.model";
 
 async function collectDailyData() {
@@ -31,9 +32,9 @@ async function collectDailyData() {
       })
     );
 
-    await DailyCollection.findOneAndUpdate(
-      { date: today, type: "employee" },
-      { date: today, type: "employee", data: employeeData },
+    await EmployeeDailyPerformance.findOneAndUpdate(
+      { date: today },
+      { date: today, data: employeeData },
       { upsert: true, new: true }
     );
     console.log(`[DailyCollector] ✅ Employee data collected (${employeeData.length} records)`);
@@ -61,9 +62,9 @@ async function collectDailyData() {
       collectedAt: new Date().toISOString(),
     }));
 
-    await DailyCollection.findOneAndUpdate(
-      { date: today, type: "product" },
-      { date: today, type: "product", data: productData },
+    await ProductPerformance.findOneAndUpdate(
+      { date: today },
+      { date: today, data: productData },
       { upsert: true, new: true }
     );
     console.log(`[DailyCollector] ✅ Product data collected (${productData.length} records)`);
