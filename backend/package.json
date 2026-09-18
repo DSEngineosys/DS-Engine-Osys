@@ -9,7 +9,8 @@
     "start": "node --enable-source-maps ./dist/server.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed": "tsx src/seed.ts",
-    "clear-emp-data": "tsx src/clear-employee-data.ts"
+    "clear-emp-data": "tsx src/clear-employee-data.ts",
+    "seed-employees": "tsx src/seed-employees.ts"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",
