@@ -70,6 +70,10 @@ export interface CurrentUserExtended {
   status: RegistrationStatus;
   avatarUrl: string | null;
   hrId?: string;
+  departmentId?: string;
+  subDepartmentId?: string;
+  departmentName?: string;
+  subDepartmentName?: string;
   monthlySalary?: number;
   createdAt: string;
 }

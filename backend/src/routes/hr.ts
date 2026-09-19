@@ -394,14 +394,20 @@ router.get("/hr/employees", requireHR, async (req: any, res: any) => {
   const hrUser = await HR.findById(session.userId);
   if (!hrUser) return res.status(403).json({ error: "Forbidden", message: "HR not found" });
 
-  const query: any = { accountStatus: { $in: ["Active", "Inactive"] } };
-  if (hrUser.departmentId) query.departmentId = hrUser.departmentId;
-  if (hrUser.subDepartmentId) query.subDepartmentId = hrUser.subDepartmentId;
+  const query: any = {
+    accountStatus: { $nin: ["Pending", "Denied"] },
+  };
+  if (hrUser.departmentId) {
+    query.departmentId = new mongoose.Types.ObjectId(hrUser.departmentId.toString());
+  }
+  if (hrUser.subDepartmentId) {
+    query.subDepartmentId = new mongoose.Types.ObjectId(hrUser.subDepartmentId.toString());
+  }
 
   const employees = await Employee.find(query).sort({ createdAt: -1 });
   const enriched = await Promise.all(
     employees.map(async (emp: any) => {
-      const dept = await Department.findById(emp.departmentId);
+      const dept = emp.departmentId ? await Department.findById(emp.departmentId) : null;
       let subDeptName = "";
       if (emp.subDepartmentId && mongoose.Types.ObjectId.isValid(emp.subDepartmentId)) {
         try {
@@ -425,7 +431,7 @@ router.get("/hr/employees", requireHR, async (req: any, res: any) => {
         employmentType: emp.employmentType,
         shift: emp.shift,
         monthlySalary: emp.monthlySalary,
-        accountStatus: emp.accountStatus || "Active",
+        accountStatus: emp.accountStatus === "Approved" ? "Active" : (emp.accountStatus || "Active"),
         joiningDate: emp.joiningDate,
       };
     })
@@ -433,31 +439,68 @@ router.get("/hr/employees", requireHR, async (req: any, res: any) => {
   res.json(enriched);
 });
 
-router.put("/hr/employees/:id/status", async (req: any, res: any) => {
+router.put("/hr/employees/:id/status", requireHR, async (req: any, res: any) => {
   const { id } = req.params;
   const { accountStatus } = req.body;
   if (!["Active", "Inactive"].includes(accountStatus)) {
     return res.status(400).json({ error: "Invalid status. Must be Active or Inactive." });
   }
-  const updated = await Employee.findByIdAndUpdate(id, { accountStatus }, { new: true });
-  if (!updated) return res.status(404).json({ error: "Employee not found" });
-  res.json({ message: `Employee ${accountStatus as any}d`, employee: updated });
+  const session = req.session as any;
+  const hrUser = await HR.findById(session.userId);
+  const emp = await Employee.findById(id);
+  if (!emp) return res.status(404).json({ error: "Employee not found" });
+
+  if (hrUser?.departmentId && emp.departmentId?.toString() !== hrUser.departmentId.toString()) {
+    return res.status(403).json({ error: "Forbidden", message: "Employee is not in your department" });
+  }
+  if (hrUser?.subDepartmentId && emp.subDepartmentId && emp.subDepartmentId.toString() !== hrUser.subDepartmentId.toString()) {
+    return res.status(403).json({ error: "Forbidden", message: "Employee is not in your sub-department" });
+  }
+
+  emp.accountStatus = accountStatus;
+  emp.status = accountStatus.toLowerCase() === "inactive" ? "inactive" : "active";
+  await emp.save();
+  res.json({ message: `Employee ${accountStatus}d`, employee: emp });
 });
 
-router.delete("/hr/employees/:id", async (req: any, res: any) => {
+router.delete("/hr/employees/:id", requireHR, async (req: any, res: any) => {
   const { id } = req.params;
+  const session = req.session as any;
+  const hrUser = await HR.findById(session.userId);
+  const emp = await Employee.findById(id);
+  if (!emp) return res.status(404).json({ error: "Employee not found" });
+
+  if (hrUser?.departmentId && emp.departmentId?.toString() !== hrUser.departmentId.toString()) {
+    return res.status(403).json({ error: "Forbidden", message: "Employee is not in your department" });
+  }
+  if (hrUser?.subDepartmentId && emp.subDepartmentId && emp.subDepartmentId.toString() !== hrUser.subDepartmentId.toString()) {
+    return res.status(403).json({ error: "Forbidden", message: "Employee is not in your sub-department" });
+  }
+
   await Employee.findByIdAndDelete(id);
   res.json({ message: "Employee deleted" });
 });
 
-router.put("/hr/employees/:id/reset-password", async (req: any, res: any) => {
+router.put("/hr/employees/:id/reset-password", requireHR, async (req: any, res: any) => {
   const { id } = req.params;
   const { newPassword } = req.body;
   if (!newPassword || newPassword.length < 4) {
     return res.status(400).json({ error: "Password must be at least 4 characters" });
   }
-  const updated = await Employee.findByIdAndUpdate(id, { password: newPassword }, { new: true });
-  if (!updated) return res.status(404).json({ error: "Employee not found" });
+  const session = req.session as any;
+  const hrUser = await HR.findById(session.userId);
+  const emp = await Employee.findById(id);
+  if (!emp) return res.status(404).json({ error: "Employee not found" });
+
+  if (hrUser?.departmentId && emp.departmentId?.toString() !== hrUser.departmentId.toString()) {
+    return res.status(403).json({ error: "Forbidden", message: "Employee is not in your department" });
+  }
+  if (hrUser?.subDepartmentId && emp.subDepartmentId && emp.subDepartmentId.toString() !== hrUser.subDepartmentId.toString()) {
+    return res.status(403).json({ error: "Forbidden", message: "Employee is not in your sub-department" });
+  }
+
+  emp.password = newPassword;
+  await emp.save();
   res.json({ message: "Password reset successfully" });
 });
 

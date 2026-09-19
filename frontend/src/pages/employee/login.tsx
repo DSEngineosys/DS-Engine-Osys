@@ -228,9 +228,11 @@ export default function EmployeeLogin() {
                     <SelectValue placeholder="Select Department" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments.filter((d) => !d.parentId).map((d: any) => (
-                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                    ))}
+                    {departments
+                      .filter((d) => !d.parentId && d.name !== "IT Department" && d.name?.toLowerCase() !== "it department")
+                      .map((d: any) => (
+                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

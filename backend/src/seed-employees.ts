@@ -85,7 +85,7 @@ async function seedEmployees() {
         jobTitle: item.jobTitle ? item.jobTitle.trim() : undefined,
         joiningDate: new Date(item.joiningDate),
         status: "active",
-        accountStatus: "Approved",
+        accountStatus: "Active",
         contactNumber: String(item.contactNumber).trim(),
         gender: item.gender ? item.gender.trim() : undefined,
         location: item.location ? item.location.trim() : undefined,

@@ -5,6 +5,8 @@ import DSEngineer from "../models/ds-engineer.model";
 import Setting from "../models/setting.model";
 import Notification from "../models/notification.model";
 import Employee from "../models/employee.model";
+import Department from "../models/department.model";
+import SubDepartment from "../models/sub-department.model";
 import { sendEmail } from "../lib/email";
 import { sendSms } from "../lib/sms";
 import { z } from "zod";
@@ -62,7 +64,18 @@ async function findUserForAuth(input: string, role?: string) {
   return null;
 }
 
-function formatUser(user: any) {
+async function formatUser(user: any) {
+  let departmentName: string | undefined = undefined;
+  let subDepartmentName: string | undefined = undefined;
+  if (user.departmentId) {
+    const dept = await Department.findById(user.departmentId);
+    if (dept) departmentName = dept.name;
+  }
+  if (user.subDepartmentId) {
+    const subDept = await SubDepartment.findById(user.subDepartmentId);
+    if (subDept) subDepartmentName = subDept.name;
+  }
+
   return {
     id: user._id,
     name: user.name,
@@ -72,6 +85,10 @@ function formatUser(user: any) {
     status: user.status,
     avatarUrl: user.avatarUrl,
     hrId: user.hrId,
+    departmentId: user.departmentId,
+    subDepartmentId: user.subDepartmentId,
+    departmentName,
+    subDepartmentName,
     monthlySalary: user.monthlySalary,
     createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
   };
@@ -108,7 +125,7 @@ router.post("/auth/register-request", async (req, res) => {
     if (user.status === "pending") {
       res.json({
         message: "Request already pending. Please wait for Admin approval.",
-        user: formatUser(user),
+        user: await formatUser(user),
       });
       return;
     }
@@ -241,7 +258,7 @@ router.post("/auth/set-password", async (req, res) => {
   const updated = user;
 
   (req.session as unknown as Record<string, unknown>).userId = updated._id;
-  res.json({ user: formatUser(updated), message: "Password set successfully" });
+  res.json({ user: await formatUser(updated), message: "Password set successfully" });
 });
 
 router.post("/auth/login", async (req, res) => {
@@ -306,7 +323,7 @@ router.post("/auth/login", async (req, res) => {
   res.json({ 
     user: isEmployee ? { 
       id: user._id, name: user.name, role: "employee", email: user.email, employeeId: (user as any).employeeId 
-    } : formatUser(user), 
+    } : await formatUser(user), 
     message: "Login successful" 
   });
 });
@@ -485,7 +502,7 @@ router.get("/auth/me", async (req, res) => {
     res.status(401).json({ error: "Unauthorized", message: "User not found" });
     return;
   }
-  res.json(formatUser(user));
+  res.json(await formatUser(user));
 });
 
 router.post("/auth/avatar", async (req, res) => {
@@ -502,7 +519,7 @@ router.post("/auth/avatar", async (req, res) => {
   let updated = await DSEngineer.findByIdAndUpdate(session.userId, { avatarUrl: parsed.data.avatarUrl }, { new: true });
   if (!updated) updated = await HR.findByIdAndUpdate(session.userId, { avatarUrl: parsed.data.avatarUrl }, { new: true });
   if (!updated) updated = await Admin.findByIdAndUpdate(session.userId, { avatarUrl: parsed.data.avatarUrl }, { new: true });
-  res.json({ user: formatUser(updated!), message: "Profile photo updated" });
+  res.json({ user: await formatUser(updated!), message: "Profile photo updated" });
 });
 
 router.put("/auth/profile", async (req, res) => {
@@ -523,7 +540,7 @@ router.put("/auth/profile", async (req, res) => {
   let updated = await DSEngineer.findByIdAndUpdate(session.userId, { name: parsed.data.name, mobile: parsed.data.mobile }, { new: true });
   if (!updated) updated = await HR.findByIdAndUpdate(session.userId, { name: parsed.data.name, mobile: parsed.data.mobile }, { new: true });
   if (!updated) updated = await Admin.findByIdAndUpdate(session.userId, { name: parsed.data.name, mobile: parsed.data.mobile }, { new: true });
-  res.json({ user: formatUser(updated!), message: "Profile updated successfully" });
+  res.json({ user: await formatUser(updated!), message: "Profile updated successfully" });
 });
 
 // Legacy register endpoint kept for backward compatibility — now treated as a request.

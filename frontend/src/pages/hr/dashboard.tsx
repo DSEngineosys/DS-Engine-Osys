@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Users, Package, HelpCircle, Mail, Settings, RefreshCcw, MessageSquare, Star, IndianRupee } from "lucide-react";
+import { Loader2, Users, Package, HelpCircle, Mail, Settings, RefreshCcw, MessageSquare, Star, IndianRupee, Search, KeyRound } from "lucide-react";
 
 const PRODUCT_CATEGORIES: Record<string, string[]> = {
   "Skincare": ["Face Wash", "Moisturizer", "Serum", "Sunscreen", "Face Cream", "Toner", "Face Mask"],
@@ -45,6 +45,9 @@ export default function HRDashboard() {
   // Forms state
   const [activeReqId, setActiveReqId] = useState("");
   const [allowForm, setAllowForm] = useState({ employeeId: "", shift: "", monthlySalary: 0 });
+  const [empSearch, setEmpSearch] = useState("");
+  const [resetPwdEmpId, setResetPwdEmpId] = useState("");
+  const [newPasswordInput, setNewPasswordInput] = useState("");
   const [prodForm, setProdForm] = useState<{
     productId: string; name: string; category: string; subCategory: string; type: string; description: string; ingredients: string[]; ageGroup: string; gender: string; manufactureDate: string; expiryDate: string; batchNumber: string; mrp: number; discountPercent: number; taxPercent: number; price: number; stock: number;
   }>({
@@ -125,14 +128,46 @@ export default function HRDashboard() {
   };
 
   const updateEmpStatus = async (id: string, accountStatus: string) => {
-    await fetch(`/api/hr/employees/${id}/status`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accountStatus }) });
-    fetchData();
+    try {
+      const res = await fetch(`/api/hr/employees/${id}/status`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accountStatus }) });
+      if (!res.ok) throw new Error((await res.json()).message);
+      toast({ title: `Employee status updated to ${accountStatus}` });
+      fetchData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    }
   };
 
   const deleteEmployee = async (id: string) => {
-    if (!confirm("Are you sure?")) return;
-    await fetch(`/api/hr/employees/${id}`, { method: "DELETE" });
-    fetchData();
+    if (!confirm("Are you sure you want to remove this employee?")) return;
+    try {
+      const res = await fetch(`/api/hr/employees/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json()).message);
+      toast({ title: "Employee removed" });
+      fetchData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    }
+  };
+
+  const handleResetPassword = async (id: string) => {
+    if (!newPasswordInput || newPasswordInput.length < 4) {
+      toast({ variant: "destructive", title: "Error", description: "Password must be at least 4 characters" });
+      return;
+    }
+    try {
+      const res = await fetch(`/api/hr/employees/${id}/reset-password`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword: newPasswordInput })
+      });
+      if (!res.ok) throw new Error((await res.json()).message);
+      toast({ title: "Password updated successfully" });
+      setResetPwdEmpId("");
+      setNewPasswordInput("");
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    }
   };
 
 
@@ -265,28 +300,145 @@ export default function HRDashboard() {
 
           <TabsContent value="employees">
             <Card>
-              <CardHeader><CardTitle>Employee Directory</CardTitle></CardHeader>
+              <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <CardTitle>Employee Directory</CardTitle>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Managed by your department & sub-department authority.
+                  </p>
+                </div>
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Search by ID, name, or sub-dept..."
+                    value={empSearch}
+                    onChange={(e) => setEmpSearch(e.target.value)}
+                    className="pl-9 h-9 text-sm"
+                  />
+                </div>
+              </CardHeader>
               <CardContent className="overflow-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                    <tr><th>ID</th><th>Name</th><th>Dept</th><th>Sub-Dept</th><th>Status</th><th className="text-right">Actions</th></tr>
-                  </thead>
-                  <tbody>
-                    {employees.map(emp => (
-                      <tr key={emp._id} className="border-b">
-                        <td className="py-3">{emp.employeeId}</td><td className="font-medium">{emp.name}</td><td>{emp.departmentName}</td><td>{emp.subDepartment || "-"}</td>
-                        <td><span className={`px-2 py-1 rounded-full text-xs ${emp.accountStatus === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{emp.accountStatus}</span></td>
-                        <td className="text-right space-x-2">
-                          <Button size="sm" variant={emp.accountStatus === 'Active' ? 'outline' : 'default'} onClick={() => updateEmpStatus(emp._id, emp.accountStatus === 'Active' ? 'Inactive' : 'Active')}>
-                            {emp.accountStatus === 'Active' ? 'Deactivate' : 'Activate'}
-                          </Button>
-
-                          <Button size="sm" variant="destructive" onClick={() => deleteEmployee(emp._id)}>Delete</Button>
-                        </td>
+                {employees.filter(emp => {
+                  if (!empSearch.trim()) return true;
+                  const q = empSearch.toLowerCase();
+                  return (
+                    (emp.name || "").toLowerCase().includes(q) ||
+                    (emp.employeeId || "").toLowerCase().includes(q) ||
+                    (emp.email || "").toLowerCase().includes(q) ||
+                    (emp.subDepartment || "").toLowerCase().includes(q)
+                  );
+                }).length === 0 ? (
+                  <div className="text-center py-12 text-slate-500">
+                    {empSearch.trim() ? "No employees match your search." : "No employees currently registered under your department / sub-department."}
+                  </div>
+                ) : (
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                      <tr>
+                        <th className="py-3 px-3">Emp ID</th>
+                        <th className="py-3 px-3">Name & Email</th>
+                        <th className="py-3 px-3">Dept / Sub-Dept</th>
+                        <th className="py-3 px-3">Contact</th>
+                        <th className="py-3 px-3">Shift & Salary</th>
+                        <th className="py-3 px-3">Status</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {employees
+                        .filter(emp => {
+                          if (!empSearch.trim()) return true;
+                          const q = empSearch.toLowerCase();
+                          return (
+                            (emp.name || "").toLowerCase().includes(q) ||
+                            (emp.employeeId || "").toLowerCase().includes(q) ||
+                            (emp.email || "").toLowerCase().includes(q) ||
+                            (emp.subDepartment || "").toLowerCase().includes(q)
+                          );
+                        })
+                        .map(emp => (
+                          <tr key={emp._id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-3 px-3 font-mono font-bold text-primary">{emp.employeeId}</td>
+                            <td className="py-3 px-3">
+                              <div className="font-semibold text-slate-800">{emp.name}</div>
+                              <div className="text-xs text-slate-500">{emp.email}</div>
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="text-slate-800 font-medium">{emp.departmentName}</div>
+                              {emp.subDepartment && (
+                                <span className="inline-block px-1.5 py-0.5 mt-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700">
+                                  {emp.subDepartment}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-slate-600 text-xs">
+                              {emp.contactNumber || "-"}
+                            </td>
+                            <td className="py-3 px-3 text-xs">
+                              <div className="text-slate-700">{emp.shift || "Standard"}</div>
+                              {emp.monthlySalary !== undefined && (
+                                <div className="text-emerald-700 font-semibold mt-0.5">₹{emp.monthlySalary.toLocaleString()}</div>
+                              )}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${emp.accountStatus === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                                {emp.accountStatus}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {resetPwdEmpId === emp._id ? (
+                                  <div className="flex items-center gap-1">
+                                    <Input
+                                      type="password"
+                                      placeholder="New password"
+                                      value={newPasswordInput}
+                                      onChange={(e) => setNewPasswordInput(e.target.value)}
+                                      className="h-8 w-32 text-xs"
+                                    />
+                                    <Button size="sm" className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => handleResetPassword(emp._id)}>
+                                      Save
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setResetPwdEmpId(""); setNewPasswordInput(""); }}>
+                                      ✕
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 text-xs text-slate-600"
+                                      title="Reset Password"
+                                      onClick={() => { setResetPwdEmpId(emp._id); setNewPasswordInput(""); }}
+                                    >
+                                      <KeyRound className="w-3.5 h-3.5 mr-1" /> Key
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant={emp.accountStatus === 'Active' ? 'outline' : 'default'}
+                                      className="h-8 text-xs"
+                                      onClick={() => updateEmpStatus(emp._id, emp.accountStatus === 'Active' ? 'Inactive' : 'Active')}
+                                    >
+                                      {emp.accountStatus === 'Active' ? 'Deactivate' : 'Activate'}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      className="h-8 text-xs"
+                                      onClick={() => deleteEmployee(emp._id)}
+                                    >
+                                      Delete
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
