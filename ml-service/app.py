@@ -124,9 +124,13 @@ def run_ml_pipeline_background():
                 ]
             })
 
+        # Sort offer suggestions so low performance products appear on the upper side (top),
+        # progressing down to mid/high performance products on the lower side (bottom).
+        offers_result_sorted = sorted(offers_result, key=lambda x: (x["performanceScore"], -x["recommendedPriority"]))
+
         with _ml_lock:
             _cached_rankings = {"totalProducts": len(rankings_result), "featureAttributes": ["SellingTimePeriod", "Profit", "OffersApplied"], "rankings": rankings_result}
-            _cached_offers = {"totalProducts": len(offers_result), "prioritySequence": [4, 3, 2, 1], "productOffers": offers_result}
+            _cached_offers = {"totalProducts": len(offers_result_sorted), "prioritySequence": [4, 3, 2, 1], "productOffers": offers_result_sorted}
 
         app.logger.info(f"[ML Background] Done. Ranked {len(rankings_result)} products.")
         # Hold the running state for 5 minutes so the blinking indicator stays active
