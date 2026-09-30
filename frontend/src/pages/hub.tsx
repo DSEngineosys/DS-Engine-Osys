@@ -5,8 +5,9 @@ import { useGetProducts, useGetEmployees, useGetDashboardSummary } from "@worksp
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/lib/api-extra";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, ChevronRight } from "lucide-react";
+import { Search, ChevronRight, Cpu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
@@ -19,6 +20,7 @@ export default function Hub() {
   const [bonuses, setBonuses] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [selectedBonusId, setSelectedBonusId] = useState<string | null>(null);
+  const [mlRunning, setMlRunning] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { data: products, isLoading: loadingProducts } = useGetProducts();
   const { data: employees, isLoading: loadingEmployees } = useGetEmployees();
@@ -30,11 +32,37 @@ export default function Hub() {
     api.getBonuses().then(setBonuses).catch(console.error);
   }, []);
 
+  // Poll ML running status every 500ms to catch even brief training runs
+  useEffect(() => {
+    let alive = true;
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/ml/status");
+        if (res.ok) {
+          const data = await res.json();
+          if (alive) setMlRunning(!!data.is_running);
+        }
+      } catch {
+        if (alive) setMlRunning(false);
+      }
+    };
+    poll();
+    const interval = setInterval(poll, 500);
+    return () => { alive = false; clearInterval(interval); };
+  }, []);
+
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.load();
     }
   }, [settings.promotionalVideo]);
+
+  // Trigger a fresh ML run every time user enters the product phase
+  useEffect(() => {
+    if (activePhase === "product") {
+      fetch("/api/ml/run", { method: "POST" }).catch(() => {});
+    }
+  }, [activePhase]);
 
   const productOffers = (products?.filter(p => p.offerPercentage && p.offerPercentage > 0) || []).map(p => ({
     id: `prod-${p.id}`,
@@ -107,6 +135,7 @@ export default function Hub() {
           settings={settings} 
           products={products} 
           loading={loadingProducts}
+          mlRunning={mlRunning}
         />
       )}
       </FlipchartLayout>
@@ -349,7 +378,7 @@ function EmployeePhase({ settings, offers, dsEngineers, videoRef, onOfferAction,
   );
 }
 
-function ProductPhase({ settings, products, loading }: any) {
+function ProductPhase({ settings, products, loading, mlRunning }: any) {
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredProducts = products?.filter((p: any) => 
@@ -364,7 +393,20 @@ function ProductPhase({ settings, products, loading }: any) {
           <h2 className="text-xs font-bold text-primary uppercase tracking-widest mb-1">
             {settings.mainProductCategory || "Categories"}
           </h2>
-          <h1 className="text-3xl font-black text-slate-900">Product Ranking</h1>
+          <div className="flex items-center justify-between gap-2">
+            <h1 className="text-3xl font-black text-slate-900">Product Ranking</h1>
+            <Badge className="bg-amber-500/10 text-amber-700 border-amber-300 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 text-[10px] shrink-0">
+              <Cpu 
+                className="w-3.5 h-3.5"
+                style={mlRunning ? {
+                  animation: "ml-cpu-blink 1s ease-in-out infinite"
+                } : {
+                  color: "rgb(180, 83, 9)"
+                }}
+              />
+              Supervised ML Model
+            </Badge>
+          </div>
         </div>
         
         <div className="relative">

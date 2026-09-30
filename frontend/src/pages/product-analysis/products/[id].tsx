@@ -8,14 +8,7 @@ import {
   Package, 
   BrainCircuit, 
   ArrowLeft, 
-  Target, 
-  Calendar, 
-  Tag, 
-  Layers, 
-  User, 
-  Sparkles,
-  ShieldCheck,
-  Percent
+  Target,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -67,132 +60,117 @@ export default function ProductDetail() {
           <div className="space-y-6">
             {/* Top Overview Card */}
             <Card className="overflow-hidden border-none shadow-md bg-white rounded-[2rem]">
-              <div className="grid md:grid-cols-3 gap-6 p-6">
-                <div className="aspect-square bg-slate-50 rounded-2xl relative flex items-center justify-center overflow-hidden border border-slate-100">
-                  {prod.imageUrl ? (
-                    <img src={prod.imageUrl} alt={prod.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <Package className="w-24 h-24 text-slate-200" />
-                  )}
-                  <div className="absolute top-3 right-3">
-                    <Badge className={`${getStatusColor(prod.marketStatus)} shadow px-3 py-1 rounded-full uppercase text-[10px] font-bold tracking-wider`}>
-                      {prod.marketStatus?.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                  {prod.offerPercentage && prod.offerPercentage > 0 && (
-                    <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-black px-2.5 py-1 rounded-lg shadow">
-                      -{prod.offerPercentage}% OFF
-                    </div>
-                  )}
-                </div>
+              <div className="p-6">
+                <div className="flex flex-col gap-4">
 
-                <div className="md:col-span-2 flex flex-col justify-between space-y-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-mono font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
-                        {prod.sku || prod.productId}
-                      </span>
-                      <span className="text-xs text-slate-400 font-medium">{prod.category}</span>
-                      {prod.subCategory && (
-                        <>
-                          <span className="text-slate-300">•</span>
-                          <span className="text-xs text-slate-400 font-medium">{prod.subCategory}</span>
-                        </>
-                      )}
+                  {/* Product Name Header */}
+                  <div className="text-center py-2">
+                    <h2 className="text-3xl font-black tracking-tight bg-gradient-to-r from-slate-800 via-primary to-slate-700 bg-clip-text text-transparent leading-tight">
+                      {prod.name}
+                    </h2>
+                    <div className="mt-2 mx-auto w-16 h-1 rounded-full bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
+                  </div>
+
+                  {/* Product Image */}
+                  <div className="relative w-full max-w-sm mx-auto aspect-square rounded-2xl overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center shadow-sm">
+                    {prod.imageUrl ? (
+                      <img
+                        src={prod.imageUrl}
+                        alt={prod.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center w-full h-full">
+                        <p className="text-sm font-bold text-slate-400 italic tracking-wide text-center px-4">
+                          Image need to be add soon..!
+                        </p>
+                      </div>
+                    )}
+                    {/* Offer badge */}
+                    {prod.offerPercentage && prod.offerPercentage > 0 && (
+                      <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-black px-2.5 py-1 rounded-lg shadow">
+                        -{prod.offerPercentage}% OFF
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Category | SubCategory | Performance Level */}
+                  <div className="flex items-center justify-between bg-slate-50 rounded-2xl border border-slate-100 px-5 py-3">
+                    <div className="text-left">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Category</p>
+                      <p className="text-sm font-black text-slate-800 mt-0.5">{prod.category || "—"}</p>
                     </div>
-                    <h2 className="text-2xl font-black text-slate-900 leading-tight mb-2">{prod.name}</h2>
-                    <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">
-                      {prod.description || prod.productDescription || "No description provided."}
-                    </p>
+                    <div className="text-center border-x border-slate-200 px-4">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sub Category</p>
+                      <p className="text-sm font-black text-slate-800 mt-0.5">{prod.subCategory || "—"}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Performance</p>
+                      <span className={`inline-block mt-0.5 text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wide ${getStatusColor(prod.marketStatus)}`}>
+                        {prod.marketStatus?.replace('_', ' ') || "—"}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Pricing and Stock Banner */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <div>
+                  <div className="flex flex-col gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Selling Price</p>
-                      <p className="text-xl font-black text-primary">${prod.price?.toFixed(2)}</p>
+                      <p className="text-lg font-black text-primary">${prod.price?.toFixed(2)}</p>
                     </div>
-                    <div>
+                    <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">MRP</p>
-                      <p className="text-xl font-black text-slate-700">${(prod.mrp || prod.price)?.toFixed(2)}</p>
+                      <p className="text-lg font-black text-slate-700">${(prod.mrp || prod.price)?.toFixed(2)}</p>
                     </div>
-                    <div>
+                    <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Stock Units</p>
-                      <p className={`text-xl font-black ${prod.stock < 200 ? 'text-rose-600' : 'text-slate-800'}`}>
+                      <p className={`text-lg font-black ${prod.stock < 200 ? 'text-rose-600' : 'text-slate-800'}`}>
                         {prod.stock}
                       </p>
                     </div>
-                    <div>
+                    <div className="flex items-center justify-between py-1.5">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Units Sold</p>
-                      <p className="text-xl font-black text-emerald-600">{prod.soldUnits || 0}</p>
+                      <p className="text-lg font-black text-emerald-600">{prod.soldUnits || 0}</p>
+                    </div>
+                  </div>
+
+                  {/* Details section */}
+                  <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4">
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Details</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Type</p>
+                        <p className="font-semibold text-slate-800 text-xs mt-0.5">{prod.type || "Standard"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gender</p>
+                        <p className="font-semibold text-slate-800 text-xs mt-0.5">{prod.gender || "Both"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Age Group</p>
+                        <p className="font-semibold text-slate-800 text-xs mt-0.5">{prod.ageGroup || "All Ages"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tax Rate</p>
+                        <p className="font-semibold text-slate-800 text-xs mt-0.5">{prod.taxPercent || 18}%</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Batch No.</p>
+                        <p className="font-mono font-bold text-slate-800 text-xs mt-0.5">{prod.batchNumber || "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mfg. Date</p>
+                        <p className="font-semibold text-slate-800 text-xs mt-0.5">{formatDate(prod.manufactureDate)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expiry Date</p>
+                        <p className="font-semibold text-slate-800 text-xs mt-0.5">{formatDate(prod.expiryDate)}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </Card>
-
-            {/* Specifications & Batch Details */}
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card className="rounded-[1.5rem] border-slate-100 shadow-sm bg-white p-6 space-y-4">
-                <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-primary" />
-                  Product Attributes & Target
-                </h3>
-                <div className="space-y-2.5 text-sm">
-                  <div className="flex justify-between py-1.5 border-b border-slate-50">
-                    <span className="text-slate-400 flex items-center gap-1.5"><Layers className="w-4 h-4" /> Type / Format</span>
-                    <span className="font-semibold text-slate-800">{prod.type || "Standard"}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-50">
-                    <span className="text-slate-400 flex items-center gap-1.5"><User className="w-4 h-4" /> Target Gender</span>
-                    <span className="font-semibold text-slate-800">{prod.gender || "Both / Unisex"}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-50">
-                    <span className="text-slate-400 flex items-center gap-1.5"><Sparkles className="w-4 h-4" /> Target Age Group</span>
-                    <span className="font-semibold text-slate-800">{prod.ageGroup || "All Ages"}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-50">
-                    <span className="text-slate-400 flex items-center gap-1.5"><Tag className="w-4 h-4" /> Batch Number</span>
-                    <span className="font-mono font-bold text-slate-800">{prod.batchNumber || "N/A"}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5">
-                    <span className="text-slate-400 flex items-center gap-1.5"><Percent className="w-4 h-4" /> Applied Tax Rate</span>
-                    <span className="font-semibold text-slate-800">{prod.taxPercent || 18}%</span>
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="rounded-[1.5rem] border-slate-100 shadow-sm bg-white p-6 space-y-4">
-                <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-primary" />
-                  Lifecycle & Ingredients
-                </h3>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between py-1.5 border-b border-slate-50">
-                    <span className="text-slate-400">Manufacture Date</span>
-                    <span className="font-semibold text-slate-800">{formatDate(prod.manufactureDate)}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-50">
-                    <span className="text-slate-400">Expiry Date</span>
-                    <span className="font-semibold text-slate-800">{formatDate(prod.expiryDate)}</span>
-                  </div>
-                  <div className="pt-2">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Key Ingredients</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {prod.ingredients && prod.ingredients.length > 0 ? (
-                        prod.ingredients.map((ing: string, i: number) => (
-                          <span key={i} className="text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md font-medium">
-                            {ing}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-slate-400">No ingredients specified</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </div>
 
             {/* AI Sales Prediction Card */}
             <Card className="rounded-[2rem] border-slate-100 shadow-lg overflow-hidden bg-slate-900 text-white relative">

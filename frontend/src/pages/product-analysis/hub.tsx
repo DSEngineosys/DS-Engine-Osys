@@ -1,8 +1,9 @@
 import { Link } from "wouter";
 import { AuthenticatedLayout } from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, Trophy, Tag, BarChart3, ArrowRight } from "lucide-react";
+import { Package, Trophy, Tag, BarChart3, ArrowRight, Cpu } from "lucide-react";
 
 export default function ProductAnalysisHub() {
   const sections = [
@@ -37,11 +38,17 @@ export default function ProductAnalysisHub() {
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-secondary rounded-lg">
-                <Package className="w-6 h-6 text-secondary-foreground" />
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-secondary rounded-lg">
+                  <Package className="w-6 h-6 text-secondary-foreground" />
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">Product Analysis Phase</h1>
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-foreground">Product Analysis Phase</h1>
+              <Badge className="bg-amber-500/10 text-amber-700 border-amber-300 font-bold px-3 py-1 rounded-full flex items-center gap-1.5 text-xs shadow-sm shrink-0">
+                <Cpu className="w-3.5 h-3.5 text-amber-600" />
+                Supervised ML Model
+              </Badge>
             </div>
             <p className="text-muted-foreground text-lg max-w-2xl">
               Focusing on <span className="font-semibold text-foreground">Cosmetics A1 Category</span>. Predictive modeling and market demand analysis.

@@ -210,3 +210,15 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* ML CPU blink — light blue glow on, amber off, loops while ML model is running */
+@keyframes ml-cpu-blink {
+  0%, 100% {
+    color: rgb(56, 189, 248);
+    filter: drop-shadow(0 0 5px rgba(56, 189, 248, 1)) drop-shadow(0 0 10px rgba(56, 189, 248, 0.6));
+  }
+  50% {
+    color: rgb(180, 83, 9);
+    filter: none;
+  }
+}

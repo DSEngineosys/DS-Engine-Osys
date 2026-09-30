@@ -208,4 +208,63 @@ router.post("/ml/predict-performance/:id", async (req: any, res: any) => {
   }
 });
 
+// ─── Supervised Product Ranking Endpoint (Forward to Python ML Service) ───
+router.get("/ml/product-rankings", async (req: any, res: any) => {
+  try {
+    const response = await fetch("http://127.0.0.1:5000/api/ml/rankings");
+    if (response.ok) {
+      const data = await response.json();
+      return res.json(data);
+    }
+    throw new Error(`Python ML service returned status ${response.status}`);
+  } catch (error: any) {
+    console.warn("Python ML service error/offline, using fallback ranking calculation:", error.message);
+    res.status(500).json({ error: "Failed to fetch ML rankings", details: error.message });
+  }
+});
+
+// ─── Supervised Product Offer Suggestions Endpoint (Forward to Python ML Service) ───
+router.get("/ml/product-offers", async (req: any, res: any) => {
+  try {
+    const response = await fetch("http://127.0.0.1:5000/api/ml/offers");
+    if (response.ok) {
+      const data = await response.json();
+      return res.json(data);
+    }
+    throw new Error(`Python ML service returned status ${response.status}`);
+  } catch (error: any) {
+    console.warn("Python ML service error/offline, using fallback offer calculation:", error.message);
+    res.status(500).json({ error: "Failed to fetch ML product offers", details: error.message });
+  }
+});
+
+// ─── ML Running Status Endpoint (Forward to Python ML Service) ───
+router.get("/ml/status", async (req: any, res: any) => {
+  try {
+    const response = await fetch("http://127.0.0.1:5000/api/ml/status");
+    if (response.ok) {
+      const data = await response.json();
+      return res.json(data);
+    }
+    return res.json({ is_running: false });
+  } catch {
+    return res.json({ is_running: false });
+  }
+});
+
+// ─── Trigger Immediate ML Run (called on product page entry) ───
+router.post("/ml/run", async (req: any, res: any) => {
+  try {
+    const response = await fetch("http://127.0.0.1:5000/api/ml/run", { method: "POST" });
+    if (response.ok) {
+      const data = await response.json();
+      return res.json(data);
+    }
+    return res.json({ triggered: false });
+  } catch {
+    return res.json({ triggered: false });
+  }
+});
+
 export default router;
+
