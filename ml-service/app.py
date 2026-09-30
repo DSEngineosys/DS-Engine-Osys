@@ -3,6 +3,7 @@ import re
 import json
 import logging
 import threading
+import datetime
 import numpy as np
 import pandas as pd
 from flask import Flask, request, jsonify
@@ -103,6 +104,24 @@ def run_ml_pipeline_background():
             else:
                 rec_priority = 4
 
+            applied_at = meta.get("offerAppliedAt")
+            expires_at = meta.get("offerExpiresAt")
+            is_active = False
+            remaining_seconds = 0
+
+            if expires_at:
+                try:
+                    exp_clean = str(expires_at).replace('Z', '+00:00')
+                    exp_dt = datetime.datetime.fromisoformat(exp_clean)
+                    if exp_dt.tzinfo is None:
+                        exp_dt = exp_dt.replace(tzinfo=datetime.timezone.utc)
+                    now_dt = datetime.datetime.now(datetime.timezone.utc)
+                    if exp_dt > now_dt:
+                        is_active = True
+                        remaining_seconds = int((exp_dt - now_dt).total_seconds())
+                except Exception as ex:
+                    app.logger.warning(f"Error parsing offerExpiresAt {expires_at}: {ex}")
+
             offers_result.append({
                 "productId": p_id,
                 "productName": row["productName"],
@@ -114,6 +133,11 @@ def run_ml_pipeline_background():
                 "performanceScore": score,
                 "performanceLevel": level,
                 "recommendedPriority": rec_priority,
+                "isOfferActive": is_active,
+                "offerAppliedAt": str(applied_at) if applied_at else None,
+                "offerExpiresAt": str(expires_at) if expires_at else None,
+                "offerRemainingSeconds": remaining_seconds,
+                "activeOfferDetails": meta.get("activeOfferDetails"),
                 "offers": [
                     {"priority": 4, "id": "bogo", "name": "BUY ONE GET ONE FREE", "isRecommended": rec_priority == 4, "type": "bogo"},
                     {"priority": 3, "id": "b2g1", "name": "BUY TWO GET ONE FREE", "isRecommended": rec_priority == 3, "type": "b2g1"},
@@ -205,6 +229,34 @@ def fetch_product_performance_data():
     return records
 
 def fetch_products_metadata():
+    client = get_mongo_client()
+    if client:
+        try:
+            db = client[DB_NAME]
+            cursor = db["products"].find({})
+            mongo_prods = []
+            for doc in cursor:
+                p_id = str(doc.get("productId") or doc.get("_id"))
+                applied_at = doc.get("offerAppliedAt")
+                expires_at = doc.get("offerExpiresAt")
+                mongo_prods.append({
+                    "productId": p_id,
+                    "productName": doc.get("name") or doc.get("productName"),
+                    "category": doc.get("category", "General"),
+                    "subCategory": doc.get("subCategory", ""),
+                    "mrp": float(doc.get("mrp") or doc.get("price") or 0),
+                    "sellingPrice": float(doc.get("price") or 0),
+                    "image": doc.get("imageUrl") or doc.get("image") or "",
+                    "offerAppliedAt": applied_at.isoformat() if hasattr(applied_at, "isoformat") else (str(applied_at) if applied_at else None),
+                    "offerExpiresAt": expires_at.isoformat() if hasattr(expires_at, "isoformat") else (str(expires_at) if expires_at else None),
+                    "offerDurationMinutes": doc.get("offerDurationMinutes", 60),
+                    "activeOfferDetails": doc.get("activeOfferDetails")
+                })
+            if mongo_prods:
+                return mongo_prods
+        except Exception as e:
+            app.logger.warning(f"Error reading products from MongoDB: {e}")
+
     json_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend", "src", "data", "products.json"))
     if os.path.exists(json_path):
         with open(json_path, "r", encoding="utf-8") as f:

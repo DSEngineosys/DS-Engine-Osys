@@ -23,6 +23,10 @@ export interface IProduct extends Document {
   soldUnits: number;
   revenue: number;
   offerPercentage?: number;
+  offerAppliedAt?: Date;
+  offerDurationMinutes?: number;
+  offerExpiresAt?: Date;
+  activeOfferDetails?: Record<string, any>;
   marketStatus: string;
   status: string;
   imageUrl?: string;
@@ -54,6 +58,10 @@ const ProductSchema: Schema = new Schema(
     soldUnits: { type: Number, required: true, default: 0 },
     revenue: { type: Number, required: true, default: 0 },
     offerPercentage: { type: Number },
+    offerAppliedAt: { type: Date },
+    offerDurationMinutes: { type: Number, default: 60 },
+    offerExpiresAt: { type: Date },
+    activeOfferDetails: { type: Schema.Types.Mixed },
     marketStatus: { type: String, required: true, default: "moderate" },
     status: { type: String, default: "active" },
     imageUrl: { type: String },

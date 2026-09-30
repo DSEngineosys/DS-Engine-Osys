@@ -2,6 +2,7 @@ import { Router } from "express";
 import Product from "../models/product.model";
 import mongoose from "mongoose";
 import { z } from "zod";
+import { checkAndCleanExpiredProductOffers } from "../services/product-offer-cleaner";
 
 const router = Router();
 
@@ -47,28 +48,35 @@ const updateProdSchema = z.object({
 });
 
 const offerSchema = z.object({
-  offerPercentage: z.number().min(1).max(90),
+  offerPercentage: z.number().min(1).max(100),
+  durationMinutes: z.number().positive().optional().default(60),
   reason: z.string().optional(),
+  offerName: z.string().optional(),
+  priority: z.number().optional(),
 });
 
 function formatProduct(p: any) {
+  const now = new Date();
+  const isOfferActive = p.offerExpiresAt ? new Date(p.offerExpiresAt) > now : false;
+  const offerRemainingSeconds = isOfferActive ? Math.max(0, Math.floor((new Date(p.offerExpiresAt).getTime() - now.getTime()) / 1000)) : 0;
+
   return {
-    id: p._id.toString(),
-    _id: p._id.toString(),
-    productId: p.productId || p._id.toString(),
-    sku: p.sku || p.productId || p._id.toString(),
-    name: p.name,
-    productName: p.name,
+    id: p._id ? p._id.toString() : p.productId,
+    _id: p._id ? p._id.toString() : p.productId,
+    productId: p.productId || (p._id ? p._id.toString() : ""),
+    sku: p.sku || p.productId || (p._id ? p._id.toString() : ""),
+    name: p.name || p.productName,
+    productName: p.name || p.productName,
     category: p.category,
     subCategory: p.subCategory || "",
     type: p.type || "",
     gender: p.gender || "Both",
     ageGroup: p.ageGroup || "All Ages",
     batchNumber: p.batchNumber || "",
-    manufactureDate: p.manufactureDate ? p.manufactureDate.toISOString() : undefined,
-    expiryDate: p.expiryDate ? p.expiryDate.toISOString() : undefined,
+    manufactureDate: p.manufactureDate ? new Date(p.manufactureDate).toISOString() : undefined,
+    expiryDate: p.expiryDate ? new Date(p.expiryDate).toISOString() : undefined,
     mrp: Number(p.mrp || p.price || 0),
-    discountPercent: Number(p.discountPercent || p.offerPercentage || 0),
+    discountPercent: isOfferActive ? Number(p.discountPercent || p.offerPercentage || 0) : 0,
     taxPercent: Number(p.taxPercent || 18),
     price: Number(p.price || 0),
     sellingPrice: Number(p.price || 0),
@@ -76,7 +84,13 @@ function formatProduct(p: any) {
     stockQuantity: p.stock ?? 0,
     soldUnits: p.soldUnits || 0,
     revenue: Number(p.revenue || 0),
-    offerPercentage: p.offerPercentage ? Number(p.offerPercentage) : (p.discountPercent ? Number(p.discountPercent) : null),
+    offerPercentage: isOfferActive ? (p.offerPercentage ? Number(p.offerPercentage) : Number(p.discountPercent || 0)) : null,
+    offerAppliedAt: p.offerAppliedAt ? new Date(p.offerAppliedAt).toISOString() : undefined,
+    offerDurationMinutes: p.offerDurationMinutes || 60,
+    offerExpiresAt: p.offerExpiresAt ? new Date(p.offerExpiresAt).toISOString() : undefined,
+    isOfferActive,
+    offerRemainingSeconds,
+    activeOfferDetails: p.activeOfferDetails || null,
     marketStatus: p.marketStatus || "moderate",
     status: p.status || "active",
     ingredients: p.ingredients || [],
@@ -84,14 +98,15 @@ function formatProduct(p: any) {
     productDescription: p.description || "",
     imageUrl: p.imageUrl || "",
     image: p.imageUrl || "",
-    createdAt: p.createdAt ? p.createdAt.toISOString() : new Date().toISOString(),
-    updatedAt: p.updatedAt ? p.updatedAt.toISOString() : new Date().toISOString(),
+    createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+    updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
   };
 }
 
 // GET all products with optional filters (category, search, marketStatus)
 router.get("/products", async (req, res) => {
   try {
+    await checkAndCleanExpiredProductOffers();
     const { category, search, marketStatus } = req.query;
     const query: Record<string, any> = {};
 
@@ -216,7 +231,7 @@ router.delete("/products/:id", async (req, res) => {
   res.json({ message: "Product deleted" });
 });
 
-// SET special offer percentage
+// SET special offer percentage (with timestamp & time limit enforcement)
 router.post("/products/:id/offer", async (req, res) => {
   const id = req.params.id;
   const parsed = offerSchema.safeParse(req.body);
@@ -225,27 +240,53 @@ router.post("/products/:id/offer", async (req, res) => {
     return;
   }
 
-  let prod = null;
-  const updateData = {
-    offerPercentage: parsed.data.offerPercentage,
-    discountPercent: parsed.data.offerPercentage,
-  };
-
+  let existing: any = null;
   if (mongoose.Types.ObjectId.isValid(id)) {
-    prod = await Product.findByIdAndUpdate(id, updateData, { returnDocument: "after" });
+    existing = await Product.findById(id);
   } else {
-    prod = await Product.findOneAndUpdate(
-      { $or: [{ productId: id }, { sku: id }] },
-      updateData,
-      { returnDocument: "after" }
-    );
+    existing = await Product.findOne({ $or: [{ productId: id }, { sku: id }] });
   }
 
-  if (!prod) {
+  if (!existing) {
     res.status(404).json({ error: "Not found", message: "Product not found" });
     return;
   }
-  res.json(formatProduct(prod));
+
+  // Check if current offer is still within its active time-limit
+  const now = new Date();
+  if (existing.offerExpiresAt && new Date(existing.offerExpiresAt) > now) {
+    const remainingMs = new Date(existing.offerExpiresAt).getTime() - now.getTime();
+    const remainingMins = Math.ceil(remainingMs / (1000 * 60));
+    res.status(409).json({
+      error: "Offer active",
+      message: `Product "${existing.name}" already has an active offer applied until ${new Date(existing.offerExpiresAt).toLocaleTimeString()} (${remainingMins} mins remaining). You cannot apply another offer until the time limit expires.`,
+      activeUntil: existing.offerExpiresAt,
+      remainingSeconds: Math.floor(remainingMs / 1000),
+    });
+    return;
+  }
+
+  // Set new offer timestamp & expiration time-limit
+  const durationMinutes = parsed.data.durationMinutes || 60;
+  const offerExpiresAt = new Date(now.getTime() + durationMinutes * 60 * 1000);
+
+  const updateData = {
+    offerPercentage: parsed.data.offerPercentage,
+    discountPercent: parsed.data.offerPercentage,
+    offerAppliedAt: now,
+    offerDurationMinutes: durationMinutes,
+    offerExpiresAt: offerExpiresAt,
+    activeOfferDetails: {
+      offerName: parsed.data.offerName || `${parsed.data.offerPercentage}% Discount Offer`,
+      priority: parsed.data.priority,
+      reason: parsed.data.reason || "ML Offer Applied",
+      appliedAt: now.toISOString(),
+      expiresAt: offerExpiresAt.toISOString(),
+    },
+  };
+
+  const updatedProd = await Product.findByIdAndUpdate(existing._id, updateData, { returnDocument: "after" });
+  res.json(formatProduct(updatedProd));
 });
 
 export default router;

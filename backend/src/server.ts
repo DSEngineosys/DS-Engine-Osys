@@ -4,6 +4,7 @@ import { logger } from "./lib/logger";
 import { connectToDatabase } from "./lib/db";
 import Bonus from "./models/bonus.model";
 import { startDailyCollector } from "./jobs/daily-collector";
+import { checkAndCleanExpiredProductOffers } from "./services/product-offer-cleaner";
 
 const rawPort = process.env["PORT"] || "8080";
 
@@ -39,6 +40,11 @@ setInterval(async () => {
     logger.error({ err }, "Bonus cleanup job failed");
   }
 }, 30_000);
+
+// Background cleanup: check expired product offers, archive to productperformances collection & remove offer from product
+setInterval(async () => {
+  await checkAndCleanExpiredProductOffers();
+}, 10_000);
 
 app.listen(port, (err) => {
   if (err) {

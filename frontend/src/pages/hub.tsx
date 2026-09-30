@@ -15,7 +15,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 
 export default function Hub() {
-  const [activePhase, setActivePhase] = useState<"employee" | "product">("employee");
+  const [location] = useLocation();
+
+  // Derive initial phase from URL path, fall back to localStorage, then "employee"
+  const getInitialPhase = (): "employee" | "product" => {
+    if (location.startsWith("/product-analysis")) return "product";
+    if (location.startsWith("/employee-analysis")) return "employee";
+    const saved = localStorage.getItem("ds_active_phase");
+    return (saved === "product" || saved === "employee") ? saved : "employee";
+  };
+
+  const [activePhase, setActivePhase] = useState<"employee" | "product">(getInitialPhase);
   const [settings, setSettings] = useState<any>({});
   const [bonuses, setBonuses] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
@@ -25,7 +35,12 @@ export default function Hub() {
   const { data: products, isLoading: loadingProducts } = useGetProducts();
   const { data: employees, isLoading: loadingEmployees } = useGetEmployees();
   const { data: summary } = useGetDashboardSummary();
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
+
+  // Persist phase to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("ds_active_phase", activePhase);
+  }, [activePhase]);
 
   useEffect(() => {
     api.getSettings().then(setSettings).catch(console.error);
