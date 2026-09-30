@@ -47,4 +47,16 @@ app.use(
 
 app.use("/api", router);
 
+// ─── Global Error Handler ───────────────────────────────────────────────────
+// Catches all unhandled errors thrown by async route handlers.
+// Without this, Express 5 re-throws async errors causing unhandled rejections.
+app.use((err: any, req: any, res: any, next: any) => {
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  logger.error({ err, path: req.path, method: req.method }, "Unhandled route error");
+  if (!res.headersSent) {
+    res.status(status).json({ error: "Server Error", message });
+  }
+});
+
 export default app;

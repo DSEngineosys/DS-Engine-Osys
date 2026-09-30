@@ -154,7 +154,7 @@ router.post("/employee/avatar", requireEmployee, async (req: any, res: any) => {
   const updated = await Employee.findByIdAndUpdate(
     session.userId,
     { avatarUrl },
-    { new: true }
+    { returnDocument: "after" }
   );
   if (!updated) return res.status(404).json({ error: "Employee not found" });
   res.json({ message: "Profile photo updated", avatarUrl: updated.avatarUrl });
@@ -231,7 +231,7 @@ router.post("/employee/activity", requireEmployee, async (req: any, res: any) =>
   // If ISR is submitting a meeting for SSO, email all SSO employees
   if (activityType === "ISR Meeting & Tasks" && payload.meetingDetails) {
     try {
-      const { sendEmail } = await import("../lib/email.js");
+      const { sendEmail } = await import("../lib/email");
       const ssoEmployees = await Employee.find({ 
         subDepartmentId: { $regex: new RegExp("^sso$", "i") },
         status: "active" 

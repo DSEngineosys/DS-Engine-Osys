@@ -91,7 +91,7 @@ router.post("/admin/registration-requests/:id/allow", requireAdmin, async (req, 
   const id = req.params.id as string;
   if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   
-  const updated = await DSEngineer.findByIdAndUpdate(id, { status: "approved" }, { new: true });
+  const updated = await DSEngineer.findByIdAndUpdate(id, { status: "approved" }, { returnDocument: "after" });
   if (!updated) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -115,7 +115,7 @@ router.post("/admin/registration-requests/:id/deny", requireAdmin, async (req, r
   const id = req.params.id as string;
   if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   
-  const updated = await DSEngineer.findByIdAndUpdate(id, { status: "denied" }, { new: true });
+  const updated = await DSEngineer.findByIdAndUpdate(id, { status: "denied" }, { returnDocument: "after" });
   if (!updated) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -169,7 +169,7 @@ router.post("/admin/hr-recruitment-requests/:id/allow", requireAdmin, async (req
   if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   if (!hrId || !monthlySalary) { res.status(400).json({ error: "hrId and monthlySalary are required" }); return; }
   
-  const updated = await HR.findByIdAndUpdate(id, { status: "approved", hrId, monthlySalary }, { new: true });
+  const updated = await HR.findByIdAndUpdate(id, { status: "approved", hrId, monthlySalary }, { returnDocument: "after" });
   if (!updated) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -192,7 +192,7 @@ router.post("/admin/hr-recruitment-requests/:id/deny", requireAdmin, async (req,
   const id = req.params.id as string;
   if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   
-  const updated = await HR.findByIdAndUpdate(id, { status: "denied" }, { new: true });
+  const updated = await HR.findByIdAndUpdate(id, { status: "denied" }, { returnDocument: "after" });
   if (!updated) {
     res.status(404).json({ error: "Not found" });
     return;

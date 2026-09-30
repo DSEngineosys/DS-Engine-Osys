@@ -516,9 +516,9 @@ router.post("/auth/avatar", async (req, res) => {
     res.status(400).json({ error: "Invalid input", message: parsed.error.message });
     return;
   }
-  let updated = await DSEngineer.findByIdAndUpdate(session.userId, { avatarUrl: parsed.data.avatarUrl }, { new: true });
-  if (!updated) updated = await HR.findByIdAndUpdate(session.userId, { avatarUrl: parsed.data.avatarUrl }, { new: true });
-  if (!updated) updated = await Admin.findByIdAndUpdate(session.userId, { avatarUrl: parsed.data.avatarUrl }, { new: true });
+  let updated = await DSEngineer.findByIdAndUpdate(session.userId, { avatarUrl: parsed.data.avatarUrl }, { returnDocument: "after" });
+  if (!updated) updated = await HR.findByIdAndUpdate(session.userId, { avatarUrl: parsed.data.avatarUrl }, { returnDocument: "after" });
+  if (!updated) updated = await Admin.findByIdAndUpdate(session.userId, { avatarUrl: parsed.data.avatarUrl }, { returnDocument: "after" });
   res.json({ user: await formatUser(updated!), message: "Profile photo updated" });
 });
 
@@ -537,9 +537,9 @@ router.put("/auth/profile", async (req, res) => {
     res.status(400).json({ error: "Invalid input", message: parsed.error.message });
     return;
   }
-  let updated = await DSEngineer.findByIdAndUpdate(session.userId, { name: parsed.data.name, mobile: parsed.data.mobile }, { new: true });
-  if (!updated) updated = await HR.findByIdAndUpdate(session.userId, { name: parsed.data.name, mobile: parsed.data.mobile }, { new: true });
-  if (!updated) updated = await Admin.findByIdAndUpdate(session.userId, { name: parsed.data.name, mobile: parsed.data.mobile }, { new: true });
+  let updated = await DSEngineer.findByIdAndUpdate(session.userId, { name: parsed.data.name, mobile: parsed.data.mobile }, { returnDocument: "after" });
+  if (!updated) updated = await HR.findByIdAndUpdate(session.userId, { name: parsed.data.name, mobile: parsed.data.mobile }, { returnDocument: "after" });
+  if (!updated) updated = await Admin.findByIdAndUpdate(session.userId, { name: parsed.data.name, mobile: parsed.data.mobile }, { returnDocument: "after" });
   res.json({ user: await formatUser(updated!), message: "Profile updated successfully" });
 });
 

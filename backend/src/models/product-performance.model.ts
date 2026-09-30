@@ -1,19 +1,34 @@
 import mongoose, { Schema, type Document } from "mongoose";
 
 export interface IProductPerformance extends Document {
-  date: string;
-  data: any;
+  productId?: string;
+  productName?: string;
+  category?: string;
+  soldDate?: Date;
+  sellingTimePeriod?: number;
+  profit?: number;
+  offersApplied?: string;
+  date?: string;
+  data?: any;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const ProductPerformanceSchema: Schema = new Schema(
   {
-    date: { type: String, required: true },
-    data: { type: Schema.Types.Mixed, required: true },
+    productId: { type: String, index: true },
+    productName: { type: String },
+    category: { type: String, index: true },
+    soldDate: { type: Date, index: true },
+    sellingTimePeriod: { type: Number },
+    profit: { type: Number },
+    offersApplied: { type: String },
+    date: { type: String, index: true },
+    data: { type: Schema.Types.Mixed },
   },
   { timestamps: true }
 );
 
-ProductPerformanceSchema.index({ date: 1 });
+ProductPerformanceSchema.index({ productId: 1, soldDate: -1 });
 
 export default mongoose.model<IProductPerformance>("ProductPerformance", ProductPerformanceSchema);

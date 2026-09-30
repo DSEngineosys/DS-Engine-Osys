@@ -30,47 +30,59 @@ async function getDepartmentWithCount(id: string) {
 }
 
 router.get("/departments", async (req, res) => {
-  const depts = await Department.find();
-  const result = await Promise.all(depts.map(async (d) => {
-    const empCount = await Employee.countDocuments({ departmentId: d._id });
-    const subDepts = await SubDepartment.find({ departmentId: d._id });
-    return { 
-      id: d._id,
-      name: d.name,
-      description: d.description,
-      employeeCount: empCount,
-      subDepartments: subDepts.map(sd => ({ id: sd._id, name: sd.name }))
-    };
-  }));
-  res.json(result);
+  try {
+    const depts = await Department.find();
+    const result = await Promise.all(depts.map(async (d) => {
+      const empCount = await Employee.countDocuments({ departmentId: d._id });
+      const subDepts = await SubDepartment.find({ departmentId: d._id });
+      return { 
+        id: d._id,
+        name: d.name,
+        description: d.description,
+        employeeCount: empCount,
+        subDepartments: subDepts.map(sd => ({ id: sd._id, name: sd.name }))
+      };
+    }));
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to load departments", message: err.message });
+  }
 });
 
 router.post("/departments", async (req, res) => {
-  const parsed = createDeptSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input", message: parsed.error.message });
-    return;
-  }
-  
-  const deptData: any = {
-    name: parsed.data.name,
-    description: parsed.data.description ?? null,
-  };
+  try {
+    const parsed = createDeptSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid input", message: parsed.error.message });
+      return;
+    }
+    
+    const deptData: any = {
+      name: parsed.data.name,
+      description: parsed.data.description ?? null,
+    };
 
-  const dept = await Department.create(deptData);
-  res.status(201).json({ 
-    id: dept._id,
-    name: dept.name,
-    description: dept.description,
-    employeeCount: 0 
-  });
+    const dept = await Department.create(deptData);
+    res.status(201).json({ 
+      id: dept._id,
+      name: dept.name,
+      description: dept.description,
+      employeeCount: 0 
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to create department", message: err.message });
+  }
 });
 
 router.get("/departments/:id", async (req, res) => {
-  const id = req.params.id;
-  const dept = await getDepartmentWithCount(id);
-  if (!dept) { res.status(404).json({ error: "Not found", message: "Department not found" }); return; }
-  res.json(dept);
+  try {
+    const id = req.params.id;
+    const dept = await getDepartmentWithCount(id);
+    if (!dept) { res.status(404).json({ error: "Not found", message: "Department not found" }); return; }
+    res.json(dept);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to load department", message: err.message });
+  }
 });
 
 export default router;

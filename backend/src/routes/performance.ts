@@ -33,35 +33,43 @@ async function enrichRecord(rec: any) {
 }
 
 router.get("/performance", async (req, res) => {
-  const employeeId = req.query.employeeId as string | undefined;
-  const query = (employeeId && mongoose.Types.ObjectId.isValid(employeeId)) 
-    ? { employeeId: new mongoose.Types.ObjectId(employeeId) } 
-    : {};
-  
-  const records = await Performance.find(query);
-  const result = await Promise.all(records.map(enrichRecord));
-  res.json(result);
+  try {
+    const employeeId = req.query.employeeId as string | undefined;
+    const query = (employeeId && mongoose.Types.ObjectId.isValid(employeeId)) 
+      ? { employeeId: new mongoose.Types.ObjectId(employeeId) } 
+      : {};
+    
+    const records = await Performance.find(query);
+    const result = await Promise.all(records.map(enrichRecord));
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to load performance records", message: err.message });
+  }
 });
 
 router.post("/performance", async (req, res) => {
-  const parsed = createPerfSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input", message: parsed.error.message });
-    return;
+  try {
+    const parsed = createPerfSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid input", message: parsed.error.message });
+      return;
+    }
+    
+    const rec = await Performance.create({
+      ...parsed.data,
+      employeeId: new mongoose.Types.ObjectId(parsed.data.employeeId),
+      notes: parsed.data.notes ?? undefined,
+    });
+
+    // Update employee performance score
+    await Employee.findByIdAndUpdate(parsed.data.employeeId, { 
+      performanceScore: parsed.data.score 
+    });
+
+    res.status(201).json(await enrichRecord(rec));
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to create performance record", message: err.message });
   }
-  
-  const rec = await Performance.create({
-    ...parsed.data,
-    employeeId: new mongoose.Types.ObjectId(parsed.data.employeeId),
-    notes: parsed.data.notes ?? undefined,
-  });
-
-  // Update employee performance score
-  await Employee.findByIdAndUpdate(parsed.data.employeeId, { 
-    performanceScore: parsed.data.score 
-  });
-
-  res.status(201).json(await enrichRecord(rec));
 });
 
 export default router;

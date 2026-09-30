@@ -111,7 +111,7 @@ router.put("/employees/:id", async (req, res) => {
     updateData.departmentId = new mongoose.Types.ObjectId(parsed.data.departmentId);
   }
 
-  const emp = await Employee.findByIdAndUpdate(id, updateData, { new: true });
+  const emp = await Employee.findByIdAndUpdate(id, updateData, { returnDocument: "after" });
   if (!emp) { res.status(404).json({ error: "Not found", message: "Employee not found" }); return; }
   res.json(await enrichEmployee(emp));
 });

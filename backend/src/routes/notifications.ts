@@ -6,59 +6,71 @@ const router = Router();
 
 // Admin: Send broadcast notification
 router.post("/admin/notifications", async (req, res) => {
-  const session = req.session as unknown as Record<string, unknown>;
-  if (!session.isAdmin) {
-    res.status(401).json({ error: "Unauthorized", message: "Admin only" });
-    return;
+  try {
+    const session = req.session as unknown as Record<string, unknown>;
+    if (!session.isAdmin) {
+      res.status(401).json({ error: "Unauthorized", message: "Admin only" });
+      return;
+    }
+
+    const schema = z.object({
+      title: z.string().min(1),
+      message: z.string().min(1),
+    });
+
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid input", message: parsed.error.message });
+      return;
+    }
+
+    const notification = await Notification.create({
+      title: parsed.data.title,
+      message: parsed.data.message,
+      recipientId: null, // Broadcast
+    });
+
+    res.status(201).json(notification);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to send notification", message: err.message });
   }
-
-  const schema = z.object({
-    title: z.string().min(1),
-    message: z.string().min(1),
-  });
-
-  const parsed = schema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input", message: parsed.error.message });
-    return;
-  }
-
-  const notification = await Notification.create({
-    title: parsed.data.title,
-    message: parsed.data.message,
-    recipientId: null, // Broadcast
-  });
-
-  res.status(201).json(notification);
 });
 
 // User: Get notifications
 router.get("/notifications", async (req, res) => {
-  const session = req.session as unknown as Record<string, unknown>;
-  if (!session.userId) {
-    res.status(401).json({ error: "Unauthorized", message: "Not logged in" });
-    return;
+  try {
+    const session = req.session as unknown as Record<string, unknown>;
+    if (!session.userId) {
+      res.status(401).json({ error: "Unauthorized", message: "Not logged in" });
+      return;
+    }
+
+    // DS Engineers only see admin broadcast messages, NOT registration_request or unknown types
+    const notifications = await Notification.find({
+      $or: [{ recipientId: session.userId }, { recipientId: null }],
+      type: { $nin: ["registration_request"] },
+    }).sort({ createdAt: -1 });
+
+    res.json(notifications);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to load notifications", message: err.message });
   }
-
-  // DS Engineers only see admin broadcast messages, NOT registration_request or unknown types
-  const notifications = await Notification.find({
-    $or: [{ recipientId: session.userId }, { recipientId: null }],
-    type: { $nin: ["registration_request"] },
-  }).sort({ createdAt: -1 });
-
-  res.json(notifications);
 });
 
 // User: Mark as read
 router.post("/notifications/:id/read", async (req, res) => {
-  const session = req.session as unknown as Record<string, unknown>;
-  if (!session.userId) {
-    res.status(401).json({ error: "Unauthorized", message: "Not logged in" });
-    return;
-  }
+  try {
+    const session = req.session as unknown as Record<string, unknown>;
+    if (!session.userId) {
+      res.status(401).json({ error: "Unauthorized", message: "Not logged in" });
+      return;
+    }
 
-  await Notification.findByIdAndUpdate(req.params.id, { isRead: true });
-  res.json({ success: true });
+    await Notification.findByIdAndUpdate(req.params.id, { isRead: true });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to mark notification as read", message: err.message });
+  }
 });
 
 export default router;

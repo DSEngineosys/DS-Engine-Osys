@@ -11,7 +11,9 @@
     "seed": "tsx src/seed.ts",
     "clear-emp-data": "tsx src/clear-employee-data.ts",
     "seed-employees": "tsx src/seed-employees.ts",
-    "seed-daily-perf": "tsx src/seed-daily-performance.ts"
+    "seed-daily-perf": "tsx src/seed-daily-performance.ts",
+    "seed-products": "tsx src/seed-products.ts",
+    "seed-product-perf": "tsx src/seed-product-performance.ts"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",

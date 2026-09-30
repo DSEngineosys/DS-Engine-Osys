@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { AuthenticatedLayout } from "@/components/layout";
 import { useGetProducts } from "@workspace/api-client-react";
@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Package, AlertTriangle, ArrowRight } from "lucide-react";
+import { Search, Filter, Package, AlertTriangle } from "lucide-react";
 
 export default function ProductsList() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState<string>("");
   
   const { data: products, isLoading } = useGetProducts({
     category: categoryFilter !== "all" ? categoryFilter : undefined
@@ -26,15 +27,32 @@ export default function ProductsList() {
     }
   };
 
-  // Extract unique categories for filter
-  const categories = ["all", "Cosmetics A1", "Skincare B2", "Fragrance C3"]; // Hardcoded for demo if API doesn't provide list
+  // Extract unique categories dynamically from products
+  const categories = useMemo(() => {
+    if (!products) return ["all"];
+    const unique = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+    return ["all", ...unique];
+  }, [products]);
+
+  // Filter products by search term
+  const filteredProducts = useMemo(() => {
+    if (!products) return [];
+    if (!searchTerm.trim()) return products;
+    const lower = searchTerm.toLowerCase();
+    return products.filter(p => 
+      p.name?.toLowerCase().includes(lower) || 
+      (p as any).productId?.toLowerCase().includes(lower) ||
+      p.sku?.toLowerCase().includes(lower) ||
+      p.category?.toLowerCase().includes(lower)
+    );
+  }, [products, searchTerm]);
 
   return (
     <AuthenticatedLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Product Inventory</h1>
-          <p className="text-muted-foreground mt-1">Full catalog with live market status indicators.</p>
+          <p className="text-muted-foreground mt-1">Full catalog with live market status indicators ({filteredProducts.length} items).</p>
         </div>
 
         <Card className="border-slate-200">
@@ -43,8 +61,10 @@ export default function ProductsList() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search products by SKU or name..."
+                  placeholder="Search products by SKU, name, or category..."
                   className="pl-9 bg-slate-50/50"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               <div className="w-full sm:w-[240px] flex items-center gap-2">
@@ -72,9 +92,9 @@ export default function ProductsList() {
               <Skeleton key={i} className="h-64 w-full rounded-xl" />
             ))}
           </div>
-        ) : products && products.length > 0 ? (
+        ) : filteredProducts && filteredProducts.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {products.map(product => (
+            {filteredProducts.map(product => (
               <Link key={product.id} href={`/product-analysis/products/${product.id}`}>
                 <Card className="h-full hover:border-secondary-foreground/30 hover:shadow-md transition-all cursor-pointer group flex flex-col overflow-hidden">
                   <div className="h-32 bg-slate-100 flex items-center justify-center relative">
@@ -93,7 +113,7 @@ export default function ProductsList() {
                     )}
                   </div>
                   <CardContent className="p-4 flex-1 flex flex-col">
-                    <div className="text-xs text-muted-foreground font-mono mb-1">{product.sku}</div>
+                    <div className="text-xs text-muted-foreground font-mono mb-1">{product.sku || (product as any).productId}</div>
                     <h3 className="font-semibold text-base leading-tight mb-1 group-hover:text-secondary-foreground transition-colors line-clamp-2">
                       {product.name}
                     </h3>
@@ -102,12 +122,12 @@ export default function ProductsList() {
                     <div className="mt-auto grid grid-cols-2 gap-2 pt-3 border-t">
                       <div>
                         <div className="text-[10px] uppercase text-muted-foreground font-semibold">Price</div>
-                        <div className="font-medium">${product.price.toFixed(2)}</div>
+                        <div className="font-medium">${product.price?.toFixed(2)}</div>
                       </div>
                       <div>
                         <div className="text-[10px] uppercase text-muted-foreground font-semibold">Stock</div>
-                        <div className={`font-medium ${product.stock < 20 ? 'text-red-600 flex items-center gap-1' : ''}`}>
-                          {product.stock} {product.stock < 20 && <AlertTriangle className="w-3 h-3" />}
+                        <div className={`font-medium ${product.stock < 200 ? 'text-red-600 flex items-center gap-1' : ''}`}>
+                          {product.stock} {product.stock < 200 && <AlertTriangle className="w-3 h-3" />}
                         </div>
                       </div>
                     </div>

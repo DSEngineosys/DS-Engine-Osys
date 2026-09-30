@@ -107,7 +107,7 @@ router.put("/hr/help-requests/:id/status", async (req: any, res: any) => {
   if (!["Pending", "In Progress", "Resolved"].includes(status)) {
     return res.status(400).json({ error: "Invalid status" });
   }
-  const updated = await HelpRequest.findByIdAndUpdate(id, { status }, { new: true });
+  const updated = await HelpRequest.findByIdAndUpdate(id, { status }, { returnDocument: "after" });
   
   if (updated && status === "Resolved" && updated.email) {
     try {
@@ -557,7 +557,7 @@ router.put("/hr/products/:id/status", async (req: any, res: any) => {
   if (!["active", "inactive"].includes(status)) {
     return res.status(400).json({ error: "Status must be active or inactive" });
   }
-  const updated = await Product.findByIdAndUpdate(id, { status }, { new: true });
+  const updated = await Product.findByIdAndUpdate(id, { status }, { returnDocument: "after" });
   if (!updated) return res.status(404).json({ error: "Product not found" });
   res.json({ message: `Product ${status}`, product: updated });
 });

@@ -35,7 +35,7 @@ async function collectDailyData() {
     await EmployeeDailyPerformance.findOneAndUpdate(
       { date: today },
       { date: today, data: employeeData },
-      { upsert: true, new: true }
+      { returnDocument: "after", upsert: true }
     );
     console.log(`[DailyCollector] ✅ Employee data collected (${employeeData.length} records)`);
 
@@ -65,7 +65,7 @@ async function collectDailyData() {
     await ProductPerformance.findOneAndUpdate(
       { date: today },
       { date: today, data: productData },
-      { upsert: true, new: true }
+      { returnDocument: "after", upsert: true }
     );
     console.log(`[DailyCollector] ✅ Product data collected (${productData.length} records)`);
   } catch (err) {

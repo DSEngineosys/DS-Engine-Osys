@@ -28,7 +28,7 @@ router.put("/settings/:key", async (req, res) => {
   const setting = await Setting.findOneAndUpdate(
     { key },
     { value: parsed.data.value },
-    { new: true, upsert: true }
+    { returnDocument: "after", upsert: true }
   );
   
   res.json(setting);
