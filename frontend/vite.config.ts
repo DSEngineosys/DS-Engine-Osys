@@ -11,6 +11,7 @@ const basePath = process.env.BASE_PATH ?? "/";
 
 export default defineConfig({
   base: basePath,
+  appType: "spa",
   plugins: [
     react(),
     tailwindcss(),
@@ -45,7 +46,6 @@ export default defineConfig({
     port,
     host: "0.0.0.0",
     allowedHosts: true,
-    historyApiFallback: true,
     fs: {
       strict: true,
       deny: ["**/.*"],
