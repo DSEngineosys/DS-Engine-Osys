@@ -574,20 +574,56 @@ export default function HRDashboard() {
               <CardContent className="overflow-auto">
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                    <tr><th>Category</th><th>Name</th><th>Price</th><th>Stock</th><th>Status</th><th className="text-right">Actions</th></tr>
+                    <tr><th className="py-3 px-3">Category</th><th className="py-3 px-3">Name</th><th className="py-3 px-3">Price</th><th className="py-3 px-3">Offer Details</th><th className="py-3 px-3">Stock</th><th className="py-3 px-3">Status</th><th className="text-right py-3 px-3">Actions</th></tr>
                   </thead>
                   <tbody>
-                    {products.map(p => (
-                      <tr key={p._id} className="border-b">
-                        <td className="py-3">{p.category}</td><td className="font-medium">{p.name}</td><td>{p.price}₹</td><td>{p.stock}</td>
-                        <td><span className={`px-2 py-1 rounded-full text-xs ${p.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status}</span></td>
-                        <td className="text-right">
-                          <Button size="sm" variant={p.status === 'active' ? 'outline' : 'default'} onClick={() => updateProdStatus(p._id, p.status === 'active' ? 'inactive' : 'active')}>
-                            {p.status === 'active' ? 'Make Inactive' : 'Make Active'}
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
+                    {products.map(p => {
+                      const isOffer = p.isOfferActive && p.offerPercentage > 0;
+                      const discount = p.offerPercentage || p.discountPercent || 0;
+                      const discountedPrice = isOffer ? (p.price * (1 - discount / 100)).toFixed(2) : null;
+
+                      return (
+                        <tr key={p._id || p.id} className={`border-b transition-colors ${isOffer ? "bg-sky-50/50 border-l-4 border-l-sky-400 border-sky-200" : ""}`}>
+                          <td className="py-3 px-3">{p.category}</td>
+                          <td className="font-medium py-3 px-3">
+                            <div className="flex items-center gap-2">
+                              <span>{p.name}</span>
+                              {isOffer && (
+                                <span className="bg-sky-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm shrink-0">
+                                  -{discount}% OFF
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3">
+                            {isOffer ? (
+                              <div>
+                                <span className="text-xs text-slate-400 line-through mr-1.5">₹{p.price}</span>
+                                <span className="font-black text-sky-600">₹{discountedPrice}</span>
+                              </div>
+                            ) : (
+                              <span className="font-semibold text-slate-800">₹{p.price}</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3">
+                            {isOffer ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-sky-100 text-sky-700 border border-sky-300">
+                                {p.activeOfferDetails?.offerName || `-${discount}% Active`}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-400">Standard Price</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3">{p.stock}</td>
+                          <td className="py-3 px-3"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${p.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status}</span></td>
+                          <td className="text-right py-3 px-3">
+                            <Button size="sm" variant={p.status === 'active' ? 'outline' : 'default'} onClick={() => updateProdStatus(p._id, p.status === 'active' ? 'inactive' : 'active')}>
+                              {p.status === 'active' ? 'Make Inactive' : 'Make Active'}
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </CardContent>

@@ -7,6 +7,8 @@ import Setting from "../models/setting.model";
 import Department from "../models/department.model";
 import SubDepartment from "../models/sub-department.model";
 import { sendEmail } from "../lib/email";
+import { formatProduct } from "./products";
+import { checkAndCleanExpiredProductOffers } from "../services/product-offer-cleaner";
 import { z } from "zod";
 import mongoose from "mongoose";
 import HR from "../models/hr.model";
@@ -547,8 +549,9 @@ router.post("/hr/products", async (req: any, res: any) => {
 });
 
 router.get("/hr/products", async (_req: any, res: any) => {
+  await checkAndCleanExpiredProductOffers();
   const products = await Product.find().sort({ createdAt: -1 });
-  res.json(products);
+  res.json(products.map(formatProduct));
 });
 
 router.put("/hr/products/:id/status", async (req: any, res: any) => {

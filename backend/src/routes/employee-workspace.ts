@@ -9,6 +9,8 @@ import Department from "../models/department.model";
 import SubDepartment from "../models/sub-department.model";
 import EmployeeActivity from "../models/employee-activity.model";
 import ProductPerformance from "../models/product-performance.model";
+import { formatProduct } from "./products";
+import { checkAndCleanExpiredProductOffers } from "../services/product-offer-cleaner";
 
 const router = Router();
 
@@ -84,8 +86,9 @@ router.patch("/employee/tasks/:id/status", requireEmployee, async (req: any, res
 
 // Active products visible to employee
 router.get("/employee/products", async (_req: any, res: any) => {
+  await checkAndCleanExpiredProductOffers();
   const products = await Product.find({ status: "active" }).sort({ createdAt: -1 });
-  res.json(products);
+  res.json(products.map(formatProduct));
 });
 
 // Employee performance stats

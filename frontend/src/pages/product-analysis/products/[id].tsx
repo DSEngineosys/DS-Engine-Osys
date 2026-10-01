@@ -4,13 +4,17 @@ import { useGetProduct, useGetProductPrediction } from "@workspace/api-client-re
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { useState, useEffect } from "react";
 import { 
   Package, 
   BrainCircuit, 
   ArrowLeft, 
   Target,
+  Zap,
+  Clock,
+  Tag,
+  Timer,
 } from "lucide-react";
-import { useState } from "react";
 
 export default function ProductDetail() {
   const [, params] = useRoute("/product-analysis/products/:id");
@@ -20,6 +24,27 @@ export default function ProductDetail() {
   const { data: product, isLoading: isLoadingProd } = useGetProduct(id);
   const { data: prediction, isLoading: isLoadingPred } = useGetProductPrediction(id);
   const prod = product as any;
+
+  // Live countdown for active offer
+  const [nowMs, setNowMs] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const offerExpiresMs = prod?.offerExpiresAt ? new Date(prod.offerExpiresAt).getTime() : 0;
+  const offerRemainingSecs = offerExpiresMs > nowMs ? Math.floor((offerExpiresMs - nowMs) / 1000) : 0;
+  const isOfferLive = offerRemainingSecs > 0 || prod?.isOfferActive;
+
+  const formatCountdown = (secs: number) => {
+    if (secs <= 0) return "Expired";
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    if (h > 0) return `${h}h ${m}m ${s}s`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  };
 
   const getStatusColor = (status?: string) => {
     switch (status) {
@@ -116,7 +141,14 @@ export default function ProductDetail() {
                   <div className="flex flex-col gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Selling Price</p>
-                      <p className="text-lg font-black text-primary">₹{prod.price?.toFixed(2)}</p>
+                      {isOfferLive && prod.offerPercentage > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <p className="text-base font-black text-slate-400 line-through">₹{prod.price?.toFixed(2)}</p>
+                          <p className="text-lg font-black text-sky-600">₹{(prod.price * (1 - prod.offerPercentage / 100)).toFixed(2)}</p>
+                        </div>
+                      ) : (
+                        <p className="text-lg font-black text-primary">₹{prod.price?.toFixed(2)}</p>
+                      )}
                     </div>
                     <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">MRP</p>
@@ -133,6 +165,66 @@ export default function ProductDetail() {
                       <p className="text-lg font-black text-emerald-600">{prod.soldUnits || 0}</p>
                     </div>
                   </div>
+
+                  {/* ── ACTIVE OFFER BANNER ── */}
+                  {isOfferLive && prod.offerPercentage > 0 && (
+                    <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                      {/* Header */}
+                      <div className="bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Zap className="w-4 h-4 text-yellow-300" />
+                          <span className="text-white font-black text-sm uppercase tracking-widest">Active Offer Applied</span>
+                        </div>
+                        <span className="bg-white/20 text-white font-black text-lg px-3 py-0.5 rounded-xl backdrop-blur-sm">
+                          -{prod.offerPercentage}% OFF
+                        </span>
+                      </div>
+                      {/* Body */}
+                      <div className="bg-sky-50 p-4 space-y-3">
+                        {/* Offer name */}
+                        <div className="flex items-center gap-2">
+                          <Tag className="w-4 h-4 text-sky-700 shrink-0" />
+                          <span className="font-black text-sky-900 text-sm">
+                            {prod.activeOfferDetails?.offerName || `${prod.offerPercentage}% Discount Offer`}
+                          </span>
+                        </div>
+                        {/* Prices */}
+                        <div className="flex items-center gap-4 bg-white rounded-xl px-4 py-3 border border-sky-100">
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Original Price</p>
+                            <p className="text-base font-black text-slate-400 line-through">₹{prod.price?.toFixed(2)}</p>
+                          </div>
+                          <div className="text-sky-500 font-black text-xl">→</div>
+                          <div>
+                            <p className="text-[10px] font-bold text-sky-600 uppercase tracking-widest">Offer Price</p>
+                            <p className="text-xl font-black text-sky-700">₹{(prod.price * (1 - prod.offerPercentage / 100)).toFixed(2)}</p>
+                          </div>
+                          <div className="ml-auto text-right">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase">You Save</p>
+                            <p className="text-base font-black text-rose-600">₹{(prod.price * prod.offerPercentage / 100).toFixed(2)}</p>
+                          </div>
+                        </div>
+                        {/* Timestamps */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-white rounded-xl px-3 py-2 border border-sky-100">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Applied At</p>
+                            <p className="text-xs font-bold text-slate-700 mt-0.5">
+                              {prod.offerAppliedAt ? new Date(prod.offerAppliedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                            </p>
+                          </div>
+                          <div className="bg-white rounded-xl px-3 py-2 border border-sky-100">
+                            <div className="flex items-center gap-1">
+                              <Timer className="w-3 h-3 text-rose-500" />
+                              <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Expires In</p>
+                            </div>
+                            <p className="text-xs font-black text-rose-700 mt-0.5 tabular-nums">
+                              {formatCountdown(offerRemainingSecs)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Details section */}
                   <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4">

@@ -445,7 +445,11 @@ function ProductPhase({ settings, products, loading, mlRunning }: any) {
             
             return (
               <Link key={p.id} href={`/product-analysis/products/${p.id}`}>
-                <Card className="hover:border-primary/30 transition-all cursor-pointer group rounded-2xl overflow-hidden border-slate-100 shadow-sm mb-3 relative">
+                <Card className={`transition-all cursor-pointer group rounded-2xl overflow-hidden shadow-sm mb-3 relative ${
+                  p.isOfferActive && p.offerPercentage > 0
+                    ? 'border-2 border-sky-400 bg-sky-50/30 shadow-sky-500/20 ring-2 ring-sky-300/30'
+                    : 'hover:border-primary/30 border-slate-100'
+                }`}>
                   {isTop3 && (
                     <div className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b ${rankColors[idx]}`} />
                   )}
@@ -456,10 +460,18 @@ function ProductPhase({ settings, products, loading, mlRunning }: any) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-slate-800 truncate">{p.name}</h3>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">{p.category}</span>
                           <p className="text-xs text-slate-400 font-medium truncate">SKU: {p.sku}</p>
                         </div>
+                        {p.offerPercentage > 0 && p.isOfferActive && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="bg-sky-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded">-{p.offerPercentage}% OFF</span>
+                            <span className="text-[9px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded truncate max-w-[140px]">
+                              {p.activeOfferDetails?.offerName || "Offer Active"}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="text-right">
                         <p className="font-black text-slate-900 tracking-tight">₹{p.revenue?.toLocaleString()}</p>

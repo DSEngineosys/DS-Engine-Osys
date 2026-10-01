@@ -55,10 +55,11 @@ const offerSchema = z.object({
   priority: z.number().optional(),
 });
 
-function formatProduct(p: any) {
+export function formatProduct(p: any) {
   const now = new Date();
   const isOfferActive = p.offerExpiresAt ? new Date(p.offerExpiresAt) > now : false;
   const offerRemainingSeconds = isOfferActive ? Math.max(0, Math.floor((new Date(p.offerExpiresAt).getTime() - now.getTime()) / 1000)) : 0;
+  const calcOfferPct = isOfferActive ? Number(p.offerPercentage || p.discountPercent || 0) : null;
 
   return {
     id: p._id ? p._id.toString() : p.productId,
@@ -76,21 +77,21 @@ function formatProduct(p: any) {
     manufactureDate: p.manufactureDate ? new Date(p.manufactureDate).toISOString() : undefined,
     expiryDate: p.expiryDate ? new Date(p.expiryDate).toISOString() : undefined,
     mrp: Number(p.mrp || p.price || 0),
-    discountPercent: isOfferActive ? Number(p.discountPercent || p.offerPercentage || 0) : 0,
+    discountPercent: calcOfferPct || 0,
     taxPercent: Number(p.taxPercent || 18),
     price: Number(p.price || 0),
-    sellingPrice: Number(p.price || 0),
+    sellingPrice: isOfferActive && calcOfferPct ? Number((Number(p.price || 0) * (1 - calcOfferPct / 100)).toFixed(2)) : Number(p.price || 0),
     stock: p.stock ?? 0,
     stockQuantity: p.stock ?? 0,
     soldUnits: p.soldUnits || 0,
     revenue: Number(p.revenue || 0),
-    offerPercentage: isOfferActive ? (p.offerPercentage ? Number(p.offerPercentage) : Number(p.discountPercent || 0)) : null,
+    offerPercentage: calcOfferPct,
     offerAppliedAt: p.offerAppliedAt ? new Date(p.offerAppliedAt).toISOString() : undefined,
     offerDurationMinutes: p.offerDurationMinutes || 60,
     offerExpiresAt: p.offerExpiresAt ? new Date(p.offerExpiresAt).toISOString() : undefined,
     isOfferActive,
     offerRemainingSeconds,
-    activeOfferDetails: p.activeOfferDetails || null,
+    activeOfferDetails: isOfferActive ? p.activeOfferDetails || null : null,
     marketStatus: p.marketStatus || "moderate",
     status: p.status || "active",
     ingredients: p.ingredients || [],

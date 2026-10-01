@@ -96,7 +96,7 @@ export default function ProductsList() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredProducts.map(product => (
               <Link key={product.id} href={`/product-analysis/products/${product.id}`}>
-                <Card className="h-full hover:border-secondary-foreground/30 hover:shadow-md transition-all cursor-pointer group flex flex-col overflow-hidden">
+                <Card className="h-full transition-all cursor-pointer group flex flex-col overflow-hidden hover:border-secondary-foreground/30 hover:shadow-md">
                   <div className="h-32 bg-slate-100 flex items-center justify-center relative">
                     {product.imageUrl ? (
                       <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover mix-blend-multiply opacity-80" />
@@ -107,8 +107,15 @@ export default function ProductsList() {
                       {getStatusBadge(product.marketStatus)}
                     </div>
                     {product.offerPercentage && product.offerPercentage > 0 && (
-                      <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
-                        -{product.offerPercentage}%
+                      <div className="absolute top-2 left-2 flex flex-col gap-1">
+                        <div className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
+                          -{product.offerPercentage}%
+                        </div>
+                        {(product as any).activeOfferDetails?.offerName && (
+                          <div className="bg-black/70 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded leading-tight max-w-[80px] truncate">
+                            {(product as any).activeOfferDetails.offerName}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -122,7 +129,14 @@ export default function ProductsList() {
                     <div className="mt-auto grid grid-cols-2 gap-2 pt-3 border-t">
                       <div>
                         <div className="text-[10px] uppercase text-muted-foreground font-semibold">Price</div>
-                        <div className="font-medium">₹{product.price?.toFixed(2)}</div>
+                        {(product as any).isOfferActive && product.offerPercentage && product.offerPercentage > 0 ? (
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium text-slate-400 line-through text-xs">₹{product.price?.toFixed(2)}</span>
+                            <span className="font-black text-sky-600">₹{(product.price * (1 - (product.offerPercentage || 0) / 100)).toFixed(2)}</span>
+                          </div>
+                        ) : (
+                          <div className="font-medium">₹{product.price?.toFixed(2)}</div>
+                        )}
                       </div>
                       <div>
                         <div className="text-[10px] uppercase text-muted-foreground font-semibold">Stock</div>

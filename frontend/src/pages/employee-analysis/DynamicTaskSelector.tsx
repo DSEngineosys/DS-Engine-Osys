@@ -44,11 +44,24 @@ export function DynamicTaskSelector({
       
       if (dept.includes("Marketing") && (subDept === "SO" || subDept === "SSO")) {
         // Use products for SO and SSO
-        setAvailableTasks(products.map(p => ({
-          title: p.name,
-          desc: `SKU: ${p.sku} | Price: ₹${p.price} | Stock: ${p.stock}`,
-          requiresQuantity: true
-        })));
+        setAvailableTasks(products.map(p => {
+          const isOffer = p.isOfferActive && p.offerPercentage > 0;
+          const discount = p.offerPercentage || p.discountPercent || 0;
+          const discountedPrice = isOffer ? (p.price * (1 - discount / 100)).toFixed(2) : null;
+
+          return {
+            title: p.name,
+            desc: isOffer 
+              ? `SKU: ${p.sku} | Price: ₹${discountedPrice} (Original: ₹${p.price}, -${discount}% OFF) | Stock: ${p.stock}`
+              : `SKU: ${p.sku} | Price: ₹${p.price} | Stock: ${p.stock}`,
+            requiresQuantity: true,
+            isOfferActive: isOffer,
+            offerPercentage: discount,
+            offerName: p.activeOfferDetails?.offerName,
+            originalPrice: p.price,
+            discountedPrice: discountedPrice
+          };
+        }));
       } else {
         // Fetch predefined DS Tasks from backend for everything else
         setLoadingTasks(true);
@@ -124,25 +137,40 @@ export function DynamicTaskSelector({
         </div>
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-2 pt-4 snap-x custom-scrollbar" style={{ transform: 'rotateX(180deg)' }}>
-          {availableTasks.map((task, idx) => (
-            <div 
-              key={idx}
-              style={{ transform: 'rotateX(180deg)' }}
-              onClick={() => { 
-                if (selectedTask?.title === task.title) {
-                  setSelectedTask(null);
-                } else {
-                  setSelectedTask(task); 
-                  setQuantity(""); 
-                }
-              }}
-              className={`min-w-[280px] max-w-[280px] p-4 rounded-2xl border-2 cursor-pointer transition-all snap-start flex flex-col
-                ${selectedTask?.title === task.title ? 'border-primary bg-primary/5 shadow-md scale-[1.02]' : 'border-slate-100 bg-white hover:border-slate-200'}`}
-            >
-              <h4 className={`font-bold text-base mb-1 line-clamp-1 ${selectedTask?.title === task.title ? 'text-primary' : 'text-slate-800'}`}>{task.title}</h4>
-              <p className="text-xs text-slate-500 line-clamp-3 mt-auto">{task.desc}</p>
-            </div>
-          ))}
+          {availableTasks.map((task, idx) => {
+            const isOffer = task.isOfferActive;
+
+            return (
+              <div 
+                key={idx}
+                style={{ transform: 'rotateX(180deg)' }}
+                onClick={() => { 
+                  if (selectedTask?.title === task.title) {
+                    setSelectedTask(null);
+                  } else {
+                    setSelectedTask(task); 
+                    setQuantity(""); 
+                  }
+                }}
+                className={`min-w-[280px] max-w-[280px] p-4 rounded-2xl border-2 cursor-pointer transition-all snap-start flex flex-col relative
+                  ${selectedTask?.title === task.title 
+                    ? 'border-primary bg-primary/5 shadow-md scale-[1.02]' 
+                    : isOffer
+                    ? 'border-sky-400 bg-sky-50/40 hover:border-sky-500 ring-1 ring-sky-300 shadow-sm shadow-sky-100'
+                    : 'border-slate-100 bg-white hover:border-slate-200'}`}
+              >
+                {isOffer && (
+                  <span className="absolute top-3 right-3 bg-sky-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">
+                    -{task.offerPercentage}% OFF
+                  </span>
+                )}
+                <h4 className={`font-bold text-base mb-1 line-clamp-1 ${selectedTask?.title === task.title ? 'text-primary' : 'text-slate-800'} ${isOffer ? 'pr-14' : ''}`}>
+                  {task.title}
+                </h4>
+                <p className="text-xs text-slate-500 line-clamp-3 mt-auto">{task.desc}</p>
+              </div>
+            );
+          })}
         </div>
       )}
 

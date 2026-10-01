@@ -424,17 +424,45 @@ function EmployeeWorkspace() {
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <h2 className="text-xl font-bold mb-4">Product Catalog</h2>
             <div className="grid grid-cols-2 gap-3">
-              {products?.map((p: any) => (
-                <div key={p._id} className="bg-white border rounded-xl p-3 shadow-sm">
+              {products?.map((p: any) => {
+                const isOffer = p.isOfferActive && p.offerPercentage > 0;
+                const discount = p.offerPercentage || p.discountPercent || 0;
+                const discountedPrice = isOffer ? (p.price * (1 - discount / 100)).toFixed(2) : null;
 
-                  <h3 className="font-bold text-sm leading-tight mb-1">{p.name}</h3>
-                  <div className="text-xs text-slate-500 mb-2">{p.category}</div>
-                  <div className="flex justify-between items-center mt-auto pt-2 border-t">
-                    <span className="font-black text-slate-800">{p.price}₹</span>
-                    <span className="text-xs bg-slate-100 px-1.5 py-0.5 rounded">Stock: {p.stock}</span>
+                return (
+                  <div 
+                    key={p._id || p.id} 
+                    className={`bg-white rounded-xl p-3 shadow-sm relative transition-all ${
+                      isOffer 
+                        ? "border-2 border-sky-400 bg-sky-50/30 ring-1 ring-sky-300 shadow-sky-100" 
+                        : "border border-slate-200"
+                    }`}
+                  >
+                    {isOffer && (
+                      <span className="absolute top-2 right-2 bg-sky-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">
+                        -{discount}% OFF
+                      </span>
+                    )}
+
+                    <h3 className="font-bold text-sm leading-tight mb-1 pr-10">{p.name}</h3>
+                    <div className="text-xs text-slate-500 mb-2">{p.category}</div>
+
+                    <div className="flex justify-between items-center mt-auto pt-2 border-t border-slate-100">
+                      <div>
+                        {isOffer ? (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-slate-400 line-through">₹{p.price}</span>
+                            <span className="font-black text-sky-600 text-sm">₹{discountedPrice}</span>
+                          </div>
+                        ) : (
+                          <span className="font-black text-slate-800 text-sm">₹{p.price}</span>
+                        )}
+                      </div>
+                      <span className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">Stock: {p.stock}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
