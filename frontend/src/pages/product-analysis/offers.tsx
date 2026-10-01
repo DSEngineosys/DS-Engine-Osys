@@ -256,9 +256,9 @@ export default function Offers() {
                         <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 font-medium">
                           <span>{item.category}</span>
                           <span>•</span>
-                          <span className="font-bold text-slate-900">${item.sellingPrice.toFixed(2)}</span>
+                          <span className="font-bold text-slate-900">₹{item.sellingPrice.toFixed(2)}</span>
                           {item.mrp > item.sellingPrice && (
-                            <span className="line-through text-slate-400 font-normal">${item.mrp.toFixed(2)}</span>
+                            <span className="line-through text-slate-400 font-normal">₹{item.mrp.toFixed(2)}</span>
                           )}
                         </div>
 

@@ -116,11 +116,11 @@ export default function ProductDetail() {
                   <div className="flex flex-col gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Selling Price</p>
-                      <p className="text-lg font-black text-primary">${prod.price?.toFixed(2)}</p>
+                      <p className="text-lg font-black text-primary">₹{prod.price?.toFixed(2)}</p>
                     </div>
                     <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">MRP</p>
-                      <p className="text-lg font-black text-slate-700">${(prod.mrp || prod.price)?.toFixed(2)}</p>
+                      <p className="text-lg font-black text-slate-700">₹{(prod.mrp || prod.price)?.toFixed(2)}</p>
                     </div>
                     <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Stock Units</p>

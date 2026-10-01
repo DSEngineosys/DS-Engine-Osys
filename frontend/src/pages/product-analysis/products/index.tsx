@@ -122,7 +122,7 @@ export default function ProductsList() {
                     <div className="mt-auto grid grid-cols-2 gap-2 pt-3 border-t">
                       <div>
                         <div className="text-[10px] uppercase text-muted-foreground font-semibold">Price</div>
-                        <div className="font-medium">${product.price?.toFixed(2)}</div>
+                        <div className="font-medium">₹{product.price?.toFixed(2)}</div>
                       </div>
                       <div>
                         <div className="text-[10px] uppercase text-muted-foreground font-semibold">Stock</div>

@@ -168,7 +168,7 @@ export default function ProductRanking() {
                           <span>•</span>
                           <span>Avg Selling Time: <strong className="text-slate-700">{item.avgSellingTimePeriod} days</strong></span>
                           <span>•</span>
-                          <span>Avg Profit: <strong className="text-emerald-600">${item.avgProfit.toFixed(2)}</strong></span>
+                          <span>Avg Profit: <strong className="text-emerald-600">₹{item.avgProfit.toFixed(2)}</strong></span>
                           <span>•</span>
                           <span>Avg Discount: <strong className="text-indigo-600">{item.avgOfferDiscount}%</strong></span>
                         </div>

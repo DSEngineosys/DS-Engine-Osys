@@ -462,7 +462,7 @@ function ProductPhase({ settings, products, loading, mlRunning }: any) {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-black text-slate-900 tracking-tight">${p.revenue?.toLocaleString()}</p>
+                        <p className="font-black text-slate-900 tracking-tight">₹{p.revenue?.toLocaleString()}</p>
                         <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">Revenue</p>
                       </div>
                       <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-primary group-hover:translate-x-1 transition-all" />

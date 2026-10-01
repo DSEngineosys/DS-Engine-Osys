@@ -46,7 +46,7 @@ export function DynamicTaskSelector({
         // Use products for SO and SSO
         setAvailableTasks(products.map(p => ({
           title: p.name,
-          desc: `SKU: ${p.sku} | Price: $${p.price} | Stock: ${p.stock}`,
+          desc: `SKU: ${p.sku} | Price: ₹${p.price} | Stock: ${p.stock}`,
           requiresQuantity: true
         })));
       } else {
