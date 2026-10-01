@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -102,8 +102,6 @@ export default function Offers() {
   // Track selected pair products for Priority 2 Combine Selling
   const [selectedPairProducts, setSelectedPairProducts] = useState<Record<string, string>>({});
   
-  // Track custom discount percentage for Priority 1 Discount
-  const [customDiscounts, setCustomDiscounts] = useState<Record<string, number>>({});
 
   // Track custom offer duration (in minutes) per product (default 60 mins)
   const [offerDurations, setOfferDurations] = useState<Record<string, number>>({});
@@ -388,7 +386,7 @@ export default function Offers() {
                                       <SelectContent>
                                         {offer.availablePairProducts?.map((p) => (
                                           <SelectItem key={p.productId} value={p.productId} className="text-xs">
-                                            {p.productName} (${p.price.toFixed(2)})
+                                            {p.productName} (₹{p.price.toFixed(2)})
                                           </SelectItem>
                                         ))}
                                       </SelectContent>
@@ -396,21 +394,21 @@ export default function Offers() {
                                   </div>
                                 )}
 
-                                {/* Priority 1: DISCOUNT PERCENT INPUT */}
+                                {/* Priority 1: ML SUGGESTED DISCOUNT DISPLAY (read-only) */}
                                 {offer.type === 'discount' && (
                                   <div className="mt-2 space-y-1.5" onClick={(e) => e.stopPropagation()}>
                                     <label className="text-[10px] font-black uppercase text-sky-800">
-                                      Set Discount % (0-100%):
+                                      ML Suggested Discount:
                                     </label>
-                                    <Input
-                                      type="number"
-                                      disabled={isOfferLocked}
-                                      min={1}
-                                      max={100}
-                                      value={customDiscounts[item.productId] ?? offer.defaultDiscountPercent ?? 20}
-                                      onChange={(e) => setCustomDiscounts(prev => ({ ...prev, [item.productId]: parseInt(e.target.value, 10) || 0 }))}
-                                      className="h-9 rounded-xl text-xs bg-white border-sky-300 font-bold text-slate-800"
-                                    />
+                                    <div className="h-9 rounded-xl text-xs bg-sky-50 border border-sky-300 font-black text-sky-800 flex items-center justify-between px-3 select-none">
+                                      <span className="flex items-center gap-1.5">
+                                        <Cpu className="w-3.5 h-3.5 text-sky-500" />
+                                        System Suggested
+                                      </span>
+                                      <span className="text-base font-black text-sky-700">
+                                        {offer.defaultDiscountPercent ?? 20}%
+                                      </span>
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -458,7 +456,10 @@ export default function Offers() {
                             if (currentActivePriority === 4) discountVal = 50; // BOGO ~ 50%
                             else if (currentActivePriority === 3) discountVal = 33; // B2G1 ~ 33%
                             else if (currentActivePriority === 2) discountVal = 25; // Combine ~ 25%
-                            else if (currentActivePriority === 1) discountVal = customDiscounts[item.productId] ?? 20;
+                            else if (currentActivePriority === 1) {
+                              const discOffer = item.offers.find(o => o.priority === 1);
+                              discountVal = discOffer?.defaultDiscountPercent ?? 20;
+                            }
 
                             applyOfferMutation.mutate({
                               productId: item.productId,

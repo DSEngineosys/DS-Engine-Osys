@@ -143,8 +143,17 @@ def run_ml_pipeline_background():
                     {"priority": 3, "id": "b2g1", "name": "BUY TWO GET ONE FREE", "isRecommended": rec_priority == 3, "type": "b2g1"},
                     {"priority": 2, "id": "combine_sell", "name": "Combine Selling (Bundle Product)", "isRecommended": rec_priority == 2, "type": "combine_sell",
                      "allowProductSelection": True, "availablePairProducts": [p for p in other_product_options if p["productId"] != p_id][:15]},
-                    {"priority": 1, "id": "discount", "name": "0-100% Discount on Price", "isRecommended": rec_priority == 1, "type": "discount",
-                     "defaultDiscountPercent": int(min(100, max(5, round(100 - score * 0.8))))}
+                    {
+                         "priority": 1, "id": "discount", "name": "0-100% Discount on Price",
+                         "isRecommended": rec_priority == 1, "type": "discount",
+                         # Performance-based discount:
+                         # score 0-25  (LOWEST) → ~70-80% discount
+                         # score 25-40 (LOW)    → ~55-70% discount
+                         # score 40-55 (MID)    → ~40-55% discount
+                         # score 55-70 (HIGH)   → ~25-40% discount
+                         # score 70+            → ~5-25% discount
+                         "defaultDiscountPercent": int(min(80, max(5, round(80 - score * 0.75))))
+                    }
                 ]
             })
 
