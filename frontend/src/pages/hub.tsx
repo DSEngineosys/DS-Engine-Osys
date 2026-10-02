@@ -356,7 +356,7 @@ function EmployeePhase({ settings, offers, dsEngineers, videoRef, onOfferAction,
       <section className="space-y-4">
         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Featured Spotlight</h2>
         {settings.promotionalVideo ? (
-          <div className="rounded-[2.5rem] overflow-hidden shadow-2xl bg-black aspect-video relative group border-4 border-white">
+          <div className="rounded-[2.5rem] overflow-hidden shadow-2xl bg-black aspect-video relative group">
             <video 
               ref={videoRef}
               key={settings.promotionalVideo}

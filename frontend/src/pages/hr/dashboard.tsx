@@ -590,7 +590,7 @@ export default function HRDashboard() {
                     <label className="text-sm font-semibold mb-1 block">Description</label>
                     <Input value={prodForm.description} onChange={e => setProdForm({ ...prodForm, description: e.target.value })} />
                   </div>
-                  <div className="md:col-span-4"><Button type="submit" className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold" disabled={loading}>Add Product to products.json</Button></div>
+                  <div className="md:col-span-4"><Button type="submit" className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold" disabled={loading}>Add Product</Button></div>
                 </form>
               </CardContent>
             </Card>
