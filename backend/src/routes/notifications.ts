@@ -66,6 +66,18 @@ router.post("/notifications/:id/read", async (req, res) => {
       return;
     }
 
+    const notif = await Notification.findById(req.params.id);
+    if (!notif) {
+      res.status(404).json({ error: "Not found", message: "Notification not found" });
+      return;
+    }
+    
+    // Check if user is authorized to read this notification (must be recipient or a broadcast)
+    if (notif.recipientId && String(notif.recipientId) !== String(session.userId)) {
+      res.status(403).json({ error: "Forbidden", message: "Not your notification" });
+      return;
+    }
+
     await Notification.findByIdAndUpdate(req.params.id, { isRead: true });
     res.json({ success: true });
   } catch (err: any) {

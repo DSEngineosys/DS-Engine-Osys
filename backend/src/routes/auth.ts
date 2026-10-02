@@ -209,7 +209,7 @@ router.post("/auth/register-request", async (req, res) => {
 
   res.status(201).json({
     message: "Registration request sent to Admin. Please wait for approval.",
-    user: formatUser(user!),
+    user: await formatUser(user!),
   });
 });
 
@@ -310,7 +310,6 @@ router.post("/auth/login", async (req, res) => {
     }
   }
 
-  console.log("LOGIN DEBUG - User:", user.email, "Input Pass:", password, "DB Pass:", user.password);
   if (!user.password || user.password !== password) {
     res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
     return;

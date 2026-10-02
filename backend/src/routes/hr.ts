@@ -334,7 +334,7 @@ router.post("/hr/employee-requests/:id/deny", requireHR, async (req: any, res: a
     return res.status(403).json({ error: "Forbidden", message: "Employee is not in your department" });
   }
   // Also check sub-department scope if HR has one assigned
-  if (hrUser && hrUser.subDepartmentId && emp.subDepartmentId && emp.subDepartmentId !== hrUser.subDepartmentId) {
+  if (hrUser && hrUser.subDepartmentId && emp.subDepartmentId && emp.subDepartmentId.toString() !== hrUser.subDepartmentId.toString()) {
     return res.status(403).json({ error: "Forbidden", message: "Employee is not in your sub-department" });
   }
 

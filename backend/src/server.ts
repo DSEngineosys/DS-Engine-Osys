@@ -6,7 +6,7 @@ import Bonus from "./models/bonus.model";
 import { startDailyCollector } from "./jobs/daily-collector";
 import { checkAndCleanExpiredProductOffers } from "./services/product-offer-cleaner";
 
-const rawPort = process.env["PORT"] || "8080";
+const rawPort = process.env["PORT"] ?? "8080";
 
 if (!rawPort) {
   throw new Error(

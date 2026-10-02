@@ -137,15 +137,7 @@ router.get("/products", async (req, res) => {
   }
 });
 
-// GET unique categories
-router.get("/products/categories", async (_req, res) => {
-  try {
-    const categories = await Product.distinct("category");
-    res.json(categories.filter(Boolean));
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch categories", message: String(err) });
-  }
-});
+
 
 // CREATE new product
 router.post("/products", async (req, res) => {
@@ -162,6 +154,16 @@ router.post("/products", async (req, res) => {
     revenue,
   });
   res.status(201).json(formatProduct(prod));
+});
+
+// GET unique categories
+router.get("/products/categories", async (_req, res) => {
+  try {
+    const categories = await Product.distinct("category");
+    res.json(categories.filter(Boolean));
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch categories", message: String(err) });
+  }
 });
 
 // GET single product by ID or productId

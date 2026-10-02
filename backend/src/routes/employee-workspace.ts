@@ -104,7 +104,7 @@ router.get("/employee/performance", requireEmployee, async (req: any, res: any) 
 
   // Bonus points for this month
   const now = new Date();
-  const bonuses = await Bonus.find({ assignedTo: session.userId });
+  const bonuses = await Bonus.find({ "assignedEmployees.employeeId": session.userId });
   const bonusPoints = bonuses.length * 10;
 
   res.json({
@@ -119,7 +119,7 @@ router.get("/employee/performance", requireEmployee, async (req: any, res: any) 
 // Assigned bonuses for employee
 router.get("/employee/bonuses", requireEmployee, async (req: any, res: any) => {
   const session = req.session as any;
-  const bonuses = await Bonus.find({ assignedTo: session.userId }).sort({ createdAt: -1 });
+  const bonuses = await Bonus.find({ "assignedEmployees.employeeId": session.userId }).sort({ createdAt: -1 });
   res.json(bonuses);
 });
 
@@ -235,8 +235,10 @@ router.post("/employee/activity", requireEmployee, async (req: any, res: any) =>
   if (activityType === "ISR Meeting & Tasks" && payload.meetingDetails) {
     try {
       const { sendEmail } = await import("../lib/email");
+      const ssoSubDepts = await SubDepartment.find({ name: { $regex: new RegExp("^sso$", "i") } });
+      const ssoSubDeptIds = ssoSubDepts.map(sd => sd._id);
       const ssoEmployees = await Employee.find({ 
-        subDepartmentId: { $regex: new RegExp("^sso$", "i") },
+        subDepartmentId: { $in: ssoSubDeptIds },
         status: "active" 
       });
       
