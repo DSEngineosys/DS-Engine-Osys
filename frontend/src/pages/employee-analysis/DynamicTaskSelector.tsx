@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api-extra";
-import { Loader2 } from "lucide-react";
+import { Loader2, Tag, Layers } from "lucide-react";
 
 export function DynamicTaskSelector({ 
   employee, 
@@ -22,6 +22,10 @@ export function DynamicTaskSelector({
   const [dueDate, setDueDate] = useState("");
   const [assigning, setAssigning] = useState(false);
 
+  // Filters for Category & Subcategory
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [subCategoryFilter, setSubCategoryFilter] = useState("all");
+
   if (activeTasksCount >= 3) {
     return (
       <div className="p-4 bg-amber-50 text-amber-800 rounded-xl border border-amber-100 text-sm font-medium text-center">
@@ -32,6 +36,7 @@ export function DynamicTaskSelector({
 
   const dept = employee?.departmentName || "";
   const subDept = employee?.subDepartmentName || "";
+  const isMarketingSOorSSO = dept.includes("Marketing") && (subDept === "SO" || subDept === "SSO");
 
   const [availableTasks, setAvailableTasks] = useState<any[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
@@ -42,28 +47,37 @@ export function DynamicTaskSelector({
     async function loadTasks() {
       if (!dept || !subDept) return;
       
-      if (dept.includes("Marketing") && (subDept === "SO" || subDept === "SSO")) {
-        // Use products for SO and SSO
-        setAvailableTasks(products.map(p => {
-          const isOffer = p.isOfferActive && p.offerPercentage > 0;
-          const discount = p.offerPercentage || p.discountPercent || 0;
-          const discountedPrice = isOffer ? (p.price * (1 - discount / 100)).toFixed(2) : null;
+      if (isMarketingSOorSSO) {
+        // Filter out-of-stock products and map with category & subcategory info
+        setAvailableTasks(
+          products
+            .filter(p => (p.stock ?? p.stockQuantity ?? 0) > 0)
+            .map(p => {
+              const stockVal = p.stock ?? p.stockQuantity ?? 0;
+              const isOffer = p.isOfferActive && p.offerPercentage > 0;
+              const discount = p.offerPercentage || p.discountPercent || 0;
+              const priceVal = p.price ?? p.sellingPrice ?? 0;
+              const discountedPrice = isOffer ? (priceVal * (1 - discount / 100)).toFixed(2) : null;
 
-          return {
-            title: p.name,
-            desc: isOffer 
-              ? `SKU: ${p.sku} | Price: ₹${discountedPrice} (Original: ₹${p.price}, -${discount}% OFF) | Stock: ${p.stock}`
-              : `SKU: ${p.sku} | Price: ₹${p.price} | Stock: ${p.stock}`,
-            requiresQuantity: true,
-            isOfferActive: isOffer,
-            offerPercentage: discount,
-            offerName: p.activeOfferDetails?.offerName,
-            originalPrice: p.price,
-            discountedPrice: discountedPrice
-          };
-        }));
+              return {
+                title: p.name || p.productName,
+                desc: isOffer 
+                  ? `SKU: ${p.sku || p.productId} | Price: ₹${discountedPrice} (Original: ₹${priceVal}, -${discount}% OFF) | Stock: ${stockVal}`
+                  : `SKU: ${p.sku || p.productId} | Price: ₹${priceVal} | Stock: ${stockVal}`,
+                requiresQuantity: true,
+                isOfferActive: isOffer,
+                offerPercentage: discount,
+                offerName: p.activeOfferDetails?.offerName,
+                originalPrice: priceVal,
+                discountedPrice: discountedPrice,
+                category: p.category || "General",
+                subCategory: p.subCategory || "General",
+                stock: stockVal
+              };
+            })
+        );
       } else {
-        // Fetch predefined DS Tasks from backend for everything else
+        // Fetch predefined DS Tasks from backend for non-marketing roles
         setLoadingTasks(true);
         try {
           const dsTasks = await api.getDSTasks(dept, subDept);
@@ -85,10 +99,9 @@ export function DynamicTaskSelector({
       }
     }
     loadTasks();
-  }, [dept, subDept, products]);
+  }, [dept, subDept, products, isMarketingSOorSSO]);
 
-  // Specific check for Machine operator production monitoring or SO/SSO
-  if (selectedTask?.requiresQuantity || (dept.includes("Marketing") && (subDept === "SO" || subDept === "SSO"))) {
+  if (selectedTask?.requiresQuantity || isMarketingSOorSSO) {
     requiresQuantity = true;
   }
   if (subDept === "SSO") {
@@ -129,55 +142,170 @@ export function DynamicTaskSelector({
     }
   };
 
+  // Derive unique categories & subcategories for filtering
+  const categories = Array.from(new Set(availableTasks.map(t => t.category).filter(Boolean)));
+  const subCategories = Array.from(
+    new Set(
+      availableTasks
+        .filter(t => categoryFilter === "all" || t.category?.toLowerCase() === categoryFilter.toLowerCase())
+        .map(t => t.subCategory)
+        .filter(Boolean)
+    )
+  );
+
+  // Filter tasks based on selected dropdown values
+  const filteredTasks = availableTasks.filter(t => {
+    if (categoryFilter !== "all" && t.category?.toLowerCase() !== categoryFilter.toLowerCase()) return false;
+    if (subCategoryFilter !== "all" && t.subCategory?.toLowerCase() !== subCategoryFilter.toLowerCase()) return false;
+    return true;
+  });
+
+  // Group filtered tasks by Category -> SubCategory
+  const groupedTasks = filteredTasks.reduce((acc: any, t: any) => {
+    const cat = t.category || "General";
+    const sub = t.subCategory || "General";
+    if (!acc[cat]) acc[cat] = {};
+    if (!acc[cat][sub]) acc[cat][sub] = [];
+    acc[cat][sub].push(t);
+    return acc;
+  }, {});
+
+  const renderTaskCard = (task: any, idx: number) => {
+    const isOffer = task.isOfferActive;
+    const isSelected = selectedTask?.title === task.title;
+
+    return (
+      <div 
+        key={idx}
+        onClick={() => { 
+          if (isSelected) {
+            setSelectedTask(null);
+          } else {
+            setSelectedTask(task); 
+            setQuantity(""); 
+          }
+        }}
+        className={`min-w-[280px] max-w-[280px] shrink-0 p-4 rounded-2xl border-2 cursor-pointer transition-all snap-start flex flex-col relative
+          ${isSelected 
+            ? 'border-primary bg-primary/5 shadow-md scale-[1.02]' 
+            : isOffer
+            ? 'border-sky-400 bg-sky-50/40 hover:border-sky-500 ring-1 ring-sky-300 shadow-sm shadow-sky-100'
+            : 'border-slate-100 bg-white hover:border-slate-200 shadow-sm'}`}
+      >
+        {isOffer && (
+          <span className="absolute top-3 right-3 bg-sky-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">
+            -{task.offerPercentage}% OFF
+          </span>
+        )}
+        <h4 className={`font-bold text-base mb-1 line-clamp-1 ${isSelected ? 'text-primary' : 'text-slate-800'} ${isOffer ? 'pr-14' : ''}`}>
+          {task.title}
+        </h4>
+        <p className="text-xs text-slate-500 line-clamp-3 mt-auto">{task.desc}</p>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {loadingTasks ? (
         <div className="flex justify-center p-8">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
-      ) : (
-        <div className="flex gap-4 overflow-x-auto pb-2 pt-4 snap-x custom-scrollbar" style={{ transform: 'rotateX(180deg)' }}>
-          {availableTasks.map((task, idx) => {
-            const isOffer = task.isOfferActive;
-
-            return (
-              <div 
-                key={idx}
-                style={{ transform: 'rotateX(180deg)' }}
-                onClick={() => { 
-                  if (selectedTask?.title === task.title) {
-                    setSelectedTask(null);
-                  } else {
-                    setSelectedTask(task); 
-                    setQuantity(""); 
-                  }
-                }}
-                className={`min-w-[280px] max-w-[280px] p-4 rounded-2xl border-2 cursor-pointer transition-all snap-start flex flex-col relative
-                  ${selectedTask?.title === task.title 
-                    ? 'border-primary bg-primary/5 shadow-md scale-[1.02]' 
-                    : isOffer
-                    ? 'border-sky-400 bg-sky-50/40 hover:border-sky-500 ring-1 ring-sky-300 shadow-sm shadow-sky-100'
-                    : 'border-slate-100 bg-white hover:border-slate-200'}`}
-              >
-                {isOffer && (
-                  <span className="absolute top-3 right-3 bg-sky-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">
-                    -{task.offerPercentage}% OFF
-                  </span>
-                )}
-                <h4 className={`font-bold text-base mb-1 line-clamp-1 ${selectedTask?.title === task.title ? 'text-primary' : 'text-slate-800'} ${isOffer ? 'pr-14' : ''}`}>
-                  {task.title}
-                </h4>
-                <p className="text-xs text-slate-500 line-clamp-3 mt-auto">{task.desc}</p>
+      ) : isMarketingSOorSSO ? (
+        <div className="space-y-6">
+          {/* Category & SubCategory Filter Header */}
+          <div className="flex flex-wrap gap-4 items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-600 uppercase tracking-wider">
+              <Tag className="w-4 h-4 text-primary" /> Category & Subcategory Filter:
+            </div>
+            <div className="flex gap-3 flex-1 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-slate-500">Category:</span>
+                <select
+                  value={categoryFilter}
+                  onChange={e => {
+                    setCategoryFilter(e.target.value);
+                    setSubCategoryFilter("all");
+                  }}
+                  className="h-9 text-xs border border-slate-200 rounded-lg px-3 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="all">All Categories ({categories.length})</option>
+                  {categories.map((cat: any) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
               </div>
-            );
-          })}
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-slate-500">Sub Category:</span>
+                <select
+                  value={subCategoryFilter}
+                  onChange={e => setSubCategoryFilter(e.target.value)}
+                  className="h-9 text-xs border border-slate-200 rounded-lg px-3 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="all">All Subcategories ({subCategories.length})</option>
+                  {subCategories.map((sub: any) => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Grouped Product Cards by Category -> SubCategory */}
+          {Object.keys(groupedTasks).length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+              No available products with stock in selected category/subcategory.
+            </div>
+          ) : (
+            Object.entries(groupedTasks).map(([category, subCats]: [string, any]) => (
+              <div key={category} className="space-y-4 p-4 border border-slate-100 rounded-2xl bg-slate-50/40">
+                {/* Category Header */}
+                <div className="flex items-center gap-2 border-b border-slate-200/60 pb-2">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-primary" />
+                    {category}
+                  </h3>
+                  <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full">
+                    Category
+                  </span>
+                </div>
+
+                {/* Subcategories */}
+                {Object.entries(subCats).map(([subCategory, items]: [string, any]) => (
+                  <div key={subCategory} className="space-y-2">
+                    <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5 pl-1">
+                      <span className="w-2 h-2 rounded-full bg-primary"></span> 
+                      {subCategory} ({items.length})
+                    </h4>
+
+                    {/* Scrollable list of product cards */}
+                    <div className="flex gap-4 overflow-x-auto pb-2 pt-1 snap-x custom-scrollbar">
+                      {items.map((task: any, idx: number) => renderTaskCard(task, idx))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+      ) : (
+        /* Default layout for non-marketing departments */
+        <div className="flex gap-4 overflow-x-auto pb-2 pt-4 snap-x custom-scrollbar" style={{ transform: 'rotateX(180deg)' }}>
+          {availableTasks.map((task, idx) => (
+            <div key={idx} style={{ transform: 'rotateX(180deg)' }}>
+              {renderTaskCard(task, idx)}
+            </div>
+          ))}
         </div>
       )}
 
       {selectedTask && (
         <form onSubmit={handleAssign} className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div>
-            <h4 className="font-bold text-slate-800 text-sm">Selected Task: <span className="text-primary">{selectedTask.title}</span></h4>
+            <h4 className="font-bold text-slate-800 text-sm">
+              Selected Task: <span className="text-primary">{selectedTask.title}</span>
+            </h4>
             <p className="text-sm text-slate-500 mt-1">{selectedTask.desc}</p>
           </div>
           
