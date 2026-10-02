@@ -54,6 +54,22 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:8080",
         changeOrigin: true,
+        proxyTimeout: 10_000,
+        timeout: 10_000,
+        configure: (proxy) => {
+          proxy.on("error", (err, req, res) => {
+            // Suppress noisy ECONNREFUSED/ECONNRESET during backend restarts
+            const code = (err as NodeJS.ErrnoException).code ?? "";
+            if (code === "ECONNREFUSED" || code === "ECONNRESET") {
+              if ("writeHead" in res && typeof res.writeHead === "function") {
+                res.writeHead(503, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({ error: "Backend temporarily unavailable" }));
+              }
+            } else {
+              console.error("[proxy error]", err.message);
+            }
+          });
+        },
       },
     },
   },

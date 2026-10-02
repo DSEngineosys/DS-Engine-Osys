@@ -258,6 +258,7 @@ router.get("/ml/product-offers", async (req: any, res: any) => {
                offerAppliedAt: dbProd.offerAppliedAt,
                offerExpiresAt: dbProd.offerExpiresAt,
                activeOfferDetails: dbProd.activeOfferDetails,
+               stock: dbProd.stock ?? 0,
              };
           }
           return offer;

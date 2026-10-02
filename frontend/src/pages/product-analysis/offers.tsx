@@ -24,7 +24,8 @@ import {
   Lock,
   Clock,
   Timer,
-  ShieldAlert
+  ShieldAlert,
+  AlertTriangle
 } from "lucide-react";
 
 interface PairProductOption {
@@ -54,6 +55,7 @@ interface ProductOfferItem {
   mrp: number;
   sellingPrice: number;
   imageUrl?: string;
+  stock?: number;
   performanceScore: number;
   performanceLevel: "LOWEST" | "LOW" | "LOW_MID" | "MID" | "HIGH";
   recommendedPriority: number; // 4, 3, 2, or 1
@@ -161,7 +163,10 @@ export default function Offers() {
     }
   });
 
-  const productOffers = data?.productOffers || [];
+  const allProductOffers = data?.productOffers || [];
+  // Only show products that have stock > 0 for offer application
+  const productOffers = allProductOffers.filter((p) => (p.stock ?? 1) > 0);
+  const outOfStockProducts = allProductOffers.filter((p) => (p.stock ?? 1) <= 0);
 
   return (
     <FlipchartLayout activePhase={activePhase} onPhaseChange={setActivePhase}>
@@ -498,6 +503,40 @@ export default function Offers() {
                 </Card>
               );
             })}
+          </div>
+        )}
+
+        {/* Out-of-Stock Section */}
+        {outOfStockProducts.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <AlertTriangle className="w-4 h-4 text-slate-400" />
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Out of Stock — Offers Unavailable ({outOfStockProducts.length})
+              </span>
+            </div>
+            {outOfStockProducts.map((item) => (
+              <div
+                key={item.productId}
+                className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 opacity-60"
+              >
+                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200 shrink-0">
+                  {item.imageUrl ? (
+                    <img src={`/${item.imageUrl}`} alt={item.productName} className="w-full h-full object-cover rounded-xl" />
+                  ) : (
+                    <Package className="w-6 h-6 text-slate-300" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-slate-600 text-sm truncate">{item.productName}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{item.category}</p>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-200 px-3 py-1.5 rounded-xl shrink-0">
+                  <AlertTriangle className="w-3.5 h-3.5 text-slate-400" />
+                  Out of Stock
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
