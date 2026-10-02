@@ -68,7 +68,7 @@ def run_ml_pipeline_background():
                 recommendation = "High demand item - Maintain stock and pricing"
             elif score >= 40:
                 level = "MID"
-                recommendation = "Moderate sales velocity - Consider 0-100% discount or combine selling"
+                recommendation = "Moderate sales velocity - Consider Discount on Price (10-75%) or combine selling"
             else:
                 level = "LOW"
                 recommendation = "Low performance level - Immediate offer intervention recommended"
@@ -122,6 +122,15 @@ def run_ml_pipeline_background():
                 except Exception as ex:
                     app.logger.warning(f"Error parsing offerExpiresAt {expires_at}: {ex}")
 
+            price_val = float(meta.get("sellingPrice") or meta.get("mrp") or 100)
+            cost_val = float(meta.get("cost") or price_val * 0.4)
+            bogo_prof = max(0.0, price_val - (2 * cost_val))
+            b2g1_prof = max(0.0, (2 * price_val) - (3 * cost_val))
+            bundle_prof = max(0.0, ((price_val * 1.8) * 0.8) - (cost_val * 1.8))
+            disc_pct = int(min(75, max(10, round(75 - score * 0.65))))
+            disc_price = price_val * (1.0 - (disc_pct / 100.0))
+            disc_prof = max(0.0, disc_price - cost_val)
+
             offers_result.append({
                 "productId": p_id,
                 "productName": row["productName"],
@@ -139,20 +148,27 @@ def run_ml_pipeline_background():
                 "offerRemainingSeconds": remaining_seconds,
                 "activeOfferDetails": meta.get("activeOfferDetails"),
                 "offers": [
-                    {"priority": 4, "id": "bogo", "name": "BUY ONE GET ONE FREE", "isRecommended": rec_priority == 4, "type": "bogo"},
-                    {"priority": 3, "id": "b2g1", "name": "BUY TWO GET ONE FREE", "isRecommended": rec_priority == 3, "type": "b2g1"},
-                    {"priority": 2, "id": "combine_sell", "name": "Combine Selling (Bundle Product)", "isRecommended": rec_priority == 2, "type": "combine_sell",
-                     "allowProductSelection": True, "availablePairProducts": [p for p in other_product_options if p["productId"] != p_id][:15]},
                     {
-                         "priority": 1, "id": "discount", "name": "0-100% Discount on Price",
-                         "isRecommended": rec_priority == 1, "type": "discount",
-                         # Performance-based discount:
-                         # score 0-25  (LOWEST) → ~70-80% discount
-                         # score 25-40 (LOW)    → ~55-70% discount
-                         # score 40-55 (MID)    → ~40-55% discount
-                         # score 55-70 (HIGH)   → ~25-40% discount
-                         # score 70+            → ~5-25% discount
-                         "defaultDiscountPercent": int(min(80, max(5, round(80 - score * 0.75))))
+                        "priority": 4, "id": "bogo", "name": "BUY ONE GET ONE FREE", 
+                        "isRecommended": rec_priority == 4, "type": "bogo",
+                        "profitEstimate": f"Est. Profit: ~₹{bogo_prof:.2f} ({round((bogo_prof/price_val)*100)}% margin, clears 2x stock)"
+                    },
+                    {
+                        "priority": 3, "id": "b2g1", "name": "BUY TWO GET ONE FREE", 
+                        "isRecommended": rec_priority == 3, "type": "b2g1",
+                        "profitEstimate": f"Est. Profit: ~₹{b2g1_prof:.2f} ({round((b2g1_prof/(2*price_val))*100)}% margin on 3 units)"
+                    },
+                    {
+                        "priority": 2, "id": "combine_sell", "name": "Combine Selling (Bundle Product)", 
+                        "isRecommended": rec_priority == 2, "type": "combine_sell",
+                        "allowProductSelection": True, "availablePairProducts": [p for p in other_product_options if p["productId"] != p_id][:15],
+                        "profitEstimate": f"Est. Profit: ~₹{bundle_prof:.2f} (~40% margin on bundle order)"
+                    },
+                    {
+                        "priority": 1, "id": "discount", "name": "Discount on Price",
+                        "isRecommended": rec_priority == 1, "type": "discount",
+                        "defaultDiscountPercent": disc_pct,
+                        "profitEstimate": f"Est. Profit: ~₹{disc_prof:.2f} ({round((disc_prof/max(1,disc_price))*100)}% margin at {disc_pct}% off)"
                     }
                 ]
             })

@@ -48,7 +48,7 @@ const updateProdSchema = z.object({
 });
 
 const offerSchema = z.object({
-  offerPercentage: z.number().min(1).max(100),
+  offerPercentage: z.number().min(10).max(75),
   durationMinutes: z.number().positive().optional().default(60),
   reason: z.string().optional(),
   offerName: z.string().optional(),

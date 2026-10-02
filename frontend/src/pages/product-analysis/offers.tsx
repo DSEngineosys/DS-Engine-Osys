@@ -25,7 +25,8 @@ import {
   Clock,
   Timer,
   ShieldAlert,
-  AlertTriangle
+  AlertTriangle,
+  TrendingUp
 } from "lucide-react";
 
 interface PairProductOption {
@@ -45,6 +46,7 @@ interface OfferOption {
   allowProductSelection?: boolean;
   availablePairProducts?: PairProductOption[];
   defaultDiscountPercent?: number;
+  profitEstimate?: string;
 }
 
 interface ProductOfferItem {
@@ -374,6 +376,14 @@ export default function Offers() {
                                   )}
                                 </div>
 
+                                {/* Profit Estimate Description */}
+                                {offer.profitEstimate && (
+                                  <p className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1 mb-2 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/60">
+                                    <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                    {offer.profitEstimate}
+                                  </p>
+                                )}
+
                                 {/* Priority 2: COMBINE SELLING PRODUCT SELECTION DROPDOWN */}
                                 {offer.type === 'combine_sell' && offer.allowProductSelection && (
                                   <div className="mt-2 space-y-1.5" onClick={(e) => e.stopPropagation()}>
@@ -463,7 +473,8 @@ export default function Offers() {
                             else if (currentActivePriority === 2) discountVal = 25; // Combine ~ 25%
                             else if (currentActivePriority === 1) {
                               const discOffer = item.offers.find(o => o.priority === 1);
-                              discountVal = discOffer?.defaultDiscountPercent ?? 20;
+                              const rawDiscount = discOffer?.defaultDiscountPercent ?? 20;
+                              discountVal = Math.min(75, Math.max(10, rawDiscount));
                             }
 
                             applyOfferMutation.mutate({
