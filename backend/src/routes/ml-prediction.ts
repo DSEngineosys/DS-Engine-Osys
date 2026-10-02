@@ -2,6 +2,7 @@ import { Router } from "express";
 import Employee from "../models/employee.model";
 import Performance from "../models/performance.model";
 import EmployeeDailyPerformance from "../models/employee-daily-performance.model";
+import Product from "../models/product.model";
 
 const router = Router();
 
@@ -228,7 +229,41 @@ router.get("/ml/product-offers", async (req: any, res: any) => {
   try {
     const response = await fetch("http://127.0.0.1:5000/api/ml/offers");
     if (response.ok) {
-      const data = await response.json();
+      const data = (await response.json()) as any;
+      
+      // Augment the cached data with real-time offer lock states from MongoDB
+      if (data && data.productOffers) {
+        const productIds = data.productOffers.map((o: any) => o.productId);
+        // MongoDB _id uses 24 hex characters. If productId is a valid _id, we can search it.
+        const validObjectIds = productIds.filter((id: string) => /^[a-fA-F0-9]{24}$/.test(id));
+        
+        const products = await Product.find({ 
+          $or: [
+            { productId: { $in: productIds } }, 
+            { sku: { $in: productIds } },
+            ...(validObjectIds.length > 0 ? [{ _id: { $in: validObjectIds } }] : [])
+          ] 
+        });
+        
+        const prodMap = new Map(products.map(p => [p.productId || p.sku || p._id.toString(), p]));
+        const now = new Date();
+        
+        data.productOffers = data.productOffers.map((offer: any) => {
+          const dbProd = prodMap.get(offer.productId);
+          if (dbProd) {
+             const isOfferActive = dbProd.offerExpiresAt ? new Date(dbProd.offerExpiresAt) > now : false;
+             return {
+               ...offer,
+               isOfferActive,
+               offerAppliedAt: dbProd.offerAppliedAt,
+               offerExpiresAt: dbProd.offerExpiresAt,
+               activeOfferDetails: dbProd.activeOfferDetails,
+             };
+          }
+          return offer;
+        });
+      }
+      
       return res.json(data);
     }
     throw new Error(`Python ML service returned status ${response.status}`);
