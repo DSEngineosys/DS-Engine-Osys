@@ -99,7 +99,7 @@ export default function ProductsList() {
                 <Card className="h-full transition-all cursor-pointer group flex flex-col overflow-hidden hover:border-secondary-foreground/30 hover:shadow-md">
                   <div className="h-32 bg-slate-100 flex items-center justify-center relative">
                     {product.imageUrl ? (
-                      <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover mix-blend-multiply opacity-80" />
+                      <img src={product.imageUrl?.startsWith('/') ? product.imageUrl : `/${product.imageUrl}`} alt={product.name} className="w-full h-full object-contain mix-blend-multiply opacity-80" />
                     ) : (
                       <Package className="w-12 h-12 text-slate-300" />
                     )}

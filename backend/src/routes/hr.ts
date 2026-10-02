@@ -15,6 +15,20 @@ import HR from "../models/hr.model";
 import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
+import multer from "multer";
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(process.cwd(), "src", "data", "ProductImages");
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `temp-${Date.now()}${ext}`);
+  }
+});
+const upload = multer({ storage });
 
 const router = Router();
 
@@ -614,7 +628,13 @@ const addStockSchema = z.object({
   stockQuantity: z.number().min(1),
 });
 
-router.post("/hr/products", async (req: any, res: any) => {
+router.post("/hr/products", upload.single("image"), async (req: any, res: any) => {
+  // Convert fields from strings if FormData was used
+  if (typeof req.body.price === "string") req.body.price = Number(req.body.price);
+  if (typeof req.body.mrp === "string") req.body.mrp = Number(req.body.mrp);
+  if (typeof req.body.discountPercent === "string") req.body.discountPercent = Number(req.body.discountPercent);
+  if (typeof req.body.taxPercent === "string") req.body.taxPercent = Number(req.body.taxPercent);
+
   const parsed = addProductSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Invalid input", message: parsed.error.message });
@@ -626,6 +646,15 @@ router.post("/hr/products", async (req: any, res: any) => {
     generatedId = `PROD-${(count + 1).toString().padStart(6, "0")}`;
   }
 
+  let imageUrl = "";
+  if (req.file) {
+    const ext = path.extname(req.file.originalname);
+    const newFilename = `${generatedId}${ext}`;
+    const newPath = path.join(req.file.destination, newFilename);
+    fs.renameSync(req.file.path, newPath);
+    imageUrl = `/api/images/${newFilename}`;
+  }
+
   const productData = {
     ...parsed.data,
     productId: generatedId,
@@ -635,6 +664,7 @@ router.post("/hr/products", async (req: any, res: any) => {
     revenue: 0,
     status: "active",
     marketStatus: "moderate" as const,
+    imageUrl: imageUrl || undefined,
   };
 
   const product = await Product.create(productData);

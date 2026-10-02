@@ -100,9 +100,9 @@ export default function ProductDetail() {
                   <div className="relative w-full max-w-sm mx-auto aspect-square rounded-2xl overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center shadow-sm">
                     {prod.imageUrl ? (
                       <img
-                        src={prod.imageUrl}
+                        src={prod.imageUrl?.startsWith('/') ? prod.imageUrl : `/${prod.imageUrl}`}
                         alt={prod.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                       />
                     ) : (
                       <div className="flex items-center justify-center w-full h-full">

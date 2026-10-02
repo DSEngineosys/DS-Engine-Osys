@@ -53,6 +53,7 @@ export default function HRDashboard() {
   }>({
     productId: "", name: "", category: "", subCategory: "", type: "", description: "", ingredients: [], ageGroup: "", gender: "Other", batchNumber: "", mrp: 0, discountPercent: 0, taxPercent: 0, price: 0
   });
+  const [prodImage, setProdImage] = useState<File | null>(null);
 
   // Stocking state
   const [selectedStockProduct, setSelectedStockProduct] = useState<any>(null);
@@ -126,13 +127,27 @@ export default function HRDashboard() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("/api/hr/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(prodForm) });
+      const formData = new FormData();
+      Object.keys(prodForm).forEach(key => {
+        const val = (prodForm as any)[key];
+        if (Array.isArray(val)) {
+          val.forEach(v => formData.append(`${key}[]`, v));
+        } else {
+          formData.append(key, String(val));
+        }
+      });
+      if (prodImage) {
+        formData.append("image", prodImage);
+      }
+      
+      const res = await fetch("/api/hr/products", { method: "POST", body: formData });
       if (!res.ok) throw new Error((await res.json()).message);
-      toast({ title: "Product Added", description: "New product saved to products.json and DB." });
+      toast({ title: "Product Added", description: "New product saved and image uploaded." });
       fetchData();
       setProdForm({
         productId: "", name: "", category: "", subCategory: "", type: "", description: "", ingredients: [], ageGroup: "", gender: "Other", batchNumber: "", mrp: 0, discountPercent: 0, taxPercent: 0, price: 0
       });
+      setProdImage(null);
     } catch (err: any) { toast({ variant: "destructive", title: "Error", description: err.message }); }
     finally { setLoading(false); }
   };
@@ -589,6 +604,10 @@ export default function HRDashboard() {
                   <div className="md:col-span-4">
                     <label className="text-sm font-semibold mb-1 block">Description</label>
                     <Input value={prodForm.description} onChange={e => setProdForm({ ...prodForm, description: e.target.value })} />
+                  </div>
+                  <div className="md:col-span-4">
+                    <label className="text-sm font-semibold mb-1 block">Product Image</label>
+                    <Input type="file" accept="image/*" onChange={e => setProdImage(e.target.files?.[0] || null)} />
                   </div>
                   <div className="md:col-span-4"><Button type="submit" className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold" disabled={loading}>Add Product</Button></div>
                 </form>

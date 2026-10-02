@@ -231,7 +231,7 @@ export default function Offers() {
                       {/* Product Image / Icon */}
                       <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200 shrink-0 relative">
                         {item.imageUrl ? (
-                          <img src={`/${item.imageUrl}`} alt={item.productName} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <img src={item.imageUrl?.startsWith('/') ? item.imageUrl : `/${item.imageUrl}`} alt={item.productName} className="w-full h-full object-contain group-hover:scale-105 transition-transform" />
                         ) : (
                           <Package className="w-8 h-8 text-slate-300" />
                         )}
@@ -533,7 +533,7 @@ export default function Offers() {
               >
                 <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200 shrink-0">
                   {item.imageUrl ? (
-                    <img src={`/${item.imageUrl}`} alt={item.productName} className="w-full h-full object-cover rounded-xl" />
+                    <img src={item.imageUrl?.startsWith('/') ? item.imageUrl : `/${item.imageUrl}`} alt={item.productName} className="w-full h-full object-contain rounded-xl" />
                   ) : (
                     <Package className="w-6 h-6 text-slate-300" />
                   )}

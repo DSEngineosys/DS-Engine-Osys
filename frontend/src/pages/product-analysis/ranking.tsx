@@ -148,7 +148,7 @@ export default function ProductRanking() {
                       {/* Product image thumbnail */}
                       <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
                         {item.imageUrl ? (
-                          <img src={`/${item.imageUrl}`} alt={item.productName} className="w-full h-full object-cover" />
+                          <img src={item.imageUrl?.startsWith('/') ? item.imageUrl : `/${item.imageUrl}`} alt={item.productName} className="w-full h-full object-contain" />
                         ) : (
                           <span className="text-[10px] text-slate-400 font-bold">No Image</span>
                         )}
