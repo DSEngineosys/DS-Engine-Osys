@@ -52,12 +52,20 @@ export default function Login() {
     loginMutation.mutate(
       { data: { ...values, role: "ds_engineer" } as any },
       {
-        onSuccess: () => {
+        onSuccess: (data: any) => {
           toast({
             title: "Login successful",
             description: "Welcome back to DS Engineosys.",
           });
-          queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
+          // Clear active phase so it always defaults to employee phase upon login
+          localStorage.removeItem("ds_active_phase");
+          
+          // Synchronously set the auth state to prevent race conditions during navigation
+          if (data && data.user) {
+            queryClient.setQueryData(getGetCurrentUserQueryKey(), data.user);
+          } else {
+            queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
+          }
           setLocation("/dashboard");
         },
         onError: (error: any) => {

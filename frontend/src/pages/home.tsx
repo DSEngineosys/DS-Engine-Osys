@@ -75,17 +75,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-t from-blue-950/80 via-slate-950/40 to-transparent opacity-90" />
             <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:32px_32px]" />
 
-            {videoUrl ? (
-              <video
-                src={videoUrl}
-                className="w-full h-full object-cover"
-                autoPlay
-                loop
-                muted
-                playsInline
-                onError={() => setVideoUrl(null)}
-              />
-            ) : (
+
               <div className="relative z-10 w-full h-full p-8 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between">
@@ -178,7 +168,6 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            )}
           </div>
         </motion.div>
       </section>
