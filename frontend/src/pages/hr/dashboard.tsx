@@ -49,10 +49,20 @@ export default function HRDashboard() {
   const [resetPwdEmpId, setResetPwdEmpId] = useState("");
   const [newPasswordInput, setNewPasswordInput] = useState("");
   const [prodForm, setProdForm] = useState<{
-    productId: string; name: string; category: string; subCategory: string; type: string; description: string; ingredients: string[]; ageGroup: string; gender: string; manufactureDate: string; expiryDate: string; batchNumber: string; mrp: number; discountPercent: number; taxPercent: number; price: number; stock: number;
+    productId: string; name: string; category: string; subCategory: string; type: string; description: string; ingredients: string[]; ageGroup: string; gender: string; batchNumber: string; mrp: number; discountPercent: number; taxPercent: number; price: number;
   }>({
-    productId: "", name: "", category: "", subCategory: "", type: "", description: "", ingredients: [], ageGroup: "", gender: "Other", manufactureDate: "", expiryDate: "", batchNumber: "", mrp: 0, discountPercent: 0, taxPercent: 0, price: 0, stock: 0
+    productId: "", name: "", category: "", subCategory: "", type: "", description: "", ingredients: [], ageGroup: "", gender: "Other", batchNumber: "", mrp: 0, discountPercent: 0, taxPercent: 0, price: 0
   });
+
+  // Stocking state
+  const [selectedStockProduct, setSelectedStockProduct] = useState<any>(null);
+  const [stockForm, setStockForm] = useState({
+    manufactureDate: "",
+    expiryDate: "",
+    stockQuantity: 0,
+  });
+  const [stockCategoryFilter, setStockCategoryFilter] = useState("all");
+  const [stockSubCategoryFilter, setStockSubCategoryFilter] = useState("all");
 
   const fetchData = async () => {
     try {
@@ -118,13 +128,47 @@ export default function HRDashboard() {
     try {
       const res = await fetch("/api/hr/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(prodForm) });
       if (!res.ok) throw new Error((await res.json()).message);
-      toast({ title: "Product Added" });
+      toast({ title: "Product Added", description: "New product saved to products.json and DB." });
       fetchData();
       setProdForm({
-        productId: "", name: "", category: "", subCategory: "", type: "", description: "", ingredients: [], ageGroup: "", gender: "Other", manufactureDate: "", expiryDate: "", batchNumber: "", mrp: 0, discountPercent: 0, taxPercent: 0, price: 0, stock: 0
+        productId: "", name: "", category: "", subCategory: "", type: "", description: "", ingredients: [], ageGroup: "", gender: "Other", batchNumber: "", mrp: 0, discountPercent: 0, taxPercent: 0, price: 0
       });
     } catch (err: any) { toast({ variant: "destructive", title: "Error", description: err.message }); }
     finally { setLoading(false); }
+  };
+
+  const handleAddStock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStockProduct) {
+      toast({ variant: "destructive", title: "Error", description: "Please select a product first." });
+      return;
+    }
+    if (!stockForm.manufactureDate || !stockForm.expiryDate || !stockForm.stockQuantity) {
+      toast({ variant: "destructive", title: "Error", description: "Please fill in manufacture date, expiry date, and stock quantity." });
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/hr/stocking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: selectedStockProduct.productId || selectedStockProduct.id || selectedStockProduct._id,
+          manufactureDate: stockForm.manufactureDate,
+          expiryDate: stockForm.expiryDate,
+          stockQuantity: Number(stockForm.stockQuantity),
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message);
+      toast({ title: "Stock Added", description: "Product stock saved to Stockproducts.json successfully." });
+      setStockForm({ manufactureDate: "", expiryDate: "", stockQuantity: 0 });
+      setSelectedStockProduct(null);
+      fetchData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateEmpStatus = async (id: string, accountStatus: string) => {
@@ -196,14 +240,15 @@ export default function HRDashboard() {
         <ProfileCard />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-2 md:grid-cols-7 h-auto p-1 bg-slate-100">
-            <TabsTrigger value="overview" className="py-3">Overview</TabsTrigger>
-            <TabsTrigger value="recruitment" className="py-3">Employee Recruitment</TabsTrigger>
-            <TabsTrigger value="employees" className="py-3">Employee List</TabsTrigger>
-            <TabsTrigger value="add-product" className="py-3">Add Product</TabsTrigger>
-            <TabsTrigger value="products" className="py-3">Product List</TabsTrigger>
-            <TabsTrigger value="feedback" className="py-3">Customer Feedback</TabsTrigger>
-            <TabsTrigger value="help" className="py-3">Help Inbox</TabsTrigger>
+          <TabsList className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 h-auto p-1 bg-slate-100 gap-1">
+            <TabsTrigger value="overview" className="py-2.5 text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="recruitment" className="py-2.5 text-xs sm:text-sm">Recruitment</TabsTrigger>
+            <TabsTrigger value="employees" className="py-2.5 text-xs sm:text-sm">Employees</TabsTrigger>
+            <TabsTrigger value="add-product" className="py-2.5 text-xs sm:text-sm">Add Product</TabsTrigger>
+            <TabsTrigger value="stocking" className="py-2.5 text-xs sm:text-sm font-semibold text-blue-700 bg-blue-50/50 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Stocking</TabsTrigger>
+            <TabsTrigger value="products" className="py-2.5 text-xs sm:text-sm">Product List</TabsTrigger>
+            <TabsTrigger value="feedback" className="py-2.5 text-xs sm:text-sm">Customer Feedback</TabsTrigger>
+            <TabsTrigger value="help" className="py-2.5 text-xs sm:text-sm">Help Inbox</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="grid gap-4 md:grid-cols-3">
@@ -490,19 +535,6 @@ export default function HRDashboard() {
                     <Input value={prodForm.ageGroup} onChange={e => setProdForm({ ...prodForm, ageGroup: e.target.value })} />
                   </div>
                   <div>
-                    <label className="text-sm font-semibold mb-1 block">Batch Number</label>
-                    <Input value={prodForm.batchNumber} onChange={e => setProdForm({ ...prodForm, batchNumber: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="text-sm font-semibold mb-1 block">Manufacture Date</label>
-                    <Input type="date" value={prodForm.manufactureDate} onChange={e => setProdForm({ ...prodForm, manufactureDate: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="text-sm font-semibold mb-1 block">Expiry Date</label>
-                    <Input type="date" value={prodForm.expiryDate} onChange={e => setProdForm({ ...prodForm, expiryDate: e.target.value })} />
-                  </div>
-
-                  <div>
                     <label className="text-sm font-semibold mb-1 block">MRP</label>
                     <div className="relative">
                       <Input type="number" value={prodForm.mrp} onChange={e => setProdForm({ ...prodForm, mrp: Number(e.target.value) })} className="pr-8" />
@@ -515,10 +547,6 @@ export default function HRDashboard() {
                       <Input type="number" value={prodForm.price} onChange={e => setProdForm({ ...prodForm, price: Number(e.target.value) })} className="pr-8" required />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-semibold pointer-events-none">₹</span>
                     </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-semibold mb-1 block">Stock Quantity</label>
-                    <Input type="number" value={prodForm.stock} onChange={e => setProdForm({ ...prodForm, stock: Number(e.target.value) })} required />
                   </div>
                   <div>
                     <label className="text-sm font-semibold mb-1 block">Discount</label>
@@ -562,8 +590,190 @@ export default function HRDashboard() {
                     <label className="text-sm font-semibold mb-1 block">Description</label>
                     <Input value={prodForm.description} onChange={e => setProdForm({ ...prodForm, description: e.target.value })} />
                   </div>
-                  <div className="md:col-span-4"><Button type="submit" className="w-full h-12" disabled={loading}>Add Product</Button></div>
+                  <div className="md:col-span-4"><Button type="submit" className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold" disabled={loading}>Add Product to products.json</Button></div>
                 </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="stocking" className="space-y-6">
+            <Card className="border shadow-md">
+              <CardContent className="pt-6">
+                <h1 className="text-3xl font-extrabold text-center tracking-tight text-slate-800 my-4 font-serif uppercase">
+                  Stocking
+                </h1>
+                <p className="text-center text-sm text-slate-500 mb-6">
+                  Select a product block below (divided category & subcategory wise), fill in manufacture date, expiry date, and stock quantity to add/update stock in <code className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded font-mono">Stockproducts.json</code>.
+                </p>
+
+                {/* Filter bar */}
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-slate-50 p-4 rounded-xl border">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-sm font-semibold text-slate-700">Category:</span>
+                    <select
+                      className="h-9 border rounded-md px-3 text-sm bg-white"
+                      value={stockCategoryFilter}
+                      onChange={(e) => {
+                        setStockCategoryFilter(e.target.value);
+                        setStockSubCategoryFilter("all");
+                      }}
+                    >
+                      <option value="all">All Categories</option>
+                      {Object.keys(PRODUCT_CATEGORIES).map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                    {stockCategoryFilter !== "all" && PRODUCT_CATEGORIES[stockCategoryFilter] && (
+                      <>
+                        <span className="text-sm font-semibold text-slate-700">Sub Category:</span>
+                        <select
+                          className="h-9 border rounded-md px-3 text-sm bg-white"
+                          value={stockSubCategoryFilter}
+                          onChange={(e) => setStockSubCategoryFilter(e.target.value)}
+                        >
+                          <option value="all">All Sub Categories</option>
+                          {PRODUCT_CATEGORIES[stockCategoryFilter].map(sub => (
+                            <option key={sub} value={sub}>{sub}</option>
+                          ))}
+                        </select>
+                      </>
+                    )}
+                  </div>
+                  <span className="text-xs text-slate-500 font-medium">
+                    Total Products: {products.length}
+                  </span>
+                </div>
+
+                {/* Horizontal Scrolling Product Blocks Grouped by Category & SubCategory */}
+                <div className="space-y-6">
+                  {Object.entries(
+                    products.reduce((acc: any, p: any) => {
+                      const cat = p.category || "Uncategorized";
+                      const sub = p.subCategory || "General";
+                      if (stockCategoryFilter !== "all" && cat.toLowerCase() !== stockCategoryFilter.toLowerCase()) return acc;
+                      if (stockSubCategoryFilter !== "all" && sub.toLowerCase() !== stockSubCategoryFilter.toLowerCase()) return acc;
+                      if (!acc[cat]) acc[cat] = {};
+                      if (!acc[cat][sub]) acc[cat][sub] = [];
+                      acc[cat][sub].push(p);
+                      return acc;
+                    }, {})
+                  ).map(([category, subCats]: [string, any]) => (
+                    <div key={category} className="space-y-4 p-4 border rounded-xl bg-slate-50/50">
+                      <div className="flex items-center gap-2 border-b pb-2">
+                        <h3 className="text-lg font-bold text-slate-800">{category}</h3>
+                        <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full">Category</span>
+                      </div>
+
+                      {Object.entries(subCats).map(([subCategory, items]: [string, any]) => (
+                        <div key={subCategory} className="space-y-2">
+                          <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5 pl-1">
+                            <span className="w-2 h-2 rounded-full bg-blue-500"></span> {subCategory} ({items.length})
+                          </h4>
+                          {/* Horizontal scrolling block container */}
+                          <div className="flex overflow-x-auto gap-4 p-2 pb-4 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
+                            {items.map((prod: any) => {
+                              const isSelected = selectedStockProduct?.productId === prod.productId || selectedStockProduct?._id === prod._id;
+                              return (
+                                <div
+                                  key={prod._id || prod.productId}
+                                  onClick={() => setSelectedStockProduct(prod)}
+                                  className={`min-w-[210px] max-w-[230px] shrink-0 p-4 rounded-xl border-2 transition-all cursor-pointer shadow-sm hover:shadow-md flex flex-col justify-between ${
+                                    isSelected
+                                      ? "border-blue-600 bg-blue-50 ring-2 ring-blue-300"
+                                      : "border-slate-200 bg-white hover:border-blue-400"
+                                  }`}
+                                >
+                                  <div>
+                                    <div className="flex items-center justify-between text-xs mb-1">
+                                      <span className="font-mono font-bold text-blue-600">{prod.productId}</span>
+                                      <span className="text-[10px] text-slate-400">{prod.type}</span>
+                                    </div>
+                                    <h5 className="font-bold text-slate-800 text-sm line-clamp-2 mb-1" title={prod.name || prod.productName}>
+                                      {prod.name || prod.productName}
+                                    </h5>
+                                  </div>
+                                  <div className="pt-2 border-t mt-3 flex items-center justify-between">
+                                    <span className="font-black text-sm text-slate-900">₹{prod.price || prod.sellingPrice}</span>
+                                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${prod.stockQuantity > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                                      Stock: {prod.stockQuantity ?? prod.stock ?? 0}
+                                    </span>
+                                  </div>
+                                  {isSelected && (
+                                    <div className="mt-2 text-center text-xs font-black text-blue-700 bg-blue-200/80 py-1 rounded">
+                                      ✓ Selected
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Stocking Form Section */}
+                {selectedStockProduct ? (
+                  <Card className="border-2 border-blue-500 bg-blue-50/20 shadow-lg mt-8">
+                    <CardHeader className="bg-blue-600 text-white rounded-t-lg">
+                      <CardTitle className="text-base sm:text-lg flex items-center justify-between">
+                        <span>Stock Input for: <strong className="underline">{selectedStockProduct.name || selectedStockProduct.productName}</strong> ({selectedStockProduct.productId})</span>
+                        <Button size="sm" variant="ghost" className="text-white hover:bg-blue-700 h-8" onClick={() => setSelectedStockProduct(null)}>✕ Close</Button>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <form onSubmit={handleAddStock} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                          <label className="text-sm font-bold block mb-1.5 text-slate-700">Manufacture Date <span className="text-rose-500">*</span></label>
+                          <Input
+                            type="date"
+                            value={stockForm.manufactureDate}
+                            onChange={(e) => setStockForm({ ...stockForm, manufactureDate: e.target.value })}
+                            required
+                            className="bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-bold block mb-1.5 text-slate-700">Expiry Date <span className="text-rose-500">*</span></label>
+                          <Input
+                            type="date"
+                            value={stockForm.expiryDate}
+                            onChange={(e) => setStockForm({ ...stockForm, expiryDate: e.target.value })}
+                            required
+                            className="bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-bold block mb-1.5 text-slate-700">Stock Quantity <span className="text-rose-500">*</span></label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={stockForm.stockQuantity || ""}
+                            onChange={(e) => setStockForm({ ...stockForm, stockQuantity: Number(e.target.value) })}
+                            placeholder="e.g. 500"
+                            required
+                            className="bg-white"
+                          />
+                        </div>
+                        <div className="md:col-span-3">
+                          <Button type="submit" className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold text-base shadow" disabled={loading}>
+                            {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+                            Add Stock to Stockproducts.json
+                          </Button>
+                        </div>
+                      </form>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="text-center py-10 px-4 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 text-slate-500 mt-8">
+                    <Package className="w-10 h-10 mx-auto text-blue-500 mb-2" />
+                    <p className="font-bold text-slate-800 text-base">Select a product block above</p>
+                    <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                      Click on any product block in the horizontal list above to open the stock entry fields for manufacture date, expiry date, and stock quantity.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

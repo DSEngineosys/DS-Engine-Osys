@@ -13,6 +13,8 @@ import { z } from "zod";
 import mongoose from "mongoose";
 import HR from "../models/hr.model";
 import nodemailer from "nodemailer";
+import fs from "fs";
+import path from "path";
 
 const router = Router();
 
@@ -507,8 +509,87 @@ router.put("/hr/employees/:id/reset-password", requireHR, async (req: any, res: 
 });
 
 // ─────────────────────────────────────────────
-// HR PRODUCT MANAGEMENT
+// HR PRODUCT & STOCKING MANAGEMENT
 // ─────────────────────────────────────────────
+function getJsonDataPath(filename: string) {
+  return path.resolve(process.cwd(), "src/data", filename);
+}
+
+function appendToProductsJson(newProd: any) {
+  try {
+    const jsonPath = getJsonDataPath("products.json");
+    let list: any[] = [];
+    if (fs.existsSync(jsonPath)) {
+      list = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
+    }
+    const cleanItem = {
+      productId: newProd.productId,
+      productName: newProd.name || newProd.productName,
+      category: newProd.category,
+      subCategory: newProd.subCategory || "",
+      type: newProd.type || "",
+      gender: newProd.gender || "Both",
+      ageGroup: newProd.ageGroup || "All Ages",
+      batchNumber: newProd.batchNumber || "",
+      discountPercent: Number(newProd.discountPercent || 0),
+      taxPercent: Number(newProd.taxPercent || 18),
+      mrp: Number(newProd.mrp || newProd.price || 0),
+      sellingPrice: Number(newProd.price || newProd.sellingPrice || 0),
+      ingredients: newProd.ingredients || [],
+      productDescription: newProd.description || newProd.productDescription || "",
+      image: newProd.imageUrl || newProd.image || `images/${newProd.productId}.jpg`
+    };
+    const idx = list.findIndex(p => p.productId === cleanItem.productId);
+    if (idx >= 0) {
+      list[idx] = cleanItem;
+    } else {
+      list.push(cleanItem);
+    }
+    fs.writeFileSync(jsonPath, JSON.stringify(list, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Error writing to products.json:", err);
+  }
+}
+
+function appendToStockProductsJson(stockItem: any) {
+  try {
+    const jsonPath = getJsonDataPath("Stockproducts.json");
+    let list: any[] = [];
+    if (fs.existsSync(jsonPath)) {
+      list = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
+    }
+    const cleanItem = {
+      productId: stockItem.productId,
+      productName: stockItem.name || stockItem.productName,
+      category: stockItem.category,
+      subCategory: stockItem.subCategory || "",
+      type: stockItem.type || "",
+      gender: stockItem.gender || "Both",
+      ageGroup: stockItem.ageGroup || "All Ages",
+      batchNumber: stockItem.batchNumber || "",
+      manufactureDate: stockItem.manufactureDate || "",
+      expiryDate: stockItem.expiryDate || "",
+      stockQuantity: Number(stockItem.stockQuantity || stockItem.stock || 0),
+      discountPercent: Number(stockItem.discountPercent || 0),
+      taxPercent: Number(stockItem.taxPercent || 18),
+      mrp: Number(stockItem.mrp || stockItem.price || 0),
+      sellingPrice: Number(stockItem.price || stockItem.sellingPrice || 0),
+      ingredients: stockItem.ingredients || [],
+      productDescription: stockItem.description || stockItem.productDescription || "",
+      image: stockItem.imageUrl || stockItem.image || `images/${stockItem.productId}.jpg`
+    };
+    const idx = list.findIndex(p => p.productId === cleanItem.productId);
+    if (idx >= 0) {
+      list[idx] = cleanItem;
+    } else {
+      list.push(cleanItem);
+    }
+    fs.writeFileSync(jsonPath, JSON.stringify(list, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Error writing to Stockproducts.json:", err);
+  }
+}
+
 const addProductSchema = z.object({
   productId: z.string().optional(),
   name: z.string().min(1),
@@ -519,14 +600,18 @@ const addProductSchema = z.object({
   ingredients: z.array(z.string()).optional(),
   ageGroup: z.string().optional(),
   gender: z.string().optional(),
-  manufactureDate: z.string().optional(),
-  expiryDate: z.string().optional(),
   batchNumber: z.string().optional(),
-  mrp: z.number().min(0),
+  mrp: z.number().min(0).optional(),
   discountPercent: z.number().min(0).max(100).optional(),
   taxPercent: z.number().min(0).max(100).optional(),
   price: z.number().min(0),
-  stock: z.number().min(0),
+});
+
+const addStockSchema = z.object({
+  productId: z.string().min(1),
+  manufactureDate: z.string().min(1),
+  expiryDate: z.string().min(1),
+  stockQuantity: z.number().min(1),
 });
 
 router.post("/hr/products", async (req: any, res: any) => {
@@ -535,17 +620,127 @@ router.post("/hr/products", async (req: any, res: any) => {
     return res.status(400).json({ error: "Invalid input", message: parsed.error.message });
   }
 
-  const product = await Product.create({
+  let generatedId = parsed.data.productId;
+  if (!generatedId) {
+    const count = await Product.countDocuments();
+    generatedId = `PROD-${(count + 1).toString().padStart(6, "0")}`;
+  }
+
+  const productData = {
     ...parsed.data,
+    productId: generatedId,
+    sku: generatedId,
+    stock: 0,
     soldUnits: 0,
     revenue: 0,
     status: "active",
-    marketStatus: "moderate",
-    manufactureDate: parsed.data.manufactureDate ? new Date(parsed.data.manufactureDate) : undefined,
-    expiryDate: parsed.data.expiryDate ? new Date(parsed.data.expiryDate) : undefined,
+    marketStatus: "moderate" as const,
+  };
+
+  const product = await Product.create(productData);
+
+  // Append new product to products.json (without manufactureDate, expiryDate, stockQuantity)
+  appendToProductsJson({
+    ...productData,
+    _id: product._id,
   });
 
-  res.status(201).json({ message: "Product added successfully", product });
+  res.status(201).json({ message: "Product added successfully to products.json and DB", product: formatProduct(product) });
+});
+
+router.post("/hr/stocking", async (req: any, res: any) => {
+  const parsed = addStockSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Invalid input", message: parsed.error.message });
+  }
+
+  const { productId, manufactureDate, expiryDate, stockQuantity } = parsed.data;
+
+  let product: any = await Product.findOne({ $or: [{ productId }, { sku: productId }, { _id: mongoose.Types.ObjectId.isValid(productId) ? productId : null }] });
+
+  if (!product) {
+    const jsonPath = getJsonDataPath("products.json");
+    if (fs.existsSync(jsonPath)) {
+      const list = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
+      const found = list.find((p: any) => p.productId === productId);
+      if (found) {
+        product = found;
+      }
+    }
+  }
+
+  if (!product) {
+    return res.status(404).json({ error: "Not found", message: "Product not found" });
+  }
+
+  // Parse dates safely
+  let mfgDateObj: Date | undefined;
+  let expDateObj: Date | undefined;
+  if (manufactureDate) {
+    const parts = manufactureDate.split("-");
+    if (parts.length === 3 && parts[0].length === 4) {
+      mfgDateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    } else {
+      mfgDateObj = new Date(manufactureDate);
+    }
+  }
+  if (expiryDate) {
+    const parts = expiryDate.split("-");
+    if (parts.length === 3 && parts[0].length === 4) {
+      expDateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    } else {
+      expDateObj = new Date(expiryDate);
+    }
+  }
+
+  // Update stock in DB
+  const newStock = (product.stock || 0) + stockQuantity;
+  if (product._id) {
+    await Product.findByIdAndUpdate(product._id, {
+      stock: newStock,
+      manufactureDate: mfgDateObj,
+      expiryDate: expDateObj,
+    });
+  }
+
+  // Format DD-MM-YYYY strings for Stockproducts.json
+  const formatDDMMYYYY = (d?: Date, origStr?: string) => {
+    if (d && !isNaN(d.getTime())) {
+      const day = d.getDate().toString().padStart(2, "0");
+      const month = (d.getMonth() + 1).toString().padStart(2, "0");
+      const year = d.getFullYear();
+      return `${day}-${month}-${year}`;
+    }
+    return origStr || "";
+  };
+
+  const formattedMfg = formatDDMMYYYY(mfgDateObj, manufactureDate);
+  const formattedExp = formatDDMMYYYY(expDateObj, expiryDate);
+
+  const stockItem = {
+    productId: product.productId || productId,
+    productName: product.name || product.productName,
+    category: product.category,
+    subCategory: product.subCategory || "",
+    type: product.type || "",
+    gender: product.gender || "Both",
+    ageGroup: product.ageGroup || "All Ages",
+    batchNumber: product.batchNumber || `B${new Date().getFullYear().toString().slice(2)}-${Math.floor(1000 + Math.random() * 9000)}`,
+    manufactureDate: formattedMfg,
+    expiryDate: formattedExp,
+    stockQuantity: stockQuantity,
+    discountPercent: product.discountPercent || 0,
+    taxPercent: product.taxPercent || 18,
+    mrp: product.mrp || product.price || 0,
+    sellingPrice: product.price || product.sellingPrice || 0,
+    ingredients: product.ingredients || [],
+    productDescription: product.description || product.productDescription || "",
+    image: product.imageUrl || product.image || `images/${product.productId || productId}.jpg`
+  };
+
+  appendToStockProductsJson(stockItem);
+
+  res.json({ message: "Product stock added to Stockproducts.json successfully", stockItem });
 });
 
 router.get("/hr/products", async (_req: any, res: any) => {
