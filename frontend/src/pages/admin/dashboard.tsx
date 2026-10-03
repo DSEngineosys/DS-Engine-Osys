@@ -1030,7 +1030,7 @@ function BonusManagement() {
                   id="bonus-amount"
                   value={bonusAmount}
                   onChange={(e) => setBonusAmount(e.target.value)}
-                  placeholder="e.g. $500 or 25% Incentive"
+                  placeholder="e.g. ₹500 or 25% Incentive"
                   required
                 />
               </div>

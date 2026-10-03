@@ -67,7 +67,7 @@ export default function GrowthPage() {
           </Card>
           <Card className="rounded-3xl border-slate-100 shadow-sm p-4">
             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Market Cap</h4>
-            <p className="text-2xl font-black text-slate-800">$1.2M</p>
+            <p className="text-2xl font-black text-slate-800">₹1.2M</p>
           </Card>
         </div>
       </div>
