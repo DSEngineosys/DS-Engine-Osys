@@ -131,6 +131,41 @@ function EmployeeWorkspace() {
     }
   });
 
+  // Track which tasks have already been reported as expired to avoid duplicate API calls
+  const reportedExpiredRef = useRef<Set<string>>(new Set());
+
+  // Auto-expiry watcher: every 30s check for tasks whose dueDate has passed and report to backend
+  useEffect(() => {
+    const checkExpiredTasks = async () => {
+      const allTasks: any[] = Array.isArray(tasks) ? tasks : [];
+      const now = new Date();
+      const toExpire = allTasks.filter(
+        (t: any) =>
+          t.dueDate &&
+          new Date(t.dueDate).getTime() < now.getTime() &&
+          !["completed", "rejected", "failed"].includes(t.status) &&
+          !reportedExpiredRef.current.has(t._id)
+      );
+
+      for (const task of toExpire) {
+        reportedExpiredRef.current.add(task._id);
+        try {
+          await api.expireTask(task._id);
+          queryClient.invalidateQueries({ queryKey: ["emp-tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["emp-performance"] });
+          toast({ title: "Task Expired", description: `"${task.title}" time limit is over. Record saved to history.` });
+        } catch (err) {
+          // silently skip if already expired server-side
+          console.warn("[AutoExpiry] Could not expire task:", task._id, err);
+        }
+      }
+    };
+
+    checkExpiredTasks();
+    const interval = setInterval(checkExpiredTasks, 30_000);
+    return () => clearInterval(interval);
+  }, [tasks, queryClient, toast]);
+
   const [feedbackForm, setFeedbackForm] = useState({ customerName: "", feedback: "", rating: 5 });
   const [proofImageUrl, setProofImageUrl] = useState("");
 
@@ -257,9 +292,29 @@ function EmployeeWorkspace() {
       <div className="p-4 max-w-lg mx-auto">
         {/* --- HOME TAB --- */}
         {activeTab === "home" && (() => {
-          const activeOrPendingTasks = (Array.isArray(tasks) ? tasks : []).filter((t: any) => ["in_progress", "accepted", "pending"].includes(t.status));
-          const displayTask = activeOrPendingTasks.find((t: any) => t._id === selectedTaskId) || activeOrPendingTasks[0];
-          const isWorkspaceLocked = !displayTask || displayTask.status === "pending";
+          const now = new Date();
+          const allTasks = Array.isArray(tasks) ? tasks : [];
+
+          // A task is expired if it has a dueDate in the past AND is still in a non-terminal state
+          const isExpired = (t: any) =>
+            t.dueDate &&
+            new Date(t.dueDate).getTime() < now.getTime() &&
+            !["completed", "rejected"].includes(t.status);
+
+          // Active/pending tasks that are NOT expired
+          const activeOrPendingTasks = allTasks.filter(
+            (t: any) => ["in_progress", "accepted", "pending"].includes(t.status) && !isExpired(t)
+          );
+
+          const displayTask =
+            activeOrPendingTasks.find((t: any) => t._id === selectedTaskId) ||
+            activeOrPendingTasks[0];
+
+          // Workspace is only unlocked when there's an accepted/in_progress non-expired task
+          const hasActiveTask = activeOrPendingTasks.some(
+            (t: any) => ["in_progress", "accepted"].includes(t.status)
+          );
+          const isWorkspaceLocked = !hasActiveTask;
 
           return (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -294,7 +349,7 @@ function EmployeeWorkspace() {
                   <div className="space-y-3">
                     <div>
                       <h3 className="font-bold">{displayTask.title}</h3>
-                      <p className="text-sm text-slate-600 my-1">{displayTask.description}</p>
+                      <p className="text-sm text-slate-600 my-1">{displayTask.description?.replace(/\s*\|\s*Stock:\s*\d+/gi, '').replace(/Stock:\s*\d+/gi, '').trim()}</p>
                       {displayTask.quantity && <p className="text-xs font-bold text-slate-500">Quantity: {displayTask.quantity}</p>}
                     </div>
                     <div className="flex justify-between items-center text-xs font-medium">
@@ -305,7 +360,6 @@ function EmployeeWorkspace() {
                       )}
                       <span className={`px-2 py-1 rounded uppercase tracking-wider ${displayTask.status === 'completed' ? 'bg-green-100 text-green-700' : displayTask.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{displayTask.status.replace("_", " ")}</span>
                     </div>
-                    
                     {displayTask.status === "pending" && (
                       <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
                         <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => updateTaskStatusMutation.mutate({ taskId: displayTask._id, status: "accepted" })} disabled={updateTaskStatusMutation.isPending}>Accept Task</Button>
@@ -319,21 +373,27 @@ function EmployeeWorkspace() {
               </CardContent>
             </Card>
 
+            {/* Role-Based Workspace — locked unless there is an active (accepted/in_progress) non-expired task */}
             <Card className={isWorkspaceLocked ? "opacity-60 pointer-events-none relative" : ""}>
               <CardHeader className="pb-3"><CardTitle className="text-base">Role-Specific Workspace</CardTitle></CardHeader>
               <CardContent>
                 {isWorkspaceLocked && (
                   <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-xl z-10 flex flex-col items-center justify-center">
                     <Target className="w-8 h-8 text-slate-400 mb-2" />
-                    <p className="text-sm font-bold text-slate-500">{displayTask?.status === "pending" ? "Accept Task to Unlock" : "No Task Assigned"}</p>
-                    <p className="text-xs text-slate-400 mt-1 px-6 text-center">{displayTask?.status === "pending" ? "You must accept the selected task above to unlock data entry." : "Workspace data entry is available only when a task is active."}</p>
+                    <p className="text-sm font-bold text-slate-500">
+                      {activeOrPendingTasks.length === 0 ? "No Task Assigned" : "Accept Task to Unlock"}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1 px-6 text-center">
+                      {activeOrPendingTasks.length === 0
+                        ? "Workspace is locked. No active task has been assigned to you."
+                        : "You must accept the selected task above to unlock data entry."}
+                    </p>
                   </div>
                 )}
-                
-                <RoleBasedWorkspace 
-                  profile={profile} 
-                  tasks={displayTask ? [displayTask] : []} 
-                  products={products} 
+                <RoleBasedWorkspace
+                  profile={profile}
+                  tasks={displayTask && !isWorkspaceLocked ? [displayTask] : []}
+                  products={products}
                   openCamera={openCamera}
                   proofImageUrl={proofImageUrl}
                   setProofImageUrl={setProofImageUrl}
@@ -470,86 +530,118 @@ function EmployeeWorkspace() {
 
 
         {/* --- TASKS TAB --- */}
-        {activeTab === "tasks" && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div>
-              <h2 className="text-xl font-bold text-slate-800">My Tasks</h2>
-              <p className="text-sm text-slate-500">Manage and track your assigned work.</p>
-            </div>
-            
-            {/* Pending Tasks */}
-            {(Array.isArray(tasks) ? tasks : []).filter((t: any) => t.status === "pending").length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-bold text-slate-700 uppercase">Action Required</h3>
-                {(Array.isArray(tasks) ? tasks : []).filter((t: any) => t.status === "pending").map((task: any) => (
-                  <Card key={task._id} className="border-l-4 border-l-yellow-400">
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-semibold">{task.title}</h4>
-                          <p className="text-xs text-slate-500 line-clamp-2 mt-1">{task.description}</p>
+        {activeTab === "tasks" && (() => {
+          const now = new Date();
+          const allTasks = Array.isArray(tasks) ? tasks : [];
+
+          const isTaskExpired = (t: any) =>
+            t.dueDate &&
+            new Date(t.dueDate).getTime() < now.getTime() &&
+            !["completed", "rejected"].includes(t.status);
+
+          const pendingTasks = allTasks.filter((t: any) => t.status === "pending" && !isTaskExpired(t));
+          const activeTasks = allTasks.filter((t: any) => ["accepted", "in_progress"].includes(t.status) && !isTaskExpired(t));
+          const expiredTasks = allTasks.filter(isTaskExpired);
+          const historyTasks = allTasks.filter(
+            (t: any) => t.status === "completed" || t.status === "rejected" || isTaskExpired(t)
+          );
+
+          return (
+            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">My Tasks</h2>
+                <p className="text-sm text-slate-500">Manage and track your assigned work.</p>
+              </div>
+
+              {/* Pending Tasks (non-expired) */}
+              {pendingTasks.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold text-slate-700 uppercase">Action Required</h3>
+                  {pendingTasks.map((task: any) => (
+                    <Card key={task._id} className="border-l-4 border-l-yellow-400">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-semibold">{task.title}</h4>
+                            <p className="text-xs text-slate-500 line-clamp-2 mt-1">{task.description?.replace(/\s*\|\s*Stock:\s*\d+/gi, '').replace(/Stock:\s*\d+/gi, '').trim()}</p>
+                          </div>
+                          <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-bold">Pending</span>
                         </div>
-                        <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-bold">Pending</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => updateTaskStatusMutation.mutate({ taskId: task._id, status: "accepted" })} disabled={updateTaskStatusMutation.isPending}>Accept</Button>
-                        <Button size="sm" variant="outline" className="flex-1 text-red-600 border-red-200 hover:bg-red-50" onClick={() => updateTaskStatusMutation.mutate({ taskId: task._id, status: "rejected" })} disabled={updateTaskStatusMutation.isPending}>Reject</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-
-            {/* Active/Accepted Tasks */}
-            {(Array.isArray(tasks) ? tasks : []).filter((t: any) => t.status === "accepted").length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-bold text-slate-700 uppercase">In Progress</h3>
-                {(Array.isArray(tasks) ? tasks : []).filter((t: any) => t.status === "accepted").map((task: any) => (
-                  <Card key={task._id} className="border-l-4 border-l-blue-500">
-                    <CardContent className="p-4 space-y-3">
-                      <div>
-                        <h4 className="font-semibold">{task.title}</h4>
-                        <p className="text-xs text-slate-500 mt-1">{task.description}</p>
-                      </div>
-                      <div className="flex justify-between items-center text-xs text-slate-500">
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3"/> Started: {new Date(task.createdAt).toLocaleDateString()}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-
-            {/* Task History */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-slate-700 uppercase">Task History</h3>
-              {(Array.isArray(tasks) ? tasks : []).filter((t: any) => t.status === "completed" || t.status === "rejected").length === 0 ? (
-                <p className="text-sm text-slate-500 italic">No historical tasks.</p>
-              ) : (
-                <div className="space-y-2">
-                  {(Array.isArray(tasks) ? tasks : []).filter((t: any) => t.status === "completed" || t.status === "rejected").map((task: any) => (
-                    <div key={task._id} className="bg-white border rounded-xl p-3 shadow-sm text-sm">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-medium">{task.title}</span>
-                        {task.status === "completed" ? (
-                          <span className="flex items-center text-xs font-bold text-green-600"><CheckCircle2 className="w-3 h-3 mr-1"/> Completed</span>
-                        ) : (
-                          <span className="flex items-center text-xs font-bold text-red-500"><XCircle className="w-3 h-3 mr-1"/> Rejected</span>
+                        {task.dueDate && (
+                          <div className="text-xs"><TaskCountdown dueDate={task.dueDate} /></div>
                         )}
-                      </div>
-                      <div className="text-[10px] text-slate-500 space-y-1">
-                        <p><strong>Start Date:</strong> {new Date(task.createdAt).toLocaleString()}</p>
-                        {task.dueDate && <p><strong>End Date (Due):</strong> {new Date(task.dueDate).toLocaleString()}</p>}
-                        {task.completedAt && <p className="text-green-600 font-medium"><strong>Completed:</strong> {new Date(task.completedAt).toLocaleString()}</p>}
-                      </div>
-                    </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => updateTaskStatusMutation.mutate({ taskId: task._id, status: "accepted" })} disabled={updateTaskStatusMutation.isPending}>Accept</Button>
+                          <Button size="sm" variant="outline" className="flex-1 text-red-600 border-red-200 hover:bg-red-50" onClick={() => updateTaskStatusMutation.mutate({ taskId: task._id, status: "rejected" })} disabled={updateTaskStatusMutation.isPending}>Reject</Button>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               )}
+
+              {/* Active / In-Progress Tasks (non-expired) */}
+              {activeTasks.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold text-slate-700 uppercase">In Progress</h3>
+                  {activeTasks.map((task: any) => (
+                    <Card key={task._id} className="border-l-4 border-l-blue-500">
+                      <CardContent className="p-4 space-y-3">
+                        <div>
+                          <h4 className="font-semibold">{task.title}</h4>
+                          <p className="text-xs text-slate-500 mt-1">{task.description?.replace(/\s*\|\s*Stock:\s*\d+/gi, '').replace(/Stock:\s*\d+/gi, '').trim()}</p>
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-slate-500">
+                          <span className="flex items-center gap-1"><Clock className="w-3 h-3"/> Started: {new Date(task.createdAt).toLocaleDateString()}</span>
+                          {task.dueDate && <TaskCountdown dueDate={task.dueDate} />}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {/* Task History — completed, rejected, AND time-expired tasks */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-slate-700 uppercase">Task History</h3>
+                {historyTasks.length === 0 ? (
+                  <p className="text-sm text-slate-500 italic">No historical tasks.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {historyTasks.map((task: any) => {
+                      const expired = isTaskExpired(task);
+                      return (
+                        <div key={task._id} className="bg-white border rounded-xl p-3 shadow-sm text-sm">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="font-medium">{task.title}</span>
+                            {expired ? (
+                              <span className="flex items-center text-xs font-bold text-orange-500"><Clock className="w-3 h-3 mr-1"/> Time Over</span>
+                            ) : task.status === "completed" ? (
+                              <span className="flex items-center text-xs font-bold text-green-600"><CheckCircle2 className="w-3 h-3 mr-1"/> Completed</span>
+                            ) : (
+                              <span className="flex items-center text-xs font-bold text-red-500"><XCircle className="w-3 h-3 mr-1"/> Rejected</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 space-y-1">
+                            <p><strong>Start Date:</strong> {new Date(task.createdAt).toLocaleString()}</p>
+                            {task.dueDate && (
+                              <p className={expired ? "text-orange-500 font-semibold" : ""}>
+                                <strong>Due Date:</strong> {new Date(task.dueDate).toLocaleString()}{expired ? " (Expired)" : ""}
+                              </p>
+                            )}
+                            {task.completedAt && (
+                              <p className="text-green-600 font-medium"><strong>Completed:</strong> {new Date(task.completedAt).toLocaleString()}</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* --- PROFILE TAB --- */}
         {activeTab === "profile" && (

@@ -62,11 +62,11 @@ router.get("/employee/tasks", requireEmployee, async (req: any, res: any) => {
   res.json(tasks);
 });
 
-// Update task status (accept, reject, complete)
+// Update task status (accept, reject, complete) — saves history record on completion
 router.patch("/employee/tasks/:id/status", requireEmployee, async (req: any, res: any) => {
   const session = req.session as any;
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, workDetails } = req.body;
 
   if (!["accepted", "rejected", "completed"].includes(status)) {
     return res.status(400).json({ error: "Invalid status" });
@@ -79,9 +79,96 @@ router.patch("/employee/tasks/:id/status", requireEmployee, async (req: any, res
   if (status === "completed") {
     task.completedAt = new Date();
   }
-
   await task.save();
+
+  // On completion or rejection: store work history record in EmployeeActivity collection
+  if (status === "completed" || status === "rejected") {
+    try {
+      const emp = await Employee.findById(session.userId);
+      const dept = emp ? await Department.findById(emp.departmentId) : null;
+      await EmployeeActivity.create({
+        employeeId: session.userId,
+        departmentName: dept?.name || "Unknown",
+        subDepartmentId: emp?.subDepartmentId || new (await import("mongoose")).default.Types.ObjectId(),
+        activityType: "Task Completion Record",
+        status: "submitted",
+        payload: {
+          taskId: task._id,
+          taskTitle: task.title,
+          taskDescription: task.description || "",
+          taskPriority: task.priority,
+          taskQuantity: task.quantity || null,
+          assignedAt: task.createdAt,
+          dueDate: task.dueDate || null,
+          completedAt: status === "completed" ? new Date() : null,
+          resolution: status,
+          wasOnTime: task.dueDate ? new Date() <= new Date(task.dueDate) : true,
+          employeeId: emp?.employeeId || session.userId,
+          employeeName: emp?.name || "Unknown",
+          departmentName: dept?.name || "Unknown",
+          workDetails: workDetails || null,
+          recordedAt: new Date().toISOString(),
+        },
+      });
+    } catch (histErr) {
+      console.error("[Task History] Failed to save completion record:", histErr);
+    }
+  }
+
   res.json({ message: "Task status updated", task });
+});
+
+// Mark task as expired (time over) — called from frontend when dueDate passes
+router.post("/employee/tasks/:id/expire", requireEmployee, async (req: any, res: any) => {
+  const session = req.session as any;
+  const { id } = req.params;
+  const { workDetails } = req.body;
+
+  const task = await Task.findOne({ _id: id, employeeId: session.userId });
+  if (!task) return res.status(404).json({ error: "Task not found" });
+
+  // Only expire tasks that are still active (not already completed/rejected)
+  if (["completed", "rejected", "expired"].includes(task.status)) {
+    return res.json({ message: "Task already finalized", task });
+  }
+
+  // Mark as expired (using "failed" status which is valid in the schema)
+  task.status = "failed";
+  await task.save();
+
+  // Store the expiry record in EmployeeActivity collection
+  try {
+    const emp = await Employee.findById(session.userId);
+    const dept = emp ? await Department.findById(emp.departmentId) : null;
+    await EmployeeActivity.create({
+      employeeId: session.userId,
+      departmentName: dept?.name || "Unknown",
+      subDepartmentId: emp?.subDepartmentId || new (await import("mongoose")).default.Types.ObjectId(),
+      activityType: "Task Expiry Record",
+      status: "submitted",
+      payload: {
+        taskId: task._id,
+        taskTitle: task.title,
+        taskDescription: task.description || "",
+        taskPriority: task.priority,
+        taskQuantity: task.quantity || null,
+        assignedAt: task.createdAt,
+        dueDate: task.dueDate || null,
+        expiredAt: new Date(),
+        resolution: "time_over",
+        wasOnTime: false,
+        employeeId: emp?.employeeId || session.userId,
+        employeeName: emp?.name || "Unknown",
+        departmentName: dept?.name || "Unknown",
+        workDetails: workDetails || null,
+        recordedAt: new Date().toISOString(),
+      },
+    });
+  } catch (histErr) {
+    console.error("[Task Expiry] Failed to save expiry record:", histErr);
+  }
+
+  res.json({ message: "Task marked as expired and recorded", task });
 });
 
 // Active products visible to employee

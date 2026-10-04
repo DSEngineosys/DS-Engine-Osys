@@ -62,8 +62,8 @@ export function DynamicTaskSelector({
               return {
                 title: p.name || p.productName,
                 desc: isOffer 
-                  ? `SKU: ${p.sku || p.productId} | Price: ₹${discountedPrice} (Original: ₹${priceVal}, -${discount}% OFF) | Stock: ${stockVal}`
-                  : `SKU: ${p.sku || p.productId} | Price: ₹${priceVal} | Stock: ${stockVal}`,
+                  ? `SKU: ${p.sku || p.productId} | Price: ₹${discountedPrice} (Original: ₹${priceVal}, -${discount}% OFF)`
+                  : `SKU: ${p.sku || p.productId} | Price: ₹${priceVal}`,
                 requiresQuantity: true,
                 isOfferActive: isOffer,
                 offerPercentage: discount,

@@ -317,6 +317,12 @@ export const api = {
     if (status) url += `&status=${status}`;
     return request<any[]>(url);
   },
+  expireTask(taskId: string, workDetails?: any) {
+    return request<any>(`/api/employee/tasks/${taskId}/expire`, {
+      method: "POST",
+      body: JSON.stringify({ workDetails: workDetails || null }),
+    });
+  },
 
   // ML Prediction
   predictPerformance(employeeId: string, data?: { loginHour?: number }) {
