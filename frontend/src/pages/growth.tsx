@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FlipchartLayout } from "@/components/flipchart-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,10 @@ import {
   Package, 
   ZoomIn, 
   ZoomOut, 
-  RotateCcw, 
   Sparkles, 
   ArrowUpRight, 
   ArrowDownRight, 
-  Search 
+  MousePointerClick 
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -113,6 +112,7 @@ export default function GrowthPage() {
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [empZoomIndex, setEmpZoomIndex] = useState<{ start: number; end: number } | null>(null);
   const [empSelectedPoint, setEmpSelectedPoint] = useState<DailyPerformancePoint | null>(null);
+  const empLastClickRef = useRef<{ time: number; date: string } | null>(null);
 
   // Product Growth state
   const [prodFromDate, setProdFromDate] = useState<string>("2024-01-01");
@@ -122,6 +122,7 @@ export default function GrowthPage() {
   const [prodTotalRecords, setProdTotalRecords] = useState<number>(0);
   const [prodZoomIndex, setProdZoomIndex] = useState<{ start: number; end: number } | null>(null);
   const [prodSelectedPoint, setProdSelectedPoint] = useState<ProductPerformancePoint | null>(null);
+  const prodLastClickRef = useRef<{ time: number; date: string } | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -187,70 +188,66 @@ export default function GrowthPage() {
     };
   }, [prodFromDate, prodToDate]);
 
-  // Employee Zoom Handlers
-  const handleEmpZoomIn = () => {
-    const current = empZoomIndex || { start: 0, end: data.length };
-    const len = current.end - current.start;
-    if (len <= 2) return;
-    const quarter = Math.max(1, Math.floor(len / 4));
-    setEmpZoomIndex({
-      start: Math.min(current.start + quarter, data.length - 2),
-      end: Math.max(current.end - quarter, current.start + 2)
-    });
-  };
-
-  const handleEmpZoomOut = () => {
-    if (!empZoomIndex) return;
-    const len = empZoomIndex.end - empZoomIndex.start;
-    const quarter = Math.max(1, Math.floor(len / 2));
-    const newStart = Math.max(0, empZoomIndex.start - quarter);
-    const newEnd = Math.min(data.length, empZoomIndex.end + quarter);
-    if (newStart === 0 && newEnd === data.length) {
-      setEmpZoomIndex(null);
+  // Handle Double Tap Zoom & Single Click Brief Details for Employee Graph
+  const handleEmpPointClick = (point: DailyPerformancePoint) => {
+    const now = Date.now();
+    if (
+      empLastClickRef.current && 
+      empLastClickRef.current.date === point.date && 
+      (now - empLastClickRef.current.time) < 450
+    ) {
+      // Double Tap detected -> Zoom in on this point
+      const idx = data.findIndex(p => p.date === point.date);
+      if (idx !== -1) {
+        const currentLen = empZoomIndex ? (empZoomIndex.end - empZoomIndex.start) : data.length;
+        const windowSize = Math.max(2, Math.floor(currentLen / 2));
+        const half = Math.floor(windowSize / 2);
+        const start = Math.max(0, Math.min(idx - half, data.length - windowSize));
+        const end = Math.min(data.length, start + windowSize);
+        setEmpZoomIndex({ start, end });
+        setEmpSelectedPoint(null);
+      }
+      empLastClickRef.current = null;
     } else {
-      setEmpZoomIndex({ start: newStart, end: newEnd });
+      empLastClickRef.current = { time: now, date: point.date };
+      const clickTime = now;
+      setTimeout(() => {
+        if (empLastClickRef.current && empLastClickRef.current.time === clickTime) {
+          setEmpSelectedPoint(point);
+        }
+      }, 250);
     }
   };
 
-  const handleEmpZoomToPoint = (pointIndex: number) => {
-    const windowSize = Math.min(4, data.length);
-    const half = Math.floor(windowSize / 2);
-    const start = Math.max(0, Math.min(pointIndex - half, data.length - windowSize));
-    const end = Math.min(data.length, start + windowSize);
-    setEmpZoomIndex({ start, end });
-  };
-
-  // Product Zoom Handlers
-  const handleProdZoomIn = () => {
-    const current = prodZoomIndex || { start: 0, end: prodData.length };
-    const len = current.end - current.start;
-    if (len <= 2) return;
-    const quarter = Math.max(1, Math.floor(len / 4));
-    setProdZoomIndex({
-      start: Math.min(current.start + quarter, prodData.length - 2),
-      end: Math.max(current.end - quarter, current.start + 2)
-    });
-  };
-
-  const handleProdZoomOut = () => {
-    if (!prodZoomIndex) return;
-    const len = prodZoomIndex.end - prodZoomIndex.start;
-    const quarter = Math.max(1, Math.floor(len / 2));
-    const newStart = Math.max(0, prodZoomIndex.start - quarter);
-    const newEnd = Math.min(prodData.length, prodZoomIndex.end + quarter);
-    if (newStart === 0 && newEnd === prodData.length) {
-      setProdZoomIndex(null);
+  // Handle Double Tap Zoom & Single Click Brief Details for Product Graph
+  const handleProdPointClick = (point: ProductPerformancePoint) => {
+    const now = Date.now();
+    if (
+      prodLastClickRef.current && 
+      prodLastClickRef.current.date === point.date && 
+      (now - prodLastClickRef.current.time) < 450
+    ) {
+      // Double Tap detected -> Zoom in on this point
+      const idx = prodData.findIndex(p => p.date === point.date);
+      if (idx !== -1) {
+        const currentLen = prodZoomIndex ? (prodZoomIndex.end - prodZoomIndex.start) : prodData.length;
+        const windowSize = Math.max(2, Math.floor(currentLen / 2));
+        const half = Math.floor(windowSize / 2);
+        const start = Math.max(0, Math.min(idx - half, prodData.length - windowSize));
+        const end = Math.min(prodData.length, start + windowSize);
+        setProdZoomIndex({ start, end });
+        setProdSelectedPoint(null);
+      }
+      prodLastClickRef.current = null;
     } else {
-      setProdZoomIndex({ start: newStart, end: newEnd });
+      prodLastClickRef.current = { time: now, date: point.date };
+      const clickTime = now;
+      setTimeout(() => {
+        if (prodLastClickRef.current && prodLastClickRef.current.time === clickTime) {
+          setProdSelectedPoint(point);
+        }
+      }, 250);
     }
-  };
-
-  const handleProdZoomToPoint = (pointIndex: number) => {
-    const windowSize = Math.min(4, prodData.length);
-    const half = Math.floor(windowSize / 2);
-    const start = Math.max(0, Math.min(pointIndex - half, prodData.length - windowSize));
-    const end = Math.min(prodData.length, start + windowSize);
-    setProdZoomIndex({ start, end });
   };
 
   const displayedEmpData = empZoomIndex ? data.slice(empZoomIndex.start, empZoomIndex.end) : data;
@@ -272,8 +269,20 @@ export default function GrowthPage() {
                 <CardTitle className="text-2xl font-black tracking-tight">Employee</CardTitle>
                 <p className="text-white/80 text-xs font-semibold mt-0.5">Employee Growth Analysis</p>
               </div>
-              <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl">
-                <Users className="w-6 h-6 text-white" />
+              <div className="flex items-center gap-3">
+                {empZoomIndex && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 text-xs font-bold rounded-xl border-white/30 text-white bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-sm"
+                    onClick={() => setEmpZoomIndex(null)}
+                  >
+                    <ZoomOut className="w-4 h-4 mr-1.5" /> Zoom Out
+                  </Button>
+                )}
+                <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -312,62 +321,38 @@ export default function GrowthPage() {
             {/* Metrics Header */}
             <div className="flex items-center justify-between text-xs text-slate-500 font-medium px-1">
               <span>Data Records Evaluated: <strong className="text-slate-800">{totalRecords}</strong></span>
-              <span className="flex items-center gap-1 text-emerald-600 font-bold">
-                <TrendingUp className="w-3.5 h-3.5" /> Growth Trend
-              </span>
+              <div className="flex items-center gap-3">
+                {empZoomIndex && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[11px] font-bold rounded-lg border-pink-200 text-pink-700 bg-pink-50 hover:bg-pink-100"
+                    onClick={() => setEmpZoomIndex(null)}
+                  >
+                    <ZoomOut className="w-3.5 h-3.5 mr-1" /> Side Zoom Out
+                  </Button>
+                )}
+                <span className="flex items-center gap-1 text-emerald-600 font-bold">
+                  <TrendingUp className="w-3.5 h-3.5" /> Growth Trend
+                </span>
+              </div>
             </div>
 
-            {/* Zoom Controls Bar */}
-            <div className="flex items-center justify-between bg-slate-50 border border-slate-100 px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-600">
-              <div className="flex items-center gap-1.5 text-slate-700">
-                <Search className="w-4 h-4 text-pink-500" />
-                <span>Graph Zoom Controls:</span>
-                {empZoomIndex ? (
-                  <span className="bg-pink-100 text-pink-700 px-2 py-0.5 rounded-md font-mono text-[11px]">
-                    Zoomed ({empZoomIndex.end - empZoomIndex.start} of {data.length} points)
-                  </span>
-                ) : (
-                  <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md text-[11px]">
-                    Full View ({data.length} points)
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 px-2.5 text-xs rounded-xl font-bold border-slate-200 bg-white hover:bg-slate-100"
-                  onClick={handleEmpZoomIn}
-                  disabled={data.length <= 2}
-                  title="Zoom In"
-                >
-                  <ZoomIn className="w-3.5 h-3.5 mr-1 text-pink-600" /> Zoom In
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 px-2.5 text-xs rounded-xl font-bold border-slate-200 bg-white hover:bg-slate-100"
-                  onClick={handleEmpZoomOut}
-                  disabled={!empZoomIndex}
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="w-3.5 h-3.5 mr-1 text-slate-600" /> Zoom Out
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 px-2.5 text-xs rounded-xl font-bold text-slate-500 hover:bg-slate-200/60"
-                  onClick={() => setEmpZoomIndex(null)}
-                  disabled={!empZoomIndex}
-                  title="Reset Zoom"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reset
-                </Button>
-              </div>
+            {/* Interactive Instruction Banner */}
+            <div className="flex items-center justify-between bg-pink-50/50 border border-pink-100/70 px-3.5 py-2 rounded-xl text-[11px] font-semibold text-slate-600">
+              <span className="flex items-center gap-1.5 text-pink-700 font-bold">
+                <MousePointerClick className="w-3.5 h-3.5 text-pink-500" />
+                Double tap point with cursor to zoom in • Single click for brief details
+              </span>
+              {empZoomIndex && (
+                <span className="text-[10px] bg-pink-100 text-pink-800 px-2 py-0.5 rounded-full font-bold">
+                  Zoomed: {empZoomIndex.end - empZoomIndex.start} points
+                </span>
+              )}
             </div>
 
             {/* Linear Graph (LineChart): totalWorkspaceHours (X) vs tasksCompleted (Y) */}
-            <div className="h-[320px] w-full pt-2 relative">
+            <div className="h-[320px] w-full pt-2">
               {loading ? (
                 <div className="h-full flex flex-col items-center justify-center gap-2 text-slate-400">
                   <Loader2 className="w-7 h-7 animate-spin text-primary" />
@@ -384,7 +369,7 @@ export default function GrowthPage() {
                     margin={{ top: 10, right: 20, left: -10, bottom: 25 }}
                     onClick={(state) => {
                       if (state && state.activePayload && state.activePayload.length > 0) {
-                        setEmpSelectedPoint(state.activePayload[0].payload as DailyPerformancePoint);
+                        handleEmpPointClick(state.activePayload[0].payload as DailyPerformancePoint);
                       }
                     }}
                   >
@@ -420,9 +405,12 @@ export default function GrowthPage() {
                           return (
                             <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl text-xs space-y-1 cursor-pointer">
                               <p className="font-bold text-pink-300">
-                                Date: {item.date} (Click for Brief Zoom Details)
+                                Date: {item.date}
                               </p>
-                              <p className="font-semibold text-slate-200">
+                              <p className="text-[10px] text-pink-400 font-semibold">
+                                Double tap to zoom in • Click for details
+                              </p>
+                              <p className="font-semibold text-slate-200 pt-1">
                                 Daily Avg Workspace Hours: <span className="text-white font-bold">{item.totalWorkspaceHours} hrs</span>
                               </p>
                               <p className="font-semibold text-slate-200">
@@ -442,7 +430,7 @@ export default function GrowthPage() {
                       height={36}
                       formatter={() => (
                         <span className="text-xs font-bold text-slate-700">
-                          Employee Growth (Click point for Zoom Brief Details)
+                          Employee Growth (Double tap point to zoom in)
                         </span>
                       )}
                     />
@@ -459,7 +447,7 @@ export default function GrowthPage() {
                         cursor: "pointer",
                         onClick: (_: any, payload: any) => {
                           if (payload && payload.payload) {
-                            setEmpSelectedPoint(payload.payload);
+                            handleEmpPointClick(payload.payload);
                           }
                         } 
                       }}
@@ -479,8 +467,20 @@ export default function GrowthPage() {
                 <CardTitle className="text-2xl font-black tracking-tight">Product</CardTitle>
                 <p className="text-white/80 text-xs font-semibold mt-0.5">Product Growth Analysis</p>
               </div>
-              <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl">
-                <Package className="w-6 h-6 text-white" />
+              <div className="flex items-center gap-3">
+                {prodZoomIndex && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 text-xs font-bold rounded-xl border-white/30 text-white bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-sm"
+                    onClick={() => setProdZoomIndex(null)}
+                  >
+                    <ZoomOut className="w-4 h-4 mr-1.5" /> Zoom Out
+                  </Button>
+                )}
+                <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl">
+                  <Package className="w-6 h-6 text-white" />
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -519,58 +519,34 @@ export default function GrowthPage() {
             {/* Metrics Header */}
             <div className="flex items-center justify-between text-xs text-slate-500 font-medium px-1">
               <span>Data Records Evaluated: <strong className="text-slate-800">{prodTotalRecords}</strong></span>
-              <span className="flex items-center gap-1 text-violet-600 font-bold">
-                <TrendingUp className="w-3.5 h-3.5" /> Growth Trend
-              </span>
+              <div className="flex items-center gap-3">
+                {prodZoomIndex && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[11px] font-bold rounded-lg border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100"
+                    onClick={() => setProdZoomIndex(null)}
+                  >
+                    <ZoomOut className="w-3.5 h-3.5 mr-1" /> Side Zoom Out
+                  </Button>
+                )}
+                <span className="flex items-center gap-1 text-violet-600 font-bold">
+                  <TrendingUp className="w-3.5 h-3.5" /> Growth Trend
+                </span>
+              </div>
             </div>
 
-            {/* Zoom Controls Bar */}
-            <div className="flex items-center justify-between bg-slate-50 border border-slate-100 px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-600">
-              <div className="flex items-center gap-1.5 text-slate-700">
-                <Search className="w-4 h-4 text-violet-600" />
-                <span>Graph Zoom Controls:</span>
-                {prodZoomIndex ? (
-                  <span className="bg-violet-100 text-violet-700 px-2 py-0.5 rounded-md font-mono text-[11px]">
-                    Zoomed ({prodZoomIndex.end - prodZoomIndex.start} of {prodData.length} points)
-                  </span>
-                ) : (
-                  <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md text-[11px]">
-                    Full View ({prodData.length} points)
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 px-2.5 text-xs rounded-xl font-bold border-slate-200 bg-white hover:bg-slate-100"
-                  onClick={handleProdZoomIn}
-                  disabled={prodData.length <= 2}
-                  title="Zoom In"
-                >
-                  <ZoomIn className="w-3.5 h-3.5 mr-1 text-violet-600" /> Zoom In
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 px-2.5 text-xs rounded-xl font-bold border-slate-200 bg-white hover:bg-slate-100"
-                  onClick={handleProdZoomOut}
-                  disabled={!prodZoomIndex}
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="w-3.5 h-3.5 mr-1 text-slate-600" /> Zoom Out
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 px-2.5 text-xs rounded-xl font-bold text-slate-500 hover:bg-slate-200/60"
-                  onClick={() => setProdZoomIndex(null)}
-                  disabled={!prodZoomIndex}
-                  title="Reset Zoom"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reset
-                </Button>
-              </div>
+            {/* Interactive Instruction Banner */}
+            <div className="flex items-center justify-between bg-violet-50/50 border border-violet-100/70 px-3.5 py-2 rounded-xl text-[11px] font-semibold text-slate-600">
+              <span className="flex items-center gap-1.5 text-violet-700 font-bold">
+                <MousePointerClick className="w-3.5 h-3.5 text-violet-600" />
+                Double tap point with cursor to zoom in • Single click for brief details
+              </span>
+              {prodZoomIndex && (
+                <span className="text-[10px] bg-violet-100 text-violet-800 px-2 py-0.5 rounded-full font-bold">
+                  Zoomed: {prodZoomIndex.end - prodZoomIndex.start} points
+                </span>
+              )}
             </div>
 
             {/* Linear Graph (LineChart): Profit (X) vs SellingTimePeriod (Y) */}
@@ -591,7 +567,7 @@ export default function GrowthPage() {
                     margin={{ top: 10, right: 20, left: -10, bottom: 25 }}
                     onClick={(state) => {
                       if (state && state.activePayload && state.activePayload.length > 0) {
-                        setProdSelectedPoint(state.activePayload[0].payload as ProductPerformancePoint);
+                        handleProdPointClick(state.activePayload[0].payload as ProductPerformancePoint);
                       }
                     }}
                   >
@@ -627,9 +603,12 @@ export default function GrowthPage() {
                           return (
                             <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl text-xs space-y-1 cursor-pointer">
                               <p className="font-bold text-violet-300">
-                                Date: {item.date} (Click for Brief Zoom Details)
+                                Date: {item.date}
                               </p>
-                              <p className="font-semibold text-slate-200">
+                              <p className="text-[10px] text-violet-400 font-semibold">
+                                Double tap to zoom in • Click for details
+                              </p>
+                              <p className="font-semibold text-slate-200 pt-1">
                                 Daily Avg Profit: <span className="text-white font-bold">₹{item.profit}</span>
                               </p>
                               <p className="font-semibold text-slate-200">
@@ -649,7 +628,7 @@ export default function GrowthPage() {
                       height={36}
                       formatter={() => (
                         <span className="text-xs font-bold text-slate-700">
-                          Product Growth (Click point for Zoom Brief Details)
+                          Product Growth (Double tap point to zoom in)
                         </span>
                       )}
                     />
@@ -666,7 +645,7 @@ export default function GrowthPage() {
                         cursor: "pointer",
                         onClick: (_: any, payload: any) => {
                           if (payload && payload.payload) {
-                            setProdSelectedPoint(payload.payload);
+                            handleProdPointClick(payload.payload);
                           }
                         } 
                       }}
@@ -688,7 +667,7 @@ export default function GrowthPage() {
                   <div className="flex items-center justify-between border-b pb-3">
                     <div>
                       <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
-                        <ZoomIn className="w-5 h-5 text-pink-500" /> Point Zoom Details
+                        <ZoomIn className="w-5 h-5 text-pink-500" /> Point Details
                       </DialogTitle>
                       <DialogDescription className="text-xs text-slate-500 font-semibold mt-0.5">
                         Date: {empSelectedPoint.date}
@@ -746,13 +725,17 @@ export default function GrowthPage() {
                 {/* Action Buttons */}
                 <div className="flex gap-2 pt-2">
                   <Button
-                    className="flex-1 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold py-2.5"
+                    className="flex-1 bg-pink-600 hover:bg-pink-700 text-white rounded-xl text-xs font-bold py-2.5"
                     onClick={() => {
-                      handleEmpZoomToPoint(details.idx);
+                      const windowSize = Math.max(2, Math.floor(data.length / 2));
+                      const half = Math.floor(windowSize / 2);
+                      const start = Math.max(0, Math.min(details.idx - half, data.length - windowSize));
+                      const end = Math.min(data.length, start + windowSize);
+                      setEmpZoomIndex({ start, end });
                       setEmpSelectedPoint(null);
                     }}
                   >
-                    <ZoomIn className="w-3.5 h-3.5 mr-1.5" /> Zoom Chart to Point
+                    <ZoomIn className="w-3.5 h-3.5 mr-1.5" /> Zoom to Point
                   </Button>
                   <Button
                     variant="outline"
@@ -777,7 +760,7 @@ export default function GrowthPage() {
                   <div className="flex items-center justify-between border-b pb-3">
                     <div>
                       <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
-                        <ZoomIn className="w-5 h-5 text-violet-600" /> Point Zoom Details
+                        <ZoomIn className="w-5 h-5 text-violet-600" /> Point Details
                       </DialogTitle>
                       <DialogDescription className="text-xs text-slate-500 font-semibold mt-0.5">
                         Date: {prodSelectedPoint.date}
@@ -835,13 +818,17 @@ export default function GrowthPage() {
                 {/* Action Buttons */}
                 <div className="flex gap-2 pt-2">
                   <Button
-                    className="flex-1 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold py-2.5"
+                    className="flex-1 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold py-2.5"
                     onClick={() => {
-                      handleProdZoomToPoint(details.idx);
+                      const windowSize = Math.max(2, Math.floor(prodData.length / 2));
+                      const half = Math.floor(windowSize / 2);
+                      const start = Math.max(0, Math.min(details.idx - half, prodData.length - windowSize));
+                      const end = Math.min(prodData.length, start + windowSize);
+                      setProdZoomIndex({ start, end });
                       setProdSelectedPoint(null);
                     }}
                   >
-                    <ZoomIn className="w-3.5 h-3.5 mr-1.5" /> Zoom Chart to Point
+                    <ZoomIn className="w-3.5 h-3.5 mr-1.5" /> Zoom to Point
                   </Button>
                   <Button
                     variant="outline"
