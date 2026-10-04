@@ -64,21 +64,9 @@ router.post("/help-requests", async (req: any, res: any) => {
 
   // Send Email to HR if configured
   try {
-    const hrEmailSetting = await Setting.findOne({ key: "hrEmail" });
+    const hrEmailSetting = await Setting.findOne({ key: "hrEmail" }) || await Setting.findOne({ key: "smtpUser" });
     const hrEmail = hrEmailSetting?.value;
-    
-    const hrAppPasswordSetting = await Setting.findOne({ key: "hrAppPassword" });
-    const hrAppPassword = hrAppPasswordSetting?.value;
-
-    if (hrEmail && hrAppPassword) {
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: hrEmail,
-          pass: hrAppPassword,
-        },
-      });
-
+    if (hrEmail) {
       const emailHtml = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="color: #1e293b;">New Employee Help Request</h2>
@@ -97,13 +85,12 @@ router.post("/help-requests", async (req: any, res: any) => {
           <p style="margin-top: 16px; color: #94a3b8; font-size: 12px;">This request can be viewed and managed from the HR Dashboard → Employee Help section.</p>
         </div>
       `;
-
-      await transporter.sendMail({
-        from: hrEmail,
-        to: hrEmail,
-        subject: `Employee Help Request: ${parsed.data.issueType}`,
-        html: emailHtml,
-      });
+      await sendEmail(
+        hrEmail,
+        `Employee Help Request: ${parsed.data.issueType}`,
+        `Employee Help Request from ${parsed.data.employeeName}: ${parsed.data.description}`,
+        emailHtml
+      );
     }
   } catch (err) {
     console.error("Failed to send HR help request email", err);
@@ -129,37 +116,24 @@ router.put("/hr/help-requests/:id/status", async (req: any, res: any) => {
   
   if (updated && status === "Resolved" && updated.email) {
     try {
-      const hrEmailSetting = await Setting.findOne({ key: "hrEmail" });
-      const hrEmail = hrEmailSetting?.value;
-      const hrAppPasswordSetting = await Setting.findOne({ key: "hrAppPassword" });
-      const hrAppPassword = hrAppPasswordSetting?.value;
-
-      if (hrEmail && hrAppPassword) {
-        const transporter = nodemailer.createTransport({
-          service: "gmail",
-          auth: { user: hrEmail, pass: hrAppPassword },
-        });
-
-        const emailHtml = `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-            <h2 style="color: #1e293b;">Help Request Resolved</h2>
-            <p style="color: #475569; font-size: 16px;">Hello <strong>${updated.employeeName}</strong>,</p>
-            <p style="color: #475569; font-size: 14px;">Your help request regarding <strong>${updated.issueType}</strong> has been marked as resolved by HR.</p>
-            <div style="margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
-              <p style="margin: 0; color: #475569; font-size: 14px;"><strong>Your Original Request:</strong></p>
-              <p style="margin: 8px 0 0; color: #334155;">${updated.description}</p>
-            </div>
-            <p style="margin-top: 16px; color: #94a3b8; font-size: 12px;">If you still need assistance, please submit a new help request.</p>
+      const emailHtml = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <h2 style="color: #1e293b;">Help Request Resolved</h2>
+          <p style="color: #475569; font-size: 16px;">Hello <strong>${updated.employeeName}</strong>,</p>
+          <p style="color: #475569; font-size: 14px;">Your help request regarding <strong>${updated.issueType}</strong> has been marked as resolved by HR.</p>
+          <div style="margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <p style="margin: 0; color: #475569; font-size: 14px;"><strong>Your Original Request:</strong></p>
+            <p style="margin: 8px 0 0; color: #334155;">${updated.description}</p>
           </div>
-        `;
-
-        await transporter.sendMail({
-          from: hrEmail,
-          to: updated.email,
-          subject: `Resolved: ${updated.issueType}`,
-          html: emailHtml,
-        });
-      }
+          <p style="margin-top: 16px; color: #94a3b8; font-size: 12px;">If you still need assistance, please submit a new help request.</p>
+        </div>
+      `;
+      await sendEmail(
+        updated.email,
+        `Resolved: ${updated.issueType}`,
+        `Hello ${updated.employeeName}, your help request regarding ${updated.issueType} has been resolved by HR.`,
+        emailHtml
+      );
     } catch (err) {
       console.error("Failed to send resolution email", err);
     }
@@ -198,49 +172,108 @@ const hireEmployeeSchema = z.object({
 // HR Employee Recruitment Endpoints
 
 router.get("/hr/employee-requests", requireHR, async (req: any, res: any) => {
-  const session = req.session as any;
-  const hrUser = await HR.findById(session.userId);
-  if (!hrUser || !hrUser.departmentId) return res.status(403).json({ error: "Forbidden", message: "HR not associated with a department" });
+  try {
+    const session = req.session as any;
+    const hrUser = await HR.findById(session.userId);
 
-  // Build query: always filter by department; if the HR has a sub-department, also filter by it
-  const query: any = {
-    accountStatus: { $in: ["Pending", "Denied"] },
-    departmentId: hrUser.departmentId,
-  };
-  if (hrUser.subDepartmentId) {
-    query.subDepartmentId = hrUser.subDepartmentId;
-  }
+    const query: any = {
+      accountStatus: { $in: ["Pending", "pending", "Denied", "denied"] },
+    };
 
-  const requests = await Employee.find(query).sort({ createdAt: -1 });
-  const enriched = await Promise.all(
-    requests.map(async (emp: any) => {
-      const dept = await Department.findById(emp.departmentId);
-      let subDeptName = "";
-      if (emp.subDepartmentId && mongoose.Types.ObjectId.isValid(emp.subDepartmentId)) {
-        try {
-          const subDeptDoc = await SubDepartment.findById(emp.subDepartmentId);
-          if (subDeptDoc) subDeptName = subDeptDoc.name;
-        } catch (err) {
-          console.error("Invalid subDepartmentId:", emp.subDepartmentId);
+    if (hrUser && hrUser.departmentId) {
+      const deptIdStr = hrUser.departmentId.toString();
+      const deptObjId = mongoose.Types.ObjectId.isValid(deptIdStr) ? new mongoose.Types.ObjectId(deptIdStr) : null;
+      const possibleDeptValues: any[] = [deptIdStr];
+      if (deptObjId) possibleDeptValues.push(deptObjId);
+
+      try {
+        const deptDoc = await Department.findById(hrUser.departmentId);
+        if (deptDoc) {
+          possibleDeptValues.push(deptDoc.name);
+          possibleDeptValues.push(deptDoc._id);
         }
+      } catch (e) {}
+
+      query.departmentId = { $in: possibleDeptValues };
+
+      if (hrUser.subDepartmentId) {
+        const subDeptIdStr = hrUser.subDepartmentId.toString();
+        const subDeptObjId = mongoose.Types.ObjectId.isValid(subDeptIdStr) ? new mongoose.Types.ObjectId(subDeptIdStr) : null;
+        const possibleSubDeptValues: any[] = [subDeptIdStr];
+        if (subDeptObjId) possibleSubDeptValues.push(subDeptObjId);
+        
+        try {
+          const sd = await SubDepartment.findById(hrUser.subDepartmentId);
+          if (sd) {
+            possibleSubDeptValues.push(sd.name);
+            possibleSubDeptValues.push(sd.name.toLowerCase());
+          }
+        } catch (e) {}
+
+        // HR has a sub-department: show employees in that sub-dept OR those with no sub-dept
+        query.$or = [
+          { subDepartmentId: { $in: possibleSubDeptValues } },
+          { subDepartmentId: { $exists: false } },
+          { subDepartmentId: null },
+          { subDepartmentId: "" }
+        ];
       }
-      return {
-        _id: emp._id,
-        employeeId: emp.employeeId,
-        name: emp.name,
-        email: emp.email,
-        departmentName: dept?.name ?? "Unknown",
-        subDepartment: subDeptName,
-        contactNumber: emp.contactNumber,
-        gender: emp.gender,
-        location: emp.location,
-        employmentType: emp.employmentType,
-        accountStatus: emp.accountStatus,
-        createdAt: emp.createdAt,
-      };
-    })
-  );
-  res.json(enriched);
+      // If HR has no subDepartmentId, show ALL employees in the department (no $or filter needed)
+    }
+
+    const requests = await Employee.find(query).sort({ createdAt: -1 });
+    const enriched = await Promise.all(
+      requests.map(async (emp: any) => {
+        let deptName = "General / Unassigned";
+        if (emp.departmentId) {
+          if (mongoose.Types.ObjectId.isValid(emp.departmentId)) {
+            try {
+              const d = await Department.findById(emp.departmentId);
+              if (d) deptName = d.name;
+              else deptName = String(emp.departmentId);
+            } catch (e) {
+              deptName = String(emp.departmentId);
+            }
+          } else {
+            deptName = String(emp.departmentId);
+          }
+        }
+
+        let subDeptName = "";
+        if (emp.subDepartmentId) {
+          if (mongoose.Types.ObjectId.isValid(emp.subDepartmentId)) {
+            try {
+              const subDeptDoc = await SubDepartment.findById(emp.subDepartmentId);
+              if (subDeptDoc) subDeptName = subDeptDoc.name;
+              else subDeptName = String(emp.subDepartmentId);
+            } catch (err) {
+              subDeptName = String(emp.subDepartmentId);
+            }
+          } else {
+            subDeptName = String(emp.subDepartmentId);
+          }
+        }
+        return {
+          _id: emp._id,
+          employeeId: emp.employeeId,
+          name: emp.name,
+          email: emp.email,
+          departmentName: deptName,
+          subDepartment: subDeptName,
+          contactNumber: emp.contactNumber,
+          gender: emp.gender,
+          location: emp.location,
+          employmentType: emp.employmentType,
+          accountStatus: emp.accountStatus,
+          createdAt: emp.createdAt,
+        };
+      })
+    );
+    res.json(enriched);
+  } catch (err: any) {
+    console.error("Error fetching HR employee requests:", err);
+    res.status(500).json({ error: "Server error", message: err.message });
+  }
 });
 
 router.post("/hr/employee-requests/:id/allow", requireHR, async (req: any, res: any) => {
@@ -255,13 +288,25 @@ router.post("/hr/employee-requests/:id/allow", requireHR, async (req: any, res: 
   const emp = await Employee.findById(id);
   if (!emp) return res.status(404).json({ error: "Not found" });
   
-  const dept = await Department.findById(emp.departmentId);
+  const dept = (mongoose.Types.ObjectId.isValid(String(emp.departmentId)) ? await Department.findById(emp.departmentId) : null) || await Department.findOne({ name: String(emp.departmentId) });
   
-  if (hrUser && emp.departmentId.toString() !== hrUser.departmentId?.toString()) {
-    return res.status(403).json({ error: "Forbidden", message: "Employee is not in your department" });
-  }
-  if (hrUser && hrUser.subDepartmentId && emp.subDepartmentId && emp.subDepartmentId.toString() !== hrUser.subDepartmentId.toString()) {
-    return res.status(403).json({ error: "Forbidden", message: "Employee is not in your sub-department" });
+  // Verify department match flexibly
+  if (hrUser && hrUser.departmentId) {
+    const hrDeptStr = hrUser.departmentId.toString();
+    const empDeptStr = emp.departmentId?.toString() || "";
+    let isDeptMatch = hrDeptStr === empDeptStr;
+    if (!isDeptMatch && dept) {
+      isDeptMatch = (dept._id.toString() === hrDeptStr);
+    }
+    if (!isDeptMatch) {
+      const hrDept = await Department.findById(hrUser.departmentId);
+      if (hrDept && dept && hrDept.name.toLowerCase() === dept.name.toLowerCase()) {
+        isDeptMatch = true;
+      }
+    }
+    if (!isDeptMatch) {
+      return res.status(403).json({ error: "Forbidden", message: "Employee is not in your assigned department" });
+    }
   }
 
   // Generate Employee ID
@@ -273,9 +318,13 @@ router.post("/hr/employee-requests/:id/allow", requireHR, async (req: any, res: 
   let subDeptSymbol = "X";
   let subDeptName = "";
   if (emp.subDepartmentId) {
-    const subDeptDoc = await SubDepartment.findById(emp.subDepartmentId);
-    if (subDeptDoc) {
-      subDeptName = subDeptDoc.name.toLowerCase();
+    if (mongoose.Types.ObjectId.isValid(emp.subDepartmentId)) {
+      const subDeptDoc = await SubDepartment.findById(emp.subDepartmentId);
+      if (subDeptDoc) {
+        subDeptName = subDeptDoc.name.toLowerCase();
+      }
+    } else {
+      subDeptName = String(emp.subDepartmentId).toLowerCase();
     }
   }
 
@@ -345,13 +394,24 @@ router.post("/hr/employee-requests/:id/deny", requireHR, async (req: any, res: a
 
   const emp = await Employee.findById(id);
   if (!emp) return res.status(404).json({ error: "Not found" });
-  
-  if (hrUser && emp.departmentId.toString() !== hrUser.departmentId?.toString()) {
-    return res.status(403).json({ error: "Forbidden", message: "Employee is not in your department" });
-  }
-  // Also check sub-department scope if HR has one assigned
-  if (hrUser && hrUser.subDepartmentId && emp.subDepartmentId && emp.subDepartmentId.toString() !== hrUser.subDepartmentId.toString()) {
-    return res.status(403).json({ error: "Forbidden", message: "Employee is not in your sub-department" });
+
+  // Auth check BEFORE modifying the record
+  if (hrUser && hrUser.departmentId) {
+    const hrDeptStr = hrUser.departmentId.toString();
+    const empDeptStr = emp.departmentId?.toString() || "";
+    let isDeptMatch = hrDeptStr === empDeptStr;
+    if (!isDeptMatch) {
+      const hrDept = await Department.findById(hrUser.departmentId);
+      const empDept = mongoose.Types.ObjectId.isValid(empDeptStr) ? await Department.findById(emp.departmentId) : null;
+      if (hrDept && empDept && hrDept.name.toLowerCase() === empDept.name.toLowerCase()) isDeptMatch = true;
+    }
+    if (!isDeptMatch) {
+      return res.status(403).json({ error: "Forbidden", message: "Employee is not in your assigned department" });
+    }
+    // Also check sub-department scope if HR has one assigned
+    if (hrUser.subDepartmentId && emp.subDepartmentId && emp.subDepartmentId.toString() !== hrUser.subDepartmentId.toString()) {
+      return res.status(403).json({ error: "Forbidden", message: "Employee is not in your sub-department" });
+    }
   }
 
   emp.accountStatus = "Denied";

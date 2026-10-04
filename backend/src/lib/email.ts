@@ -8,8 +8,8 @@ export async function getSmtpConfig() {
     return acc;
   }, {});
 
-  let smtpUser = config.smtpUser || process.env.SMTP_USER || "";
-  let smtpPass = config.smtpPass || process.env.SMTP_PASS || "";
+  let smtpUser = config.smtpUser || config.hrEmail || process.env.SMTP_USER || process.env.HR_EMAIL || "";
+  let smtpPass = config.smtpPass || config.hrAppPassword || process.env.SMTP_PASS || process.env.HR_APP_PASSWORD || "";
   const smtpHost = config.smtpHost || process.env.SMTP_HOST || "smtp.gmail.com";
   const smtpPort = Number(config.smtpPort || process.env.SMTP_PORT || 587);
 

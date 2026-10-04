@@ -2,6 +2,7 @@ import { Router } from "express";
 import Employee from "../models/employee.model";
 import Setting from "../models/setting.model";
 import Department from "../models/department.model";
+import SubDepartment from "../models/sub-department.model";
 import Admin from "../models/admin.model";
 import HR from "../models/hr.model";
 import { sendEmail } from "../lib/email";
@@ -52,54 +53,85 @@ router.post("/employee/register-request", async (req, res) => {
     });
     return;
   }
-  
-  const deptDoc = await Department.findById(department);
-  if(!deptDoc){
-      res.status(404).json({error: "Department not found"});
-      return;
+  // Find department by ID or by Name
+  let deptDoc = null;
+  if (mongoose.Types.ObjectId.isValid(department)) {
+    deptDoc = await Department.findById(department);
   }
-
-  // Find the HR responsible for this specific department + sub-department.
-  // First try exact match (department + subDepartmentId).
-  // Fall back to department-only HR if no sub-department-specific HR exists.
-  const deptObjId = new mongoose.Types.ObjectId(department);
-  let hrUser = null;
-  if (subDepartmentId && subDepartmentId !== "none" && mongoose.Types.ObjectId.isValid(subDepartmentId)) {
-    const subDeptObjId = new mongoose.Types.ObjectId(subDepartmentId);
-    hrUser = await HR.findOne({ role: "hr", departmentId: deptObjId, subDepartmentId: subDeptObjId, status: "approved" } as any);
+  if (!deptDoc) {
+    deptDoc = await Department.findOne({ name: new RegExp(`^${department}$`, "i") });
   }
-
-  if (!hrUser) {
-    hrUser = await HR.findOne({ role: "hr", departmentId: deptObjId, subDepartmentId: { $exists: false }, status: "approved" } as any);
-    if (!hrUser) {
-      hrUser = await HR.findOne({ role: "hr", departmentId: deptObjId, subDepartmentId: null, status: "approved" } as any);
-    }
-  }
-
-  // 🔒 BLOCK: If no HR is appointed for this department/sub-department, registration is not allowed.
-  if (!hrUser) {
-    let subDeptName = "";
-    if (subDepartmentId && subDepartmentId !== "none") {
-      try {
-        const subDeptDoc = await mongoose.model("SubDepartment").findById(subDepartmentId);
-        if (subDeptDoc) subDeptName = subDeptDoc.name;
-      } catch (e) {}
-    }
-    const label = subDeptName ? `${deptDoc.name} → ${subDeptName}` : deptDoc.name;
-    res.status(422).json({
-      error: "No HR appointed",
-      message: `No HR representative has been appointed for ${label} yet. Registration is not available until an HR is assigned. Please contact the Administrator.`,
-    });
+  if (!deptDoc) {
+    res.status(404).json({ error: "Department not found", message: `Department '${department}' not found.` });
     return;
   }
 
+  const deptIdStr = deptDoc._id.toString();
+  const deptObjId = new mongoose.Types.ObjectId(deptIdStr);
+  const deptQuery = { $in: [deptObjId, deptIdStr, deptDoc.name] };
+  const hrStatusQuery = { $in: ["approved", "Approved", "active", "Active"] };
 
+  // Collect all possible sub-department representations (ID, ObjectId, Name)
+  const subDeptIds: any[] = [];
+  let resolvedSubDeptId: mongoose.Types.ObjectId | undefined = undefined;
+
+  if (subDepartmentId && subDepartmentId !== "none") {
+    subDeptIds.push(subDepartmentId);
+    if (mongoose.Types.ObjectId.isValid(subDepartmentId)) {
+      resolvedSubDeptId = new mongoose.Types.ObjectId(subDepartmentId);
+      subDeptIds.push(resolvedSubDeptId);
+      try {
+        const subDoc = await SubDepartment.findById(subDepartmentId);
+        if (subDoc) {
+          subDeptIds.push(subDoc.name);
+          subDeptIds.push(subDoc.name.toLowerCase());
+        }
+      } catch (e) {}
+    } else {
+      try {
+        const subDoc = await SubDepartment.findOne({ name: new RegExp(`^${subDepartmentId}$`, "i") });
+        if (subDoc) {
+          resolvedSubDeptId = subDoc._id as mongoose.Types.ObjectId;
+          subDeptIds.push(subDoc._id);
+          subDeptIds.push(subDoc._id.toString());
+        }
+      } catch (e) {}
+    }
+  }
+
+  // Find HR assigned to this department / sub-department
+  let hrUser: any = null;
+  if (subDeptIds.length > 0) {
+    hrUser = await HR.findOne({
+      role: "hr",
+      departmentId: deptQuery,
+      subDepartmentId: { $in: subDeptIds },
+      status: hrStatusQuery,
+    } as any);
+  }
+
+  if (!hrUser) {
+    hrUser = await HR.findOne({
+      role: "hr",
+      departmentId: deptQuery,
+      status: hrStatusQuery,
+    } as any);
+  }
+
+  if (!hrUser) {
+    hrUser = await HR.findOne({
+      role: "hr",
+      status: hrStatusQuery,
+    } as any);
+  }
+
+  // Create the Employee record in MongoDB with accountStatus "Pending"
   const emp = await Employee.create({
     name,
     email,
     employeeId: `PENDING-${Date.now()}`, // Temporary ID until HR approves
-    departmentId: new mongoose.Types.ObjectId(department),
-    subDepartmentId: (!subDepartmentId || subDepartmentId === "none") ? undefined : subDepartmentId,
+    departmentId: deptDoc._id,
+    subDepartmentId: resolvedSubDeptId,
     designation: "Employee",
     joiningDate: new Date(),
     status: "inactive",
@@ -111,19 +143,23 @@ router.post("/employee/register-request", async (req, res) => {
     password: "",
   });
 
-  // Notify HR via Email (if HR exists)
-  if (hrUser && hrUser.email) {
+  // 1. Notify HR via Email (or fallback to Admin email if HR email not found)
+  const { getSmtpConfig } = await import("../lib/email");
+  const smtpConfig = await getSmtpConfig();
+  const targetHrEmail = hrUser?.email || smtpConfig.adminEmail || smtpConfig.smtpUser;
+
+  if (targetHrEmail) {
     try {
       const baseUrl = process.env.BASE_URL || "http://localhost:3000";
       await sendEmail(
-        hrUser.email,
+        targetHrEmail,
         "New Employee Registration Request",
         `A new employee registration request has been received from ${name} (${email}). Please review it in the HR Dashboard.`,
         `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="color: #1e293b; margin-bottom: 16px;">New Registration Request</h2>
           <p style="color: #475569; font-size: 16px; line-height: 24px;">
-            A new Employee registration request has been received from <strong>${name}</strong> (${email}) for ${deptDoc.name} ${subDepartmentId ? '- ' + subDepartmentId : ''}.
+            A new Employee registration request has been received from <strong>${name}</strong> (${email}) for Department: <strong>${deptDoc.name}</strong> ${subDepartmentId ? ' / Sub-Department: ' + subDepartmentId : ''}.
           </p>
           <p style="color: #94a3b8; font-size: 12px;">
             You can manage this request from the <a href="${baseUrl}/hr/dashboard" style="color: #3b82f6;">HR Dashboard</a> under the Employee Recruitment tab.
@@ -136,21 +172,23 @@ router.post("/employee/register-request", async (req, res) => {
     }
   }
 
-  // Send acknowledgment email to the registering employee
-  try {
-    await sendEmail(
-      email,
-      "Registration Request Received",
-      `Hello ${name}, your employee registration request has been submitted to your Department HR. You will receive an update once reviewed.`,
-      `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-        <h2 style="color: #1e293b;">Registration Request Received</h2>
-        <p style="color: #475569;">Hello <strong>${name}</strong>,</p>
-        <p style="color: #475569;">Your request for access as an Employee has been sent to your Department HR for review.</p>
-        <p style="color: #475569;">You will receive an email as soon as your access is approved.</p>
-      </div>`
-    );
-  } catch (err) {
-    console.warn("Could not send acknowledgment email to registrant:", err);
+  // 2. Send acknowledgment email to the registering employee
+  if (email) {
+    try {
+      await sendEmail(
+        email,
+        "Registration Request Received",
+        `Hello ${name}, your employee registration request has been submitted to your Department HR. You will receive an update once reviewed.`,
+        `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <h2 style="color: #1e293b;">Registration Request Received</h2>
+          <p style="color: #475569;">Hello <strong>${name}</strong>,</p>
+          <p style="color: #475569;">Your request for access as an Employee in <strong>${deptDoc.name}</strong> has been submitted to your Department HR for review.</p>
+          <p style="color: #475569;">You will receive an email update as soon as your access is approved.</p>
+        </div>`
+      );
+    } catch (err) {
+      console.warn("Could not send acknowledgment email to registrant:", err);
+    }
   }
 
   res.status(201).json({
