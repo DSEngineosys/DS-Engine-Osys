@@ -2,6 +2,8 @@ import { Router } from "express";
 import Product from "../models/product.model";
 import mongoose from "mongoose";
 import { z } from "zod";
+import fs from "fs";
+import path from "path";
 import { checkAndCleanExpiredProductOffers } from "../services/product-offer-cleaner";
 
 const router = Router();
@@ -61,6 +63,27 @@ export function formatProduct(p: any) {
   const offerRemainingSeconds = isOfferActive ? Math.max(0, Math.floor((new Date(p.offerExpiresAt).getTime() - now.getTime()) / 1000)) : 0;
   const calcOfferPct = isOfferActive ? Number(p.offerPercentage || p.discountPercent || 0) : null;
 
+  // Resolve stock attribute directly from Stockproducts.json if present
+  let resolvedStock = Number(p.stock ?? p.stockQuantity ?? 0);
+  try {
+    const jsonPath = path.resolve(process.cwd(), "src", "data", "Stockproducts.json");
+    if (fs.existsSync(jsonPath)) {
+      const raw = fs.readFileSync(jsonPath, "utf-8");
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) {
+        const pId = p.productId || (p._id ? p._id.toString() : "");
+        const pName = (p.name || p.productName || "").toLowerCase();
+        const found = list.find((item: any) => 
+          (item.productId && item.productId === pId) ||
+          (item.productName && item.productName.toLowerCase() === pName)
+        );
+        if (found && (found.stockQuantity !== undefined || found.stock !== undefined)) {
+          resolvedStock = Number(found.stockQuantity ?? found.stock);
+        }
+      }
+    }
+  } catch {}
+
   return {
     id: p._id ? p._id.toString() : p.productId,
     _id: p._id ? p._id.toString() : p.productId,
@@ -81,8 +104,8 @@ export function formatProduct(p: any) {
     taxPercent: Number(p.taxPercent || 18),
     price: Number(p.price || 0),
     sellingPrice: isOfferActive && calcOfferPct ? Number((Number(p.price || 0) * (1 - calcOfferPct / 100)).toFixed(2)) : Number(p.price || 0),
-    stock: p.stock ?? 0,
-    stockQuantity: p.stock ?? 0,
+    stock: resolvedStock,
+    stockQuantity: resolvedStock,
     soldUnits: p.soldUnits || 0,
     revenue: Number(p.revenue || 0),
     offerPercentage: calcOfferPct,

@@ -66,14 +66,12 @@ export default function PerformanceAnalytics() {
       const fetchedTasks = await api.getEmployeeTasks(employeeId!);
       setTasks(fetchedTasks);
       
-      // If it's a marketing employee, we might need products
-      if (fullEmployee.departmentName === "Marketing Department") {
-        try {
-          const prods = await api.getProducts();
-          setProducts(prods);
-        } catch (e) {
-          console.error("Failed to fetch products:", e);
-        }
+      // Fetch products with stock attribute for task selector
+      try {
+        const prods = await api.getProducts();
+        setProducts(prods);
+      } catch (e) {
+        console.error("Failed to fetch products:", e);
       }
     } catch (err: any) {
       toast({ variant: "destructive", title: "Error loading data", description: err.message });

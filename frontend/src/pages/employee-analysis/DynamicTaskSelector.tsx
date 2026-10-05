@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api-extra";
-import { Loader2, Tag, Layers } from "lucide-react";
+import { Loader2, Tag, Layers, Package } from "lucide-react";
 
 export function DynamicTaskSelector({ 
   employee, 
@@ -62,8 +62,8 @@ export function DynamicTaskSelector({
               return {
                 title: p.name || p.productName,
                 desc: isOffer 
-                  ? `SKU: ${p.sku || p.productId} | Price: ₹${discountedPrice} (Original: ₹${priceVal}, -${discount}% OFF)`
-                  : `SKU: ${p.sku || p.productId} | Price: ₹${priceVal}`,
+                  ? `SKU: ${p.sku || p.productId} | Stock: ${stockVal} units | Price: ₹${discountedPrice} (Original: ₹${priceVal}, -${discount}% OFF)`
+                  : `SKU: ${p.sku || p.productId} | Stock: ${stockVal} units | Price: ₹${priceVal}`,
                 requiresQuantity: true,
                 isOfferActive: isOffer,
                 offerPercentage: discount,
@@ -173,6 +173,7 @@ export function DynamicTaskSelector({
   const renderTaskCard = (task: any, idx: number) => {
     const isOffer = task.isOfferActive;
     const isSelected = selectedTask?.title === task.title;
+    const hasStock = task.stock !== undefined && task.stock !== null;
 
     return (
       <div 
@@ -200,7 +201,17 @@ export function DynamicTaskSelector({
         <h4 className={`font-bold text-base mb-1 line-clamp-1 ${isSelected ? 'text-primary' : 'text-slate-800'} ${isOffer ? 'pr-14' : ''}`}>
           {task.title}
         </h4>
-        <p className="text-xs text-slate-500 line-clamp-3 mt-auto">{task.desc}</p>
+        <p className="text-xs text-slate-500 line-clamp-2 mt-auto">{task.desc}</p>
+        
+        {hasStock && (
+          <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Stock</span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/60">
+              <Package className="w-3.5 h-3.5 text-emerald-600" />
+              {task.stock} units
+            </span>
+          </div>
+        )}
       </div>
     );
   };
