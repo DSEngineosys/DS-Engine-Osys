@@ -38,7 +38,7 @@ import { useAdmin } from "@/lib/admin";
 import { Gift, Timer, IndianRupee } from "lucide-react";
 import { CountdownTimer } from "@/components/countdown-timer";
 
-const SLIDES = ["DS Engineer Details", "Company Improvement Progress", "Branding & Security", "Communication Hub", "BONUS", "HR Recruitment"] as const;
+const SLIDES = ["DS Engineer Details", "Overview", "Branding & Security", "Communication Hub", "BONUS", "HR Recruitment"] as const;
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
@@ -255,7 +255,7 @@ export default function AdminDashboard() {
           </Card>
         </motion.section>
 
-        {/* Two slides — DS Engineer Details / Company Improvement Progress */}
+        {/* Two slides — DS Engineer Details / Overview */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-sm">
@@ -401,14 +401,14 @@ export default function AdminDashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5 text-primary" /> Company Improvement Progress
+                      <TrendingUp className="w-5 h-5 text-primary" /> Overview
                     </CardTitle>
                     <CardDescription>
                       Live snapshot of platform-wide activity managed by your DS Engineers.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid gap-4 md:grid-cols-3 mb-6">
+                    <div className="grid gap-4 md:grid-cols-2">
                       <StatTile
                         label="Employees Tracked"
                         value={stats?.company.employees ?? 0}
@@ -423,34 +423,6 @@ export default function AdminDashboard() {
                         color="text-pink-600"
                         bg="bg-pink-50"
                       />
-                      <StatTile
-                        label="Tasks Completed"
-                        value={`${stats?.company.tasksCompleted ?? 0} / ${stats?.company.tasksTotal ?? 0}`}
-                        Icon={CheckSquare}
-                        color="text-emerald-600"
-                        bg="bg-emerald-50"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-2 text-sm">
-                        <span className="font-medium">Overall Task Completion</span>
-                        <span className="font-bold text-primary">
-                          {stats?.company.progressPercent ?? 0}%
-                        </span>
-                      </div>
-                      <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${stats?.company.progressPercent ?? 0}%` }}
-                          transition={{ duration: 0.8, ease: "easeOut" }}
-                          className="h-full bg-gradient-to-r from-primary to-pink-400"
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-3">
-                        Improvement reflects how much work the company has shipped against the planned
-                        task load. Encourage engineers to drive this up.
-                      </p>
                     </div>
                   </CardContent>
                 </Card>
