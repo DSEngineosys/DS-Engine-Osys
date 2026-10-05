@@ -39,9 +39,7 @@ export default function Register() {
   const [countryCode, setCountryCode] = useState("+91");
   const [isDsEngineer, setIsDsEngineer] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [department, setDepartment] = useState("");
-  const [subDepartment, setSubDepartment] = useState("");
-  const [jobTitle, setJobTitle] = useState("");
+
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -105,7 +103,7 @@ export default function Register() {
     setSubmitting(true);
     try {
       const fullMobile = `${countryCode} ${mobile}`;
-      await api.registerRequest({ name, email, mobile: fullMobile, isDsEngineer, department, subDepartment, jobTitle });
+      await api.registerRequest({ name, email, mobile: fullMobile, isDsEngineer });
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ email, name }));
       setStage("waiting");
       setStatusName(name);
@@ -177,9 +175,7 @@ export default function Register() {
     setEmail("");
     setMobile("");
     setIsDsEngineer(false);
-    setDepartment("");
-    setSubDepartment("");
-    setJobTitle("");
+
     setPassword("");
     setConfirm("");
   }
@@ -272,50 +268,6 @@ export default function Register() {
                       </p>
                     </div>
                   </label>
-<div className="space-y-2">
-  <Label htmlFor="department">Department</Label>
-  <Select value={department} onValueChange={setDepartment}>
-    <SelectTrigger className="rounded-xl border-slate-200">
-      <SelectValue placeholder="Select Department" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="Production">Production</SelectItem>
-      <SelectItem value="Marketing">Marketing</SelectItem>
-    </SelectContent>
-  </Select>
-</div>
-<div className="space-y-2">
-  <Label htmlFor="subdepartment">Sub-Department</Label>
-  <Select value={subDepartment} onValueChange={setSubDepartment}>
-    <SelectTrigger className="rounded-xl border-slate-200">
-      <SelectValue placeholder="Select Sub-Department" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="SubA">SubA</SelectItem>
-      <SelectItem value="SubB">SubB</SelectItem>
-    </SelectContent>
-  </Select>
-</div>
-      {department && subDepartment && subDepartment !== "none" && (
-  <div className="space-y-2">
-    <Label htmlFor="jobTitle">Job Title</Label>
-    <Select value={jobTitle} onValueChange={setJobTitle}>
-      <SelectTrigger className="rounded-xl border-slate-200">
-        <SelectValue placeholder="Select Job Title" />
-      </SelectTrigger>
-      <SelectContent>
-        {(department === "Production"
-          ? ["Labour", "Worker", "Machine Operator"]
-          : ["SSO", "TSO", "ISR", "SO"]
-        ).map((title) => (
-          <SelectItem key={title} value={title}>
-            {title}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </div>
-)}
 
                   <Button
                     type="submit"

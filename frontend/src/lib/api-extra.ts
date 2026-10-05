@@ -82,6 +82,9 @@ export const api = {
   me() {
     return request<CurrentUserExtended>("/api/auth/me");
   },
+  dsEngineers() {
+    return request<{ id: string; name: string; email: string; avatarUrl: string | null; designation: string; role: string }[]>("/api/auth/ds-engineers");
+  },
   registerRequest(body: { name: string; email: string; mobile: string; isDsEngineer: boolean; department?: string; subDepartment?: string; jobTitle?: string }) {
     return request<{ message: string }>("/api/auth/register-request", {
       method: "POST",

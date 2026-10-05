@@ -28,6 +28,7 @@ export default function Hub() {
   const [activePhase, setActivePhase] = useState<"employee" | "product">(getInitialPhase);
   const [settings, setSettings] = useState<any>({});
   const [bonuses, setBonuses] = useState<any[]>([]);
+  const [dsEngineers, setDsEngineers] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [selectedBonusId, setSelectedBonusId] = useState<string | null>(null);
   const [mlRunning, setMlRunning] = useState(false);
@@ -45,6 +46,7 @@ export default function Hub() {
   useEffect(() => {
     api.getSettings().then(setSettings).catch(console.error);
     api.getBonuses().then(setBonuses).catch(console.error);
+    api.dsEngineers().then(setDsEngineers).catch(console.error);
   }, []);
 
   // Poll ML running status every 500ms to catch even brief training runs
@@ -102,7 +104,6 @@ export default function Hub() {
   }));
 
   const combinedOffers = [...bonusOffers, ...productOffers];
-  const dsEngineers = employees?.filter(e => e.designation.toLowerCase().includes("engineer")) || [];
 
   const handleAction = async (item: any) => {
     if (item.isBonus) {
@@ -286,7 +287,7 @@ function EngineerCarousel({ engineers }: { engineers: any[] }) {
   const eng = engineers[index];
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-white border border-slate-100 shadow-sm p-4">
+    <div className="relative overflow-hidden rounded-3xl bg-white border border-slate-100 shadow-sm p-6">
       <AnimatePresence mode="wait">
         <motion.div
           key={eng.id}
@@ -294,30 +295,20 @@ function EngineerCarousel({ engineers }: { engineers: any[] }) {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 1.05 }}
           transition={{ duration: 0.6 }}
-          className="flex items-center gap-6"
+          className="flex flex-col items-center text-center gap-3"
         >
           <div className="relative">
-            <Avatar className="w-24 h-24 ring-4 ring-primary/10 shadow-lg">
+            <Avatar className="w-28 h-28 ring-4 ring-primary/10 shadow-lg">
               <AvatarImage src={eng.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${eng.name}`} />
-              <AvatarFallback className="bg-primary text-white font-black text-2xl">
+              <AvatarFallback className="bg-primary text-white font-black text-3xl">
                 {eng.name.split(' ').map((n: string) => n[0]).join('')}
               </AvatarFallback>
             </Avatar>
             <div className="absolute -bottom-1 -right-1 bg-green-500 w-5 h-5 rounded-full border-4 border-white shadow-sm" />
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-2xl font-black text-slate-800 leading-tight truncate">{eng.name}</h3>
+          <div>
+            <h3 className="text-2xl font-black text-slate-800 leading-tight">{eng.name}</h3>
             <p className="text-sm font-black text-primary uppercase tracking-widest mt-1">{eng.designation}</p>
-            <div className="flex items-center gap-4 mt-3">
-               <div className="text-center">
-                  <p className="text-[10px] font-black text-slate-400 uppercase">Tasks</p>
-                  <p className="text-lg font-black text-slate-700">24</p>
-               </div>
-               <div className="text-center border-l border-slate-100 pl-4">
-                  <p className="text-[10px] font-black text-slate-400 uppercase">Score</p>
-                  <p className="text-lg font-black text-slate-700">9.8</p>
-               </div>
-            </div>
           </div>
         </motion.div>
       </AnimatePresence>

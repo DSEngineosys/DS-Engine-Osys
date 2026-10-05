@@ -90,61 +90,73 @@ router.get("/admin/registration-requests", requireAdmin, async (_req, res) => {
 router.post("/admin/registration-requests/:id/allow", requireAdmin, async (req, res) => {
   const id = req.params.id as string;
   if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  
-  const updated = await DSEngineer.findByIdAndUpdate(id, { status: "approved" }, { returnDocument: "after" });
-  if (!updated) {
-    res.status(404).json({ error: "Not found" });
-    return;
-  }
-
-  // Notify DS-Engineer via Email
   try {
-    await sendEmail(
-      updated.email,
-      "Registration Approved",
-      `Congratulations ${updated.name}! Your registration request has been APPROVED by the Admin. You can now proceed to set your password and access the platform.`
-    );
-  } catch (err) {
-    console.error("Non-critical: Failed to notify DS-Engineer of approval", err);
-  }
+    const updated = await DSEngineer.findByIdAndUpdate(id, { status: "approved" }, { new: true });
+    if (!updated) {
+      res.status(404).json({ error: "Not found", message: "Registration request not found." });
+      return;
+    }
 
-  res.json({ message: "DS Engineer approved", id: updated._id, status: updated.status });
+    // Notify DS-Engineer via Email (non-critical)
+    try {
+      await sendEmail(
+        updated.email,
+        "Registration Approved",
+        `Congratulations ${updated.name}! Your registration request has been APPROVED by the Admin. You can now proceed to set your password and access the platform.`
+      );
+    } catch (emailErr) {
+      console.error("Non-critical: Failed to notify DS-Engineer of approval", emailErr);
+    }
+
+    res.json({ message: "DS Engineer approved", id: updated._id, status: updated.status });
+  } catch (err) {
+    console.error("[allow registration] Error:", err);
+    res.status(500).json({ error: "Internal server error", message: err instanceof Error ? err.message : "Could not approve request." });
+  }
 });
 
 router.post("/admin/registration-requests/:id/deny", requireAdmin, async (req, res) => {
   const id = req.params.id as string;
   if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  
-  const updated = await DSEngineer.findByIdAndUpdate(id, { status: "denied" }, { returnDocument: "after" });
-  if (!updated) {
-    res.status(404).json({ error: "Not found" });
-    return;
-  }
-
-  // Notify DS-Engineer via Email
   try {
-    await sendEmail(
-      updated.email,
-      "Registration Denied",
-      `Hello ${updated.name}, your registration request has been DENIED by the Admin. Please contact support if you believe this is an error.`
-    );
-  } catch (err) {
-    console.error("Non-critical: Failed to notify DS-Engineer of denial", err);
-  }
+    const updated = await DSEngineer.findByIdAndUpdate(id, { status: "denied" }, { new: true });
+    if (!updated) {
+      res.status(404).json({ error: "Not found", message: "Registration request not found." });
+      return;
+    }
 
-  res.json({ message: "DS Engineer denied", id: updated._id, status: updated.status });
+    // Notify DS-Engineer via Email (non-critical)
+    try {
+      await sendEmail(
+        updated.email,
+        "Registration Denied",
+        `Hello ${updated.name}, your registration request has been DENIED by the Admin. Please contact support if you believe this is an error.`
+      );
+    } catch (emailErr) {
+      console.error("Non-critical: Failed to notify DS-Engineer of denial", emailErr);
+    }
+
+    res.json({ message: "DS Engineer denied", id: updated._id, status: updated.status });
+  } catch (err) {
+    console.error("[deny registration] Error:", err);
+    res.status(500).json({ error: "Internal server error", message: err instanceof Error ? err.message : "Could not deny request." });
+  }
 });
 
 router.delete("/admin/registration-requests/:id", requireAdmin, async (req, res) => {
   const id = req.params.id as string;
   if (!mongoose.Types.ObjectId.isValid(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  
-  const deleted = await DSEngineer.findByIdAndDelete(id);
-  if (!deleted) {
-    res.status(404).json({ error: "Not found" });
-    return;
+  try {
+    const deleted = await DSEngineer.findByIdAndDelete(id);
+    if (!deleted) {
+      res.status(404).json({ error: "Not found", message: "Registration request not found." });
+      return;
+    }
+    res.json({ message: "DS Engineer deleted permanently", id });
+  } catch (err) {
+    console.error("[delete registration] Error:", err);
+    res.status(500).json({ error: "Internal server error", message: err instanceof Error ? err.message : "Could not delete request." });
   }
-  res.json({ message: "DS Engineer deleted permanently", id });
 });
 
 router.get("/admin/hr-recruitment-requests", requireAdmin, async (_req, res) => {

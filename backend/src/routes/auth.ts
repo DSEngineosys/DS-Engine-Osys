@@ -94,6 +94,28 @@ async function formatUser(user: any) {
   };
 }
 
+// Public: list approved DS Engineers for the spotlight carousel
+router.get("/auth/ds-engineers", async (_req, res) => {
+  try {
+    const engineers = await DSEngineer.find({ status: "approved" })
+      .select("_id name email avatarUrl role status createdAt")
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json(
+      engineers.map((e: any) => ({
+        id: e._id,
+        name: e.name,
+        email: e.email,
+        avatarUrl: e.avatarUrl || null,
+        designation: "DS Engineer",
+        role: e.role,
+      }))
+    );
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch DS Engineers", message: err instanceof Error ? err.message : "Unknown error" });
+  }
+});
+
 // DS Engineer registration request — creates a pending user, no password yet.
 router.post("/auth/register-request", async (req, res) => {
   const parsed = registerRequestSchema.safeParse(req.body);
