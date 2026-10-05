@@ -7,6 +7,7 @@ export interface IProductPerformance extends Document {
   soldDate?: Date;
   sellingTimePeriod?: number;
   profit?: number;
+  offerAmount?: number;
   offersApplied?: string;
   date?: string;
   data?: any;
@@ -22,6 +23,7 @@ const ProductPerformanceSchema: Schema = new Schema(
     soldDate: { type: Date, index: true },
     sellingTimePeriod: { type: Number },
     profit: { type: Number },
+    offerAmount: { type: Number },
     offersApplied: { type: String },
     date: { type: String, index: true },
     data: { type: Schema.Types.Mixed },
